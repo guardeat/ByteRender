@@ -1,9 +1,9 @@
 #pragma once
 
 #include "core/core_types.h"
-#include "scene/repository.h"
-#include "scene/mesh.h"
-#include "scene/material.h"
+#include "core/repository.h"
+#include "core/mesh.h"
+#include "core/material.h"
 #include "ecs/ecs.h"
 #include "texture.h"
 

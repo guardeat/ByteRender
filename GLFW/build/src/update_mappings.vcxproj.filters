@@ -1,0 +1,24 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="17.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <CustomBuild Include="C:\Users\guard\source\repos\Byte\GLFW\build\CMakeFiles\a3d19d86a52d3f1c0f2e29b502654509\update_mappings.rule">
+      <Filter>CMake Rules</Filter>
+    </CustomBuild>
+    <CustomBuild Include="C:\Users\guard\source\repos\Byte\GLFW\src\CMakeLists.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="C:\Users\guard\source\repos\Byte\GLFW\src\mappings.h.in">
+      <Filter>Header Files</Filter>
+    </None>
+    <None Include="C:\Users\guard\source\repos\Byte\GLFW\CMake\GenerateMappings.cmake" />
+    <None Include="C:\Users\guard\source\repos\Byte\GLFW\build\src\CMakeFiles\update_mappings" />
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="CMake Rules">
+      <UniqueIdentifier>{5D0021AA-1835-3C2E-816D-3ECEE9C74A78}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files">
+      <UniqueIdentifier>{B55FAADE-A02C-3BB9-B8BD-DC7CEA5D44D5}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>

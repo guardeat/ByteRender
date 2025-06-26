@@ -1,0 +1,7 @@
+C:/Users/guard/source/repos/Byte/GLFW/build/CMakeFiles/uninstall.dir
+C:/Users/guard/source/repos/Byte/GLFW/build/CMakeFiles/INSTALL.dir
+C:/Users/guard/source/repos/Byte/GLFW/build/CMakeFiles/ALL_BUILD.dir
+C:/Users/guard/source/repos/Byte/GLFW/build/CMakeFiles/ZERO_CHECK.dir
+C:/Users/guard/source/repos/Byte/GLFW/build/src/CMakeFiles/glfw.dir
+C:/Users/guard/source/repos/Byte/GLFW/build/src/CMakeFiles/update_mappings.dir
+C:/Users/guard/source/repos/Byte/GLFW/build/src/CMakeFiles/INSTALL.dir
