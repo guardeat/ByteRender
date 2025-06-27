@@ -4,7 +4,6 @@
 
 namespace Byte {
 
-	template<typename _Context = Context>
 	class Renderer {
 
 	};

@@ -27,10 +27,10 @@
     <ClInclude Include="render\render_device.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="render\render_instanced.h">
+    <ClInclude Include="render\instanced_renderer.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="render\render_mesh.h">
+    <ClInclude Include="render\mesh_renderer.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="render\render_pass.h">
@@ -49,6 +49,12 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="render\render_data.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="render\render_array.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="render\render_buffer.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

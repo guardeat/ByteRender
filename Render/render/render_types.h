@@ -2,7 +2,14 @@
 
 #include <cstdint>
 
+#include "ecs/ecs.h"
+
 namespace Byte {
+
+	using RenderID = EntityID;
+
+	using RenderArrayID = uint64_t;
+	using RenderBufferID = uint64_t;
 
 	using ShaderID = uint64_t;
 	using TextureID = uint64_t;
@@ -59,6 +66,11 @@ namespace Byte {
 		MIRRORED_REPEAT = 0x8370,
 		CLAMP_TO_EDGE = 0x812F,
 		CLAMP_TO_BORDER = 0x812D
+	};
+
+	enum class BufferMode : uint8_t {
+		STATIC,
+		DYNAMIC,
 	};
 
 }

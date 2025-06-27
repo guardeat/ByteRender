@@ -136,13 +136,15 @@
     <ClInclude Include="render\opengl_api.h" />
     <ClInclude Include="render\pipeline.h" />
     <ClInclude Include="render\renderer.h" />
+    <ClInclude Include="render\render_buffer.h" />
     <ClInclude Include="render\render_data.h" />
     <ClInclude Include="render\render_device.h" />
-    <ClInclude Include="render\render_instanced.h" />
-    <ClInclude Include="render\render_mesh.h" />
+    <ClInclude Include="render\instanced_renderer.h" />
+    <ClInclude Include="render\mesh_renderer.h" />
     <ClInclude Include="render\render_pass.h" />
     <ClInclude Include="render\render_types.h" />
     <ClInclude Include="render\texture.h" />
+    <ClInclude Include="render\render_array.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="external\glad.c" />

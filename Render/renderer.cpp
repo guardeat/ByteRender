@@ -2,6 +2,4 @@
 
 namespace Byte {
 
-	template class Renderer<Context>;
-
 }
