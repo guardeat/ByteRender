@@ -2,4 +2,8 @@
 
 namespace Byte {
 
+	class RenderData {
+
+	};
+
 }

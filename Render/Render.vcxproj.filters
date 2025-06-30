@@ -15,7 +15,7 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="render\context.h">
+    <ClInclude Include="render\render_context.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="render\framebuffer.h">
@@ -57,12 +57,15 @@
     <ClInclude Include="render\render_buffer.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="render\frame_buffer.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="external\glad.c">
+    <ClCompile Include="renderer.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="renderer.cpp">
+    <ClCompile Include="external\glad.c">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

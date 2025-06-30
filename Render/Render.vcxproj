@@ -105,7 +105,7 @@
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <AdditionalIncludeDirectories>$(SolutionDir)Include;$(SolutionDir)Core;$(SolutionDir)ECS;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)Include;$(SolutionDir)Core;$(SolutionDir)ECS;$(SolutionDir)GLFW\include;$(SolutionDir)include\glad;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -121,7 +121,7 @@
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <AdditionalIncludeDirectories>$(SolutionDir)Include;$(SolutionDir)Core;$(SolutionDir)ECS;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)Include;$(SolutionDir)Core;$(SolutionDir)ECS;$(SolutionDir)GLFW\include;$(SolutionDir)include\glad;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -131,8 +131,9 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="render\context.h" />
+    <ClInclude Include="render\render_context.h" />
     <ClInclude Include="render\framebuffer.h" />
+    <ClInclude Include="render\frame_buffer.h" />
     <ClInclude Include="render\opengl_api.h" />
     <ClInclude Include="render\pipeline.h" />
     <ClInclude Include="render\renderer.h" />

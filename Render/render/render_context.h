@@ -9,13 +9,13 @@
 
 namespace Byte {
 
-	class Context {
+	class RenderContext {
 	private:
 		World* _world;
 		Repository* _repository;
 
 	public:
-		Context(World& world, Repository& repository)
+		RenderContext(World& world, Repository& repository)
 			:_world{ &world }, _repository{&repository} {
 		}
 
@@ -24,7 +24,21 @@ namespace Byte {
 			return _world->components<Args...>();
 		}
 
+		template<typename Component>
+		Component& get(EntityID id) {
+			return _world->get<Component>(id);
+		}
+
+		template<typename Component>
+		const Component& get(EntityID id) const {
+			return _world->get<Component>(id);
+		}
+
 		Mesh& mesh(MeshID id) {
+			_repository->mesh(id);
+		}
+
+		const Mesh& mesh(MeshID id) const {
 			_repository->mesh(id);
 		}
 
@@ -32,7 +46,15 @@ namespace Byte {
 			_repository->material(id);
 		}
 
+		const Material& material(MaterialID id) const {
+			_repository->material(id);
+		}
+
 		Texture& texture(TextureID id) {
+			_repository->texture(id);
+		}
+
+		const Texture& texture(TextureID id) const {
 			_repository->texture(id);
 		}
 	};

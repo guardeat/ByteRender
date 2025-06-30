@@ -14,7 +14,8 @@ namespace Byte {
 		WindowHandler* _handler{ nullptr };
 
 	public:
-		Window(size_t width, size_t height, const std::string& title) {
+		Window(size_t width, size_t height, const std::string& title = "") {
+			glfwInit();
 			_handler = glfwCreateWindow(
 				static_cast<int>(width),
 				static_cast<int>(height),

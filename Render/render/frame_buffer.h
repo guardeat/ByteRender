@@ -2,8 +2,6 @@
 
 namespace Byte {
 
-	class Pipeline {
-	private:
-	};
+
 
 }
