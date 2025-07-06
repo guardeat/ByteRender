@@ -6,11 +6,9 @@
 #include "core/window.h"
 #include "render_types.h"
 #include "render_array.h"
-#include "instanced_renderer.h"
+#include "instanced_renderable.h"
 
 namespace Byte {
-
-	//Instanced arrays takes mesh vbo from mesh arrays. Owner is mesh arrays.
 
 	class RenderDevice {
 	private:
@@ -24,6 +22,14 @@ namespace Byte {
 
 		void submit(Mesh& mesh) {
 
+		}
+
+		void submit(InstancedRenderable& instanced) {
+
+		}
+
+		void update(Window& window) {
+			OpenGLAPI::update(window);
 		}
 	};
 

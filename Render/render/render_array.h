@@ -2,6 +2,7 @@
 
 #include <cstdint>
 
+#include <core/core_types.h>
 #include "render_buffer.h"
 
 namespace Byte {
@@ -9,8 +10,7 @@ namespace Byte {
 	struct RenderArray {
 		RenderArrayID id;
 
-		RenderBuffer vertexBuffer;
-		RenderBuffer instanceBuffer;
+		Vector<RenderBuffer> renderBuffers;
 
 		RenderBuffer indexBuffer;
 	};

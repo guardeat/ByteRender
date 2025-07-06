@@ -2,14 +2,14 @@
 
 #include "core/core_types.h"
 #include "core/layout.h"
-#include "mesh_renderer.h"
+#include "ecs/ecs.h"
+#include "renderable.h"
 
 namespace Byte {
 
-	template<typename Key = EntityID>
-	class InstancedRenderer : public MeshRenderer {
+	class InstancedRenderable : public Renderable {
 	private:
-		Vector<Key> _keys;
+		Vector<EntityID> _keys;
 		Vector<float> _data;
 		Layout _layout;
 
@@ -24,7 +24,7 @@ namespace Byte {
 
 	class RenderInstance {
 	private:
-		EntityID _instancedRendererID{};
+		EntityID _renderableID{};
 	};
 
 }

@@ -4,7 +4,7 @@
 
 namespace Byte {
 
-	class MeshRenderer {
+	class Renderable {
 	protected:
 		MeshID _meshID{};
 		MaterialID _materialID{};
@@ -14,9 +14,9 @@ namespace Byte {
 		bool _frustumCulling{ true };
 
 	public:
-		MeshRenderer() = default;
+		Renderable() = default;
 
-		MeshRenderer(MeshID meshID, MaterialID materialID)
+		Renderable(MeshID meshID, MaterialID materialID)
 			: _meshID{ meshID }, _materialID{ materialID } {}
 
 		MeshID mesh() const {
