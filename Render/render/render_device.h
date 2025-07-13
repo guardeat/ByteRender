@@ -21,7 +21,8 @@ namespace Byte {
 		}
 
 		void submit(Mesh& mesh) {
-
+			RenderArray meshArray{ OpenGLAPI::buildRenderArray(mesh) };
+			_meshArrays.emplace(mesh.id(), meshArray);
 		}
 
 		void submit(InstancedRenderable& instanced) {

@@ -68,14 +68,36 @@ namespace Byte {
         }
 
         template<typename Type>
-        RenderBuffer buildRenderBuffer(Vector<Type> data, Layout layout, BufferMode mode, GLenum type) {
-            GLuint bufferID = 0;
+        static RenderBuffer buildRenderBuffer(
+            const Vector<Type>& data,
+            Layout layout, 
+            BufferMode mode, 
+            GLenum type,
+            GLuint attributeStart = 0) {
+            GLuint bufferID{ 0 };
             glGenBuffers(1, &bufferID);
 
             GLint target{ (type == GL_UNSIGNED_INT) ? GL_ELEMENT_ARRAY_BUFFER : GL_ARRAY_BUFFER };
 
             glBindBuffer(target, bufferID);
             glBufferData(target, data.size() * sizeof(Type), data.data(), convert(mode));
+
+            size_t stride{ layout.stride() * sizeof(Type) };
+
+            size_t offset{};
+            for (GLuint attribIndex{}; attribIndex < layout.size(); ++attribIndex) {
+                glEnableVertexAttribArray(attribIndex + attributeStart);
+                glVertexAttribPointer(
+                    attribIndex + attributeStart,
+                    layout[attribIndex],
+                    type,
+                    GL_FALSE,
+                    static_cast<GLsizei>(stride),
+                    reinterpret_cast<const void*>(offset)
+                );
+
+                offset += layout[attribIndex] * sizeof(Type);
+            }
 
             RenderBuffer buffer{};
             buffer.id = bufferID;
@@ -85,7 +107,7 @@ namespace Byte {
             return buffer;
         }
 
-        RenderArray buildRenderArray(Mesh& mesh) {
+        static RenderArray buildRenderArray(Mesh& mesh) {
             RenderArray renderArray{};
             GLuint id;
             glGenVertexArrays(1, &id);
@@ -102,49 +124,21 @@ namespace Byte {
 
             renderArray.renderBuffers.push_back(vertexBuffer);
 
-            glBindBuffer(GL_ARRAY_BUFFER, static_cast<GLuint>(vertexBuffer.id));
-
-            const Layout& layout{ vertexBuffer.layout };
-            size_t stride{ layout.stride() * sizeof(float) };
-
-            size_t offset{};
-            for (GLuint attribIndex{}; attribIndex < layout.stride(); ++attribIndex) {
-                if (attribIndex >= layout.stride()) break;
-
-                uint8_t size{ layout[attribIndex] };
-                if (size == 0) {
-                    break;
-                }
-
-                glEnableVertexAttribArray(attribIndex);
-                glVertexAttribPointer(
-                    attribIndex,
-                    size,
-                    GL_FLOAT,
-                    GL_FALSE,
-                    static_cast<GLsizei>(stride),
-                    reinterpret_cast<const void*>(offset)
-                );
-
-                offset += size * sizeof(float);
-            }
-
             RenderBuffer indexBuffer{ buildRenderBuffer<uint32_t>(
                 mesh.indices(),
-                {},
+                Layout{},
                 mesh.dynamic() ? BufferMode::DYNAMIC : BufferMode::STATIC,
                 GL_UNSIGNED_INT
             ) };
 
             renderArray.indexBuffer = indexBuffer;
-            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, static_cast<GLuint>(indexBuffer.id));
 
             glBindVertexArray(0);
 
             return renderArray;
         }
 
-        GLenum convert(BufferMode mode) {
+        static GLenum convert(BufferMode mode) {
             switch (mode) {
                 case BufferMode::STATIC:  
                     return GL_STATIC_DRAW;

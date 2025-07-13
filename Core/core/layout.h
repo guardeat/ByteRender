@@ -29,6 +29,8 @@ namespace Byte {
 
 		uint8_t operator[](size_t _index) const;
 
+		size_t size() const;
+
 		uint8_t* data();
 
 		const uint8_t* data() const;
