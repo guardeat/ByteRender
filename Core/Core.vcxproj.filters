@@ -21,9 +21,6 @@
     <ClInclude Include="core\layout.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="core\material.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="core\mesh.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -49,6 +46,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="core\math\vec.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="core\byte_math.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

@@ -60,6 +60,15 @@
     <ClInclude Include="render\camera.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="render\render_data.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="render\shader.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="render\material.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="renderer.cpp">

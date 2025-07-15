@@ -9,7 +9,7 @@ namespace Byte {
 
 	class InstancedRenderable : public Renderable {
 	private:
-		Vector<EntityID> _keys;
+		Vector<RenderID> _keys;
 		Vector<float> _data;
 		Layout _layout;
 

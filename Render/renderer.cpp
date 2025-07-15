@@ -3,20 +3,39 @@
 namespace Byte {
 
 	void Renderer::initialize(Window& window) {
-		OpenGLAPI::initialize(window);
+		_data.device.initialize(window);
 	}
 
 	void Renderer::render(RenderContext& context) {
+		load(context);
+		
+		_pipeline.render(_data,context);
 	}
 
 	void Renderer::load(Mesh& mesh) {
+		if (!_data.device.containsMesh(mesh.id())) {
+			_data.device.submit(mesh);
+		}
 	}
 
 	void Renderer::load(InstancedRenderable& instanced) {
 	}
 
+	void Renderer::load(Texture& texture) {
+	}
+
+	void Renderer::load(RenderContext& context) {
+		for (auto& [_, mesh] : context.repository().meshes()) {
+			load(mesh);
+		}
+
+		for (auto& [id, texture] : context.repository().textures()) {
+			load(texture);
+		}
+	}
+
 	void Renderer::update(Window& window) {
-		_device.update(window);
+		_data.device.update(window);
 
 		if (_data.width != window.width() || _data.height != window.height()) {
 			resize(window.width(), window.height());

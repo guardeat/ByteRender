@@ -35,5 +35,4 @@ namespace Byte {
 	using Tag = std::string;
 
 	using MeshID = uint64_t;
-	using MaterialID = uint64_t;
 }

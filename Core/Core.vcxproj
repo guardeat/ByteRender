@@ -135,8 +135,8 @@
   <ItemGroup>
     <ClInclude Include="core\core_types.h" />
     <ClInclude Include="core\layout.h" />
-    <ClInclude Include="core\material.h" />
     <ClInclude Include="core\math\mat.h" />
+    <ClInclude Include="core\byte_math.h" />
     <ClInclude Include="core\math\quaternion.h" />
     <ClInclude Include="core\math\trigonometry.h" />
     <ClInclude Include="core\math\vec.h" />

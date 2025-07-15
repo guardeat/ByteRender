@@ -4,20 +4,15 @@
 #include "core/mesh.h"
 #include "render_context.h"
 #include "render_device.h"
+#include "render_data.h"
 #include "instanced_renderable.h"
 #include "pipeline.h"
 
 namespace Byte {
 
-	struct RenderData {
-		size_t width;
-		size_t height;
-	};
-
 	class Renderer {
 	private:
 		RenderData _data;
-		RenderDevice _device;
 		Pipeline _pipeline;
 		
 	public:
@@ -31,9 +26,30 @@ namespace Byte {
 
 		void load(InstancedRenderable& instanced);
 
+		void load(Texture& instanced);
+
+		void load(RenderContext& context);
+
 		void update(Window& window);
 
 		void resize(size_t width, size_t height);
+
+		RenderDevice& device() {
+			return _data.device;
+		}
+
+		const RenderDevice& device() const {
+			return _data.device;
+		}
+
+		template<typename... Passes>
+		static Renderer build() {
+			Renderer renderer;
+
+			renderer._pipeline = Pipeline::build<Passes...>();
+
+			return renderer;
+		}
 	};
 
 }

@@ -35,7 +35,7 @@ namespace Byte {
 			_dynamic{ dynamic },
 			_id{id} {
 			if (_id == 0) {
-				_id = UIDGenerator::generate();
+				_id = UIDGenerator<uint64_t>::generate();
 			}
 		}
 
@@ -65,6 +65,62 @@ namespace Byte {
 
 		bool dynamic() const {
 			return _dynamic;
+		}
+	};
+
+	struct Primitive {
+		static Mesh cube() {
+			Vector<float> vertices = {
+				// Front face
+				-0.5f, -0.5f,  0.5f,  0, 0, 1,  0, 0,
+				 0.5f, -0.5f,  0.5f,  0, 0, 1,  1, 0,
+				 0.5f,  0.5f,  0.5f,  0, 0, 1,  1, 1,
+				-0.5f,  0.5f,  0.5f,  0, 0, 1,  0, 1,
+				// Back face
+				-0.5f, -0.5f, -0.5f,  0, 0, -1, 0, 0,
+				 0.5f, -0.5f, -0.5f,  0, 0, -1, 1, 0,
+				 0.5f,  0.5f, -0.5f,  0, 0, -1, 1, 1,
+				-0.5f,  0.5f, -0.5f,  0, 0, -1, 0, 1,
+				// Left face
+				-0.5f, -0.5f, -0.5f, -1, 0, 0,  0, 0,
+				-0.5f, -0.5f,  0.5f, -1, 0, 0,  1, 0,
+				-0.5f,  0.5f,  0.5f, -1, 0, 0,  1, 1,
+				-0.5f,  0.5f, -0.5f, -1, 0, 0,  0, 1,
+				// Right face
+				 0.5f, -0.5f, -0.5f, 1, 0, 0,  0, 0,
+				 0.5f, -0.5f,  0.5f, 1, 0, 0,  1, 0,
+				 0.5f,  0.5f,  0.5f, 1, 0, 0,  1, 1,
+				 0.5f,  0.5f, -0.5f, 1, 0, 0,  0, 1,
+				 // Top face
+				 -0.5f, 0.5f,  0.5f,  0, 1, 0,  0, 0,
+				  0.5f, 0.5f,  0.5f,  0, 1, 0,  1, 0,
+				  0.5f, 0.5f, -0.5f,  0, 1, 0,  1, 1,
+				 -0.5f, 0.5f, -0.5f,  0, 1, 0,  0, 1,
+				 // Bottom face
+				 -0.5f, -0.5f,  0.5f, 0, -1, 0, 0, 0,
+				  0.5f, -0.5f,  0.5f, 0, -1, 0, 1, 0,
+				  0.5f, -0.5f, -0.5f, 0, -1, 0, 1, 1,
+				 -0.5f, -0.5f, -0.5f, 0, -1, 0, 0, 1
+			};
+
+			Vector<uint32_t> indices = {
+				// Front
+				0, 1, 2, 2, 3, 0,
+				// Back
+				4, 6, 5, 6, 4, 7,
+				// Left
+				8, 9,10,10,11, 8,
+				// Right
+				12,14,13,14,12,15,
+				// Top
+				16,17,18,18,19,16,
+				// Bottom
+				20,22,21,22,20,23
+			};
+
+			Layout layout{ 3, 3, 2 };
+
+			return Mesh(std::move(vertices), std::move(indices), std::move(layout));
 		}
 	};
 

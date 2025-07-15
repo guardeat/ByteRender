@@ -1,12 +1,11 @@
 #pragma once
 
+#include "../Render/render/texture.h"
+#include "../Render/render/material.h"
 #include "core_types.h"
-#include "material.h"
 #include "mesh.h"
 
 namespace Byte {
-
-	class Texture;
 
 	class Repository {
 	private:
@@ -16,6 +15,30 @@ namespace Byte {
 
 	public:
 		Repository() = default;
+
+		Map<MaterialID, Material>& materials() {
+			return _materials;
+		}
+
+		const Map<MaterialID, Material>& materials() const {
+			return _materials;
+		}
+
+		Map<MeshID, Mesh>& meshes() {
+			return _meshes;
+		}
+
+		const Map<MeshID, Mesh>& meshes() const {
+			return _meshes;
+		}
+
+		Map<TextureID, Texture>& textures() {
+			return _textures;
+		}
+
+		const Map<TextureID, Texture>& textures() const {
+			return _textures;
+		}
 
 		Material& material(MaterialID id) {
 			return _materials.at(id);

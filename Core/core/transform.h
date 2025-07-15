@@ -1,8 +1,6 @@
 #pragma once
 
-#include "math/vec.h"
-#include "math/quaternion.h"
-#include "math/mat.h"
+#include "math.h"
 
 namespace Byte {
 

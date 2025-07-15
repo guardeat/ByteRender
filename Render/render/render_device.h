@@ -7,21 +7,26 @@
 #include "render_types.h"
 #include "render_array.h"
 #include "instanced_renderable.h"
+#include "shader.h"
 
 namespace Byte {
+
+	//TODO: This class covers most basic form. make it more generic. Not just Mesh - RenderArray pair, Mesh - Descriptor? pairs.
+	//TODO: Also don't send to gpu immediately. Implement a logic here.
 
 	class RenderDevice {
 	private:
 		Map<MeshID, RenderArray> _meshArrays;
-		Map<EntityID, RenderArray> _instancedArrays;
+		Map<RenderID, RenderArray> _instancedArrays;
+		Map<ShaderID, Shader> _shaders;
 
 	public:
 		void initialize(Window& window) {
-			OpenGLAPI::initialize(window);
+			OpenGL::initialize(window);
 		}
 
 		void submit(Mesh& mesh) {
-			RenderArray meshArray{ OpenGLAPI::buildRenderArray(mesh) };
+			RenderArray meshArray{ OpenGL::Memory::buildRenderArray(mesh) };
 			_meshArrays.emplace(mesh.id(), meshArray);
 		}
 
@@ -29,8 +34,44 @@ namespace Byte {
 
 		}
 
+		void submit(Shader& shader) {
+
+		}
+
+		bool containsMesh(MeshID id) {
+			return _meshArrays.contains(id);
+		}
+
+		bool containsInstanced(RenderID id) {
+			return _instancedArrays.contains(id);
+		}
+
 		void update(Window& window) {
-			OpenGLAPI::update(window);
+			OpenGL::update(window);
+		}
+
+		void bindShader(const Shader& shader) {
+			OpenGL::Shader::bind(shader.id);
+		}
+
+		const Shader& shader(ShaderID id) {
+			return _shaders.at(id);
+		}
+
+		template<typename Type>
+		void uniform(const Shader& shader, const Tag& tag, const Type& value) {
+			OpenGL::Shader::uniform(shader.id, tag, value);
+		}
+
+		void uniform(const Shader& shader, Material& material) {
+			bindShader(shader);
+			for (const auto& [tag, input] : material.parameters()) {
+				if (shader.uniforms.contains(tag)) {
+					std::visit([this, &tag, &shader](const auto& inputValue) {
+						OpenGL::Shader::uniform(shader.id, tag, inputValue);
+						}, input);
+				}
+			}
 		}
 	};
 

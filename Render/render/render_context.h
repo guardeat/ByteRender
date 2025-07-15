@@ -3,8 +3,8 @@
 #include "core/core_types.h"
 #include "core/repository.h"
 #include "core/mesh.h"
-#include "core/material.h"
 #include "ecs/ecs.h"
+#include "material.h"
 #include "texture.h"
 
 namespace Byte {
@@ -17,6 +17,10 @@ namespace Byte {
 	public:
 		RenderContext(World& world, Repository& repository)
 			:_world{ &world }, _repository{&repository} {
+		}
+
+		Repository& repository() {
+			return *_repository;
 		}
 
 		template<typename... Args>

@@ -2,17 +2,25 @@
 
 #include <cstdint>
 
+#include "core/core_types.h"
 #include "ecs/ecs.h"
 
 namespace Byte {
 
 	using RenderID = EntityID;
 
-	using RenderArrayID = uint64_t;
-	using RenderBufferID = uint64_t;
+	using RenderArrayID = uint32_t;
+	using RenderBufferID = uint32_t;
 
-	using ShaderID = uint64_t;
-	using TextureID = uint64_t;
+	using ShaderID = uint32_t;
+	using TextureID = uint32_t;
+	using MaterialID = uint32_t;
+
+	enum class TransparencyMode : uint8_t {
+		OPAQUE,
+		BINARI,
+		GRADIENT,
+	};
 
 	enum class DataType : uint32_t {
 		BYTE = 0x1400,
@@ -71,6 +79,12 @@ namespace Byte {
 	enum class BufferMode : uint8_t {
 		STATIC,
 		DYNAMIC,
+	};
+
+	enum class ShaderType : uint8_t {
+		VERTEX,
+		FRAGMENT,
+		GEOMETRY,
 	};
 
 }

@@ -2,21 +2,11 @@
 
 #include <string>
 
-#include "math/vec.h"
-#include "math/quaternion.h"
-#include "core_types.h"
-#include "uid_generator.h"
+#include "core/byte_math.h"
+#include "core/uid_generator.h"
+#include "render_types.h"
 
 namespace Byte {
-
-	enum class TransparencyMode : uint8_t {
-		OPAQUE,
-		BINARI,
-		GRADIENT,
-	};
-
-	using ShaderID = uint64_t;
-	using TextureID = uint64_t;
 
 	class Material {
 	private:
@@ -33,13 +23,15 @@ namespace Byte {
 
 		Map<Tag, ShaderID> _shaders;
 		Map<Tag, TextureID> _textures;
-		Map<Tag, Variant<bool, int, uint64_t, float, Vec3, Quaternion>> _parameters;
+
+		using ParameterMap = Map<Tag, Variant<bool, int, uint64_t, float, Vec3, Quaternion>>;
+		ParameterMap _parameters;
 
 	public:
 		Material(MaterialID id = 0)
 			: _id{ id } {
 			if (_id == 0) {
-				_id = UIDGenerator::generate();
+				_id = UIDGenerator<uint32_t>::generate();
 			}
 		}
 
@@ -130,6 +122,14 @@ namespace Byte {
 		template<typename Type>
 		const Type& parameter(const Tag& tag) const {
 			return std::get<Type>(_parameters.at(tag));
+		}
+
+		ParameterMap& parameters() {
+			return _parameters;
+		}
+
+		const ParameterMap& parameters() const {
+			return _parameters;
 		}
 
 		bool hasShader(const Tag& tag) const {
