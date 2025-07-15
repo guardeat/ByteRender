@@ -8,10 +8,8 @@
 
 namespace Byte {
 
-	class Material {
+	class Material : public Asset {
 	private:
-		MaterialID _id{};
-
 		float _metallic{ 1.0f };
 		float _roughness{ 1.0f };
 		float _emission{ 0.0f };
@@ -21,24 +19,13 @@ namespace Byte {
 
 		TransparencyMode _transparency{ TransparencyMode::OPAQUE };
 
-		Map<Tag, ShaderID> _shaders;
-		Map<Tag, TextureID> _textures;
+		Map<Tag, AssetID> _shaders;
+		Map<Tag, AssetID> _textures;
 
 		using ParameterMap = Map<Tag, Variant<bool, int, uint64_t, float, Vec3, Quaternion>>;
 		ParameterMap _parameters;
 
 	public:
-		Material(MaterialID id = 0)
-			: _id{ id } {
-			if (_id == 0) {
-				_id = UIDGenerator<uint32_t>::generate();
-			}
-		}
-
-		MaterialID id() const {
-			return _id;
-		}
-
 		float metallic() const {
 			return _metallic;
 		}

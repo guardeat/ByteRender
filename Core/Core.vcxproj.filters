@@ -51,6 +51,9 @@
     <ClInclude Include="core\byte_math.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="core\asset.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="core.cpp">

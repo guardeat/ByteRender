@@ -9,7 +9,7 @@
 
 namespace Byte {
 
-	struct Shader {
+	struct Shader : public Asset {
 		Path vertex;
 		Path fragment;
 		Path geometry;

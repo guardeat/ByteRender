@@ -4,7 +4,7 @@
 
 namespace Byte {
 
-	class Texture {
+	class Texture: public Asset {
 	private:
 		ColorFormat _internalFormat{ ColorFormat::RGBA };
 		ColorFormat _format{ ColorFormat::RGBA };

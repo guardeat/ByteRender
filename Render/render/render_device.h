@@ -16,9 +16,9 @@ namespace Byte {
 
 	class RenderDevice {
 	private:
-		Map<MeshID, RenderArray> _meshArrays;
+		Map<AssetID, RenderArray> _meshArrays;
+		Map<AssetID, Shader> _shaders;
 		Map<RenderID, RenderArray> _instancedArrays;
-		Map<ShaderID, Shader> _shaders;
 
 	public:
 		void initialize(Window& window) {
@@ -27,18 +27,18 @@ namespace Byte {
 
 		void submit(Mesh& mesh) {
 			RenderArray meshArray{ OpenGL::Memory::buildRenderArray(mesh) };
-			_meshArrays.emplace(mesh.id(), meshArray);
+			_meshArrays.emplace(mesh.assetID(), meshArray);
 		}
 
 		void submit(InstancedRenderable& instanced) {
 
 		}
 
-		void submit(Shader& shader) {
+		void submit(AssetID id, Shader& shader) {
 
 		}
 
-		bool containsMesh(MeshID id) {
+		bool containsMesh(AssetID id) {
 			return _meshArrays.contains(id);
 		}
 
@@ -54,7 +54,7 @@ namespace Byte {
 			OpenGL::Shader::bind(shader.id);
 		}
 
-		const Shader& shader(ShaderID id) {
+		const Shader& shader(AssetID id) {
 			return _shaders.at(id);
 		}
 

@@ -7,13 +7,12 @@
 #include "core_types.h"
 #include "uid_generator.h"
 #include "layout.h"
+#include "asset.h"
 
 namespace Byte {
 
-	class Mesh {
+	class Mesh : public Asset {
 	private:
-		MeshID _id{};
-
 		Vector<float> _vertices;
 		Vector<uint32_t> _indices;
 
@@ -27,20 +26,13 @@ namespace Byte {
 			Vector<uint32_t>&& indices,
 			Layout&& layout = { 3, 3, 2 },
 			bool dynamic = false,
-			MeshID id = 0
-		)
-			: _vertices{ std::move(vertices) },
+			Path&& path = ""
+			)
+			: Asset(std::move(path)),
+			_vertices{ std::move(vertices) },
 			_indices{ std::move(indices) },
 			_layout{ std::move(layout) },
-			_dynamic{ dynamic },
-			_id{id} {
-			if (_id == 0) {
-				_id = UIDGenerator<uint64_t>::generate();
-			}
-		}
-
-		MeshID id() const {
-			return _id;
+			_dynamic{ dynamic } {
 		}
 
 		const Vector<float>& vertices() const {

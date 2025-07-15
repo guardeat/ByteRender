@@ -133,6 +133,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="core\asset.h" />
     <ClInclude Include="core\core_types.h" />
     <ClInclude Include="core\layout.h" />
     <ClInclude Include="core\math\mat.h" />

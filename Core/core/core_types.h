@@ -34,5 +34,5 @@ namespace Byte {
 
 	using Tag = std::string;
 
-	using MeshID = uint64_t;
+	using AssetID = uint64_t;
 }
