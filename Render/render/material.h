@@ -78,20 +78,20 @@ namespace Byte {
 			_transparency = mode;
 		}
 
-		void shader(const Tag& tag, ShaderID shader) {
+		void shader(const Tag& tag, AssetID shader) {
 			_shaders[tag] = shader;
 		}
 
-		ShaderID shader(const Tag& tag) const {
+		AssetID shader(const Tag& tag) const {
 			auto it{ _shaders.find(tag) };
 			return it != _shaders.end() ? it->second : 0;
 		}
 
-		void texture(const Tag& tag, TextureID texture) {
+		void texture(const Tag& tag, AssetID texture) {
 			_textures[tag] = texture;
 		}
 
-		TextureID texture(const Tag& tag) const {
+		AssetID texture(const Tag& tag) const {
 			auto it{ _textures.find(tag) };
 			return it != _textures.end() ? it->second : 0;
 		}

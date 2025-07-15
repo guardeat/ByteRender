@@ -13,7 +13,7 @@ namespace Byte {
 	}
 
 	void Renderer::load(Mesh& mesh) {
-		if (!_data.device.containsMesh(mesh.id())) {
+		if (!_data.device.containsMesh(mesh.assetID())) {
 			_data.device.submit(mesh);
 		}
 	}

@@ -38,11 +38,11 @@ namespace Byte {
 			return _world->get<Component>(id);
 		}
 
-		Mesh& mesh(MeshID id) {
+		Mesh& mesh(AssetID id) {
 			_repository->mesh(id);
 		}
 
-		const Mesh& mesh(MeshID id) const {
+		const Mesh& mesh(AssetID id) const {
 			_repository->mesh(id);
 		}
 

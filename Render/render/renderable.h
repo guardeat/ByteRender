@@ -6,8 +6,8 @@ namespace Byte {
 
 	class Renderable {
 	protected:
-		MeshID _meshID{};
-		MaterialID _materialID{};
+		AssetID _meshID{};
+		AssetID _materialID{};
 
 		bool _render{ true };
 		bool _dynamic{ false };
@@ -16,22 +16,22 @@ namespace Byte {
 	public:
 		Renderable() = default;
 
-		Renderable(MeshID meshID, MaterialID materialID)
+		Renderable(AssetID meshID, AssetID materialID)
 			: _meshID{ meshID }, _materialID{ materialID } {}
 
-		MeshID mesh() const {
+		AssetID mesh() const {
 			return _meshID;
 		}
 
-		void mesh(MeshID id) {
+		void mesh(AssetID id) {
 			_meshID = id;
 		}
 
-		MaterialID material() const {
+		AssetID material() const {
 			return _materialID;
 		}
 
-		void material(MaterialID id) {
+		void material(AssetID id) {
 			_materialID = id;
 		}
 

@@ -19,7 +19,7 @@ int main() {
 
 	Repository repository;
 	Mesh m{ Primitive::cube() };
-	repository.mesh(m.id(), std::move(m));
+	repository.mesh(m.assetID(), std::move(m));
 
 	World world;
 
