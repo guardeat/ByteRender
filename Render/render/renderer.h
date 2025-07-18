@@ -34,6 +34,8 @@ namespace Byte {
 
 		void resize(size_t width, size_t height);
 
+		void submit(Shader&& shader);
+
 		RenderDevice& device() {
 			return _data.device;
 		}

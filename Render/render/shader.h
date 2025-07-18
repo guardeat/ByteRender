@@ -9,14 +9,48 @@
 
 namespace Byte {
 
-	struct Shader : public Asset {
-		Path vertex;
-		Path fragment;
-		Path geometry;
+	class Shader : public Asset {
+	private:
+		Path _vertex;
+		Path _fragment;
+		Path _geometry;
 
-		ShaderID id{};
+		ShaderID _id{};
 
-		Set<Tag> uniforms;
+		Set<Tag> _uniforms;
+
+	public:
+		Shader(Path&& vertex, Path&& fragment, Path&& geometry = "")
+			:_vertex{ std::move(vertex) }, _fragment{ std::move(fragment) }, _geometry{ std::move(geometry) } {
+		}
+
+		ShaderID id() const {
+			return _id;
+		}
+
+		void id(ShaderID newID) {
+			_id = newID;
+		}
+
+		const Path& vertex() const {
+			return _vertex;
+		}
+
+		const Path& fragment() const {
+			return _fragment;
+		}
+
+		const Path& geometry() const {
+			return _geometry;
+		}
+
+		Set<Tag>& uniforms() {
+			return _uniforms;
+		}
+
+		const Set<Tag>& uniforms() const {
+			return _uniforms;
+		}
 	};
 
 }

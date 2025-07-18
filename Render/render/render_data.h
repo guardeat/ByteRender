@@ -4,12 +4,17 @@
 
 #include "core/core_types.h"
 #include "render_device.h"
+#include "shader.h"
+#include "framebuffer.h"
 
 namespace Byte {
 
 	struct RenderData {
 		size_t width{};
 		size_t height{};
+
+		Map<AssetID, Shader> shaders;
+		Map<Tag, Framebuffer> framebuffers;
 
 		Map<Tag, Variant<bool, int, uint64_t, float, Vec3, Quaternion>> settings;
 

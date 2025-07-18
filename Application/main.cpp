@@ -1,3 +1,5 @@
+#include <iostream>
+
 #include "render/renderer.h"
 #include "core/window.h"
 #include "render/material.h"
@@ -18,10 +20,19 @@ int main() {
 	float fpsTimer{ 0.0f };
 
 	Repository repository;
-	Mesh m{ Primitive::cube() };
-	repository.mesh(m.assetID(), std::move(m));
+	Mesh mesh{ Primitive::quad() };
+	Material material{};
+	Shader shader{ "../Render/shader/default.vert","../Render/shader/forward.frag" };
+	material.shader("default", shader.assetID());
 
 	World world;
+	Renderable renderable{ mesh.assetID(),material.assetID() };
+	world.createEntity<Renderable, Transform>(std::move(renderable), Transform{});
+
+	repository.mesh(mesh.assetID(), std::move(mesh));
+	repository.material(material.assetID(), std::move(material));
+
+	renderer.submit(std::move(shader));
 
 	RenderContext context{ world,repository };
 
@@ -38,6 +49,7 @@ int main() {
 		renderer.update(window);
 
 		if (fpsTimer >= 1.0f) {
+			std::cout << "\033[2J\033[1;1H";
 			std::cout << "FPS: " << frameCount << std::endl;
 			GLenum error{ glGetError() };
 			if (error) {

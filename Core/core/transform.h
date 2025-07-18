@@ -1,6 +1,6 @@
 #pragma once
 
-#include "math.h"
+#include "byte_math.h"
 
 namespace Byte {
 

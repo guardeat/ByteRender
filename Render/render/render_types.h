@@ -14,7 +14,6 @@ namespace Byte {
 
 	using ShaderID = uint32_t;
 	using TextureID = uint32_t;
-	using MaterialID = uint32_t;
 
 	enum class TransparencyMode : uint8_t {
 		OPAQUE,
@@ -85,6 +84,16 @@ namespace Byte {
 		VERTEX,
 		FRAGMENT,
 		GEOMETRY,
+	};
+
+	enum class DrawType : uint8_t {
+		POINTS,
+		LINES,
+		LINE_LOOP,
+		LINE_STRIP,
+		TRIANGLES,
+		TRIANGLE_STRIP,
+		TRIANGLE_FAN
 	};
 
 }

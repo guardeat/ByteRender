@@ -39,27 +39,27 @@ namespace Byte {
 		}
 
 		Mesh& mesh(AssetID id) {
-			_repository->mesh(id);
+			return _repository->mesh(id);
 		}
 
 		const Mesh& mesh(AssetID id) const {
-			_repository->mesh(id);
+			return _repository->mesh(id);
 		}
 
-		Material& material(MaterialID id) {
-			_repository->material(id);
+		Material& material(AssetID id) {
+			return _repository->material(id);
 		}
 
-		const Material& material(MaterialID id) const {
-			_repository->material(id);
+		const Material& material(AssetID id) const {
+			return _repository->material(id);
 		}
 
 		Texture& texture(TextureID id) {
-			_repository->texture(id);
+			return _repository->texture(id);
 		}
 
 		const Texture& texture(TextureID id) const {
-			_repository->texture(id);
+			return _repository->texture(id);
 		}
 	};
 

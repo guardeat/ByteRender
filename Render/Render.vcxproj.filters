@@ -78,4 +78,8 @@
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
+  <ItemGroup>
+    <None Include="shader\default.vert" />
+    <None Include="shader\forward.frag" />
+  </ItemGroup>
 </Project>

@@ -14,7 +14,7 @@ namespace Byte {
 
 	void Renderer::load(Mesh& mesh) {
 		if (!_data.device.containsMesh(mesh.assetID())) {
-			_data.device.submit(mesh);
+			_data.device.load(mesh);
 		}
 	}
 
@@ -25,6 +25,10 @@ namespace Byte {
 	}
 
 	void Renderer::load(RenderContext& context) {
+		for (auto& [_, shader] : _data.shaders) {
+			_data.device.load(shader);
+		}
+
 		for (auto& [_, mesh] : context.repository().meshes()) {
 			load(mesh);
 		}
@@ -32,6 +36,11 @@ namespace Byte {
 		for (auto& [id, texture] : context.repository().textures()) {
 			load(texture);
 		}
+	}
+
+	void Renderer::submit(Shader&& shader)
+	{
+		_data.shaders.emplace(shader.assetID(), std::move(shader));
 	}
 
 	void Renderer::update(Window& window) {

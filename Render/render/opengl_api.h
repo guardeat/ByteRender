@@ -51,18 +51,39 @@ namespace Byte::OpenGL {
         }
 
         struct Draw {
-            static void elements(size_t size, GLenum type = GL_TRIANGLES) {
-                glDrawElements(type, static_cast<GLint>(size), GL_UNSIGNED_INT, 0);
+            static void elements(size_t size, DrawType drawType = DrawType::TRIANGLES) {
+                glDrawElements(convert(drawType), static_cast<GLint>(size), GL_UNSIGNED_INT, 0);
             }
 
             static void elementsInstanced(
                 size_t size,
                 size_t instanceCount,
-                GLenum type = GL_TRIANGLES) {
+                DrawType drawType = DrawType::TRIANGLES) {
                 if (instanceCount) {
                     GLint glSize{ static_cast<GLint>(size) };
                     GLsizei glCount{ static_cast<GLsizei>(instanceCount) };
-                    glDrawElementsInstanced(type, glSize, GL_UNSIGNED_INT, 0, glCount);
+                    glDrawElementsInstanced(convert(drawType), glSize, GL_UNSIGNED_INT, 0, glCount);
+                }
+            }
+
+            static GLenum convert(DrawType type) {
+                switch (type) {
+                case DrawType::POINTS:        
+                    return GL_POINTS;
+                case DrawType::LINES:         
+                    return GL_LINES;
+                case DrawType::LINE_LOOP:      
+                    return GL_LINE_LOOP;
+                case DrawType::LINE_STRIP:    
+                    return GL_LINE_STRIP;
+                case DrawType::TRIANGLES:      
+                    return GL_TRIANGLES;
+                case DrawType::TRIANGLE_STRIP: 
+                    return GL_TRIANGLE_STRIP;
+                case DrawType::TRIANGLE_FAN:   
+                    return GL_TRIANGLE_FAN;
+                default:
+                    throw std::invalid_argument("Invalid DrawType");
                 }
             }
         };

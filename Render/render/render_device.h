@@ -17,7 +17,6 @@ namespace Byte {
 	class RenderDevice {
 	private:
 		Map<AssetID, RenderArray> _meshArrays;
-		Map<AssetID, Shader> _shaders;
 		Map<RenderID, RenderArray> _instancedArrays;
 
 	public:
@@ -25,17 +24,25 @@ namespace Byte {
 			OpenGL::initialize(window);
 		}
 
-		void submit(Mesh& mesh) {
+		void load(Mesh& mesh) {
 			RenderArray meshArray{ OpenGL::Memory::buildRenderArray(mesh) };
 			_meshArrays.emplace(mesh.assetID(), meshArray);
 		}
 
-		void submit(InstancedRenderable& instanced) {
+		void load(InstancedRenderable& instanced) {
 
 		}
 
-		void submit(AssetID id, Shader& shader) {
+		void load(Shader& shader) {
+			uint32_t vertex{ OpenGL::Shader::compileShader(shader.vertex(),ShaderType::VERTEX)};
+			uint32_t fragment{ OpenGL::Shader::compileShader(shader.fragment(),ShaderType::FRAGMENT)};
+			uint32_t geometry{};
 
+			if (!shader.geometry().empty()) {
+				geometry = OpenGL::Shader::compileShader(shader.geometry(), ShaderType::GEOMETRY);
+			}
+
+			shader.id(OpenGL::Shader::buildProgram(vertex, fragment, geometry));
 		}
 
 		bool containsMesh(AssetID id) {
@@ -50,12 +57,13 @@ namespace Byte {
 			OpenGL::update(window);
 		}
 
-		void bindShader(const Shader& shader) {
-			OpenGL::Shader::bind(shader.id);
+		void bind(const Mesh& mesh) {
+			RenderArray renderArray{ _meshArrays.at(mesh.assetID()) };
+			OpenGL::Memory::bind(renderArray.id);
 		}
 
-		const Shader& shader(AssetID id) {
-			return _shaders.at(id);
+		void bind(const Shader& shader) {
+			OpenGL::Shader::bind(shader.id());
 		}
 
 		template<typename Type>
@@ -64,15 +72,24 @@ namespace Byte {
 		}
 
 		void uniform(const Shader& shader, Material& material) {
-			bindShader(shader);
+			bind(shader);
 			for (const auto& [tag, input] : material.parameters()) {
-				if (shader.uniforms.contains(tag)) {
+				if (shader.uniforms().contains(tag)) {
 					std::visit([this, &tag, &shader](const auto& inputValue) {
-						OpenGL::Shader::uniform(shader.id, tag, inputValue);
+						OpenGL::Shader::uniform(shader.id(), tag, inputValue);
 						}, input);
 				}
 			}
 		}
+
+		void draw(size_t size, DrawType drawType = DrawType::TRIANGLES) {
+			OpenGL::Draw::elements(size, drawType);
+		}
+
+		void draw(size_t size, size_t instanceCount, DrawType drawType = DrawType::TRIANGLES) {
+			OpenGL::Draw::elementsInstanced(size, instanceCount, drawType);
+		}
+
 	};
 
 }
