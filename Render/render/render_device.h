@@ -1,9 +1,10 @@
 #pragma once
 
-#include "opengl_api.h"
 #include "core/core_types.h"
 #include "core/mesh.h"
 #include "core/window.h"
+#include "core/transform.h"
+#include "opengl_api.h"
 #include "render_types.h"
 #include "render_array.h"
 #include "instanced_renderable.h"
@@ -68,11 +69,16 @@ namespace Byte {
 
 		template<typename Type>
 		void uniform(const Shader& shader, const Tag& tag, const Type& value) {
-			OpenGL::Shader::uniform(shader.id, tag, value);
+			OpenGL::Shader::uniform(shader.id(), tag, value);
 		}
 
 		void uniform(const Shader& shader, Material& material) {
 			bind(shader);
+
+			if (shader.uniforms().contains("uColor")) {
+				uniform(shader, "uColor", material.color());
+			}
+
 			for (const auto& [tag, input] : material.parameters()) {
 				if (shader.uniforms().contains(tag)) {
 					std::visit([this, &tag, &shader](const auto& inputValue) {
@@ -80,6 +86,13 @@ namespace Byte {
 						}, input);
 				}
 			}
+		}
+
+		void uniform(const Shader& shader, const Transform& transform) {
+			//TODO: Optimize here.
+			OpenGL::Shader::uniform(shader.id(), "uPosition", transform.position());
+			OpenGL::Shader::uniform(shader.id(), "uScale", transform.scale());
+			OpenGL::Shader::uniform(shader.id(), "uRotation", transform.rotation());
 		}
 
 		void draw(size_t size, DrawType drawType = DrawType::TRIANGLES) {

@@ -32,6 +32,9 @@ namespace Byte {
 	template<typename... Args>
 	using Variant = std::variant<Args...>;
 
+	template<typename First, typename Second>
+	using Pair = std::pair<First, Second>;
+
 	using Tag = std::string;
 
 	using AssetID = uint64_t;

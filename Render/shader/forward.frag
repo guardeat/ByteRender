@@ -1,7 +1,12 @@
 #version 410 core
 
+uniform vec4 uColor;
+
 out vec4 vFragColor;
 
+in vec3 vNormal;
+in vec2 vTexCoord;
+
 void main() {
-    vFragColor = vec4(1.0, 0.5, 0.0, 1.0);
+    vFragColor = uColor;
 }

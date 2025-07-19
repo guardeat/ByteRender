@@ -26,7 +26,9 @@ namespace Byte {
 
 	void Renderer::load(RenderContext& context) {
 		for (auto& [_, shader] : _data.shaders) {
-			_data.device.load(shader);
+			if (!shader.id()) {
+				_data.device.load(shader);
+			}
 		}
 
 		for (auto& [_, mesh] : context.repository().meshes()) {

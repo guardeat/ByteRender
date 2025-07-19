@@ -6,6 +6,7 @@
 #include "ecs/ecs.h"
 #include "material.h"
 #include "texture.h"
+#include "camera.h"
 
 namespace Byte {
 
@@ -60,6 +61,11 @@ namespace Byte {
 
 		const Texture& texture(TextureID id) const {
 			return _repository->texture(id);
+		}
+
+		Pair<Camera&, Transform&> camera() {
+			auto [camera, transform]  = *_world->components<Camera,Transform>().begin();
+			return Pair<Camera&, Transform&>{camera, transform};
 		}
 	};
 

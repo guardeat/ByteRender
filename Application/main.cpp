@@ -3,6 +3,8 @@
 #include "render/renderer.h"
 #include "core/window.h"
 #include "render/material.h"
+#include "render/camera.h"
+#include "application/camera_controller.h"
 
 using namespace Byte;
 
@@ -22,7 +24,9 @@ int main() {
 	Repository repository;
 	Mesh mesh{ Primitive::quad() };
 	Material material{};
+	material.color(Vec4{ 0.4f,0.8f,0.1f, 1.0f });
 	Shader shader{ "../Render/shader/default.vert","../Render/shader/forward.frag" };
+	shader.uniforms().insert("uColor");
 	material.shader("default", shader.assetID());
 
 	World world;
@@ -34,7 +38,11 @@ int main() {
 
 	renderer.submit(std::move(shader));
 
+	world.createEntity<Camera, Transform>(Camera{}, Transform{});
+
 	RenderContext context{ world,repository };
+
+	CameraController controller;
 
 	while (!glfwWindowShouldClose(&window.handle())) {
 		auto currentTime{ std::chrono::high_resolution_clock::now() };
@@ -43,6 +51,10 @@ int main() {
 
 		frameCount++;
 		fpsTimer += deltaTime;
+
+		auto [_, cameraTransform] = context.camera();
+
+		controller.update(window, cameraTransform, deltaTime);
 
 		renderer.render(context);
 
