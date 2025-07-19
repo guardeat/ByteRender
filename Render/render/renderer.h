@@ -18,6 +18,8 @@ namespace Byte {
 	public:
 		Renderer() = default;
 
+		~Renderer();
+
 		void initialize(Window& window);
 
 		void render(RenderContext& context);
@@ -43,6 +45,8 @@ namespace Byte {
 		const RenderDevice& device() const {
 			return _data.device;
 		}
+
+		void clearGPU();
 
 		template<typename... Passes>
 		static Renderer build() {

@@ -2,6 +2,10 @@
 
 namespace Byte {
 
+	Renderer::~Renderer() {
+		clearGPU();
+	}
+
 	void Renderer::initialize(Window& window) {
 		_data.device.initialize(window);
 	}
@@ -55,6 +59,14 @@ namespace Byte {
 
 	void Renderer::resize(size_t width, size_t height) {
 
+	}
+
+	void Renderer::clearGPU() {
+		for (auto& [_, shader] : _data.shaders) {
+			_data.device.release(shader);
+		}
+
+		_data.device.clear();
 	}
 
 }

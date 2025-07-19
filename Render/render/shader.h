@@ -1,7 +1,6 @@
 #pragma once
 
 #include <cstdint>
-#include <initializer_list>
 
 #include "core/core_types.h"
 #include "material.h"

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "core/core_types.h"
 #include "core/transform.h"
 #include "render_context.h"
 #include "render_data.h"
@@ -13,11 +14,14 @@ namespace Byte {
 
 		virtual void render(RenderData& data, RenderContext& context) = 0;
 
+		virtual UniquePtr<RenderPass> clone() const = 0;
+
 		virtual void initialize(RenderData& data) {
 		}
 		
 		virtual void terminate(RenderData& data) {
 		}
+
 	};
 
 	class DrawPass: public RenderPass {
@@ -43,6 +47,10 @@ namespace Byte {
 
 				data.device.draw(mesh.indexCount());
 			}
+		}
+
+		virtual UniquePtr<RenderPass> clone() const {
+			return std::make_unique<DrawPass>();
 		}
 	};
 

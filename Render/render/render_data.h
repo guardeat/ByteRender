@@ -3,6 +3,7 @@
 #include <variant>
 
 #include "core/core_types.h"
+#include "core/byte_math.h"
 #include "render_device.h"
 #include "shader.h"
 #include "framebuffer.h"
@@ -16,18 +17,18 @@ namespace Byte {
 		Map<AssetID, Shader> shaders;
 		Map<Tag, Framebuffer> framebuffers;
 
-		Map<Tag, Variant<bool, int, uint64_t, float, Vec3, Quaternion>> settings;
+		Map<Tag, Variant<bool, int, uint64_t, float, Vec3, Quaternion,Mat4>> parameters;
 
 		RenderDevice device;
 
 		template<typename Type>
-		void setting(const Tag& tag, const Type& value) {
-			settings[tag] = value;
+		void parameter(const Tag& tag, const Type& value) {
+			parameters[tag] = value;
 		}
 
 		template<typename Type>
-		void setting(const Tag& tag) {
-			return std::get<Type>(settings.at(tag));
+		void parameter(const Tag& tag) {
+			return std::get<Type>(parameters.at(tag));
 		}
 	};
 

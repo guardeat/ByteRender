@@ -10,6 +10,26 @@ namespace Byte {
 		Vector<UniquePtr<RenderPass>> _passes;
 
 	public:
+		Pipeline() = default;
+
+		Pipeline(const Pipeline& pipeline) {
+			_passes.reserve(pipeline._passes.size());
+			for (const auto& pass : pipeline._passes) {
+				_passes.push_back(pass->clone());
+			}
+		}
+
+		Pipeline(Pipeline&& pipeline) = default;
+
+		Pipeline& operator=(const Pipeline& pipeline) {
+			_passes.reserve(pipeline._passes.size());
+			for (const auto& pass : pipeline._passes) {
+				_passes.push_back(pass->clone());
+			}
+		}
+
+		Pipeline& operator=(Pipeline&& pipeline) = default;
+
 		void initialize(RenderData& data) {
 			for (auto& pass : _passes) {
 				pass->initialize(data);

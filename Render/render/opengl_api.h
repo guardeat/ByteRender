@@ -164,6 +164,22 @@ namespace Byte::OpenGL {
                 return renderArray;
             }
 
+            static void release(RenderArray& renderArray) {
+                if (renderArray.indexBuffer.id != 0) {
+                    glDeleteBuffers(1, &renderArray.indexBuffer.id);
+                }
+
+                for (auto& buffer : renderArray.renderBuffers) {
+                    if (buffer.id != 0) {
+                        glDeleteBuffers(1, &buffer.id);
+                    }
+                }
+
+                if (renderArray.id != 0) {
+                    glDeleteVertexArrays(1, &renderArray.id);
+                }
+            }
+
             static GLenum convert(BufferMode mode) {
                 switch (mode) {
                 case BufferMode::STATIC:

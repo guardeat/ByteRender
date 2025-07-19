@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <functional>
 
 #include "core/core_types.h"
 #include "ecs/ecs.h"
@@ -14,6 +15,7 @@ namespace Byte {
 
 	using ShaderID = uint32_t;
 	using TextureID = uint32_t;
+	using FramebufferID = uint32_t;
 
 	enum class TransparencyMode : uint8_t {
 		OPAQUE,

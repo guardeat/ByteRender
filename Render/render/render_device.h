@@ -12,9 +12,6 @@
 
 namespace Byte {
 
-	//TODO: This class covers most basic form. make it more generic. Not just Mesh - RenderArray pair, Mesh - Descriptor? pairs.
-	//TODO: Also don't send to gpu immediately. Implement a logic here.
-
 	class RenderDevice {
 	private:
 		Map<AssetID, RenderArray> _meshArrays;
@@ -28,6 +25,11 @@ namespace Byte {
 		void load(Mesh& mesh) {
 			RenderArray meshArray{ OpenGL::Memory::buildRenderArray(mesh) };
 			_meshArrays.emplace(mesh.assetID(), meshArray);
+		}
+
+		void release(Mesh& mesh) {
+			OpenGL::Memory::release(_meshArrays.at(mesh.assetID()));
+			_meshArrays.erase(mesh.assetID());
 		}
 
 		void load(InstancedRenderable& instanced) {
@@ -44,6 +46,10 @@ namespace Byte {
 			}
 
 			shader.id(OpenGL::Shader::buildProgram(vertex, fragment, geometry));
+		}
+
+		void release(Shader& shader) {
+			OpenGL::Shader::releaseProgram(shader.id());
 		}
 
 		bool containsMesh(AssetID id) {
@@ -89,7 +95,6 @@ namespace Byte {
 		}
 
 		void uniform(const Shader& shader, const Transform& transform) {
-			//TODO: Optimize here.
 			OpenGL::Shader::uniform(shader.id(), "uPosition", transform.position());
 			OpenGL::Shader::uniform(shader.id(), "uScale", transform.scale());
 			OpenGL::Shader::uniform(shader.id(), "uRotation", transform.rotation());
@@ -101,6 +106,18 @@ namespace Byte {
 
 		void draw(size_t size, size_t instanceCount, DrawType drawType = DrawType::TRIANGLES) {
 			OpenGL::Draw::elementsInstanced(size, instanceCount, drawType);
+		}
+
+		void clear() {
+			for (auto& [assetID, renderArray] : _meshArrays) {
+				OpenGL::Memory::release(renderArray);
+			}
+			_meshArrays.clear();
+
+			for (auto& [renderID, renderArray] : _instancedArrays) {
+				OpenGL::Memory::release(renderArray);
+			}
+			_instancedArrays.clear();
 		}
 
 	};
