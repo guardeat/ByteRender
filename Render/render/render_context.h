@@ -7,6 +7,7 @@
 #include "material.h"
 #include "texture.h"
 #include "camera.h"
+#include "light.h"
 
 namespace Byte {
 
@@ -15,9 +16,12 @@ namespace Byte {
 		World* _world;
 		Repository* _repository;
 
+		EntityID _camera;
+		EntityID _directionalLight;
+
 	public:
-		RenderContext(World& world, Repository& repository)
-			:_world{ &world }, _repository{&repository} {
+		RenderContext(World& world, Repository& repository, EntityID camera, EntityID dLight)
+			:_world{ &world }, _repository{ &repository }, _camera{ camera }, _directionalLight{dLight} {
 		}
 
 		Repository& repository() {
@@ -64,8 +68,15 @@ namespace Byte {
 		}
 
 		Pair<Camera&, Transform&> camera() {
-			auto [camera, transform]  = *_world->components<Camera,Transform>().begin();
+			Camera& camera{ _world->get<Camera>(_camera) };
+			Transform& transform{ _world->get<Transform>(_camera) };
 			return Pair<Camera&, Transform&>{camera, transform};
+		}
+
+		Pair<DirectionalLight&, Transform&> directionalLight() {
+			DirectionalLight& dLight{ _world->get<DirectionalLight>(_directionalLight) };
+			Transform& transform{ _world->get<Transform>(_directionalLight) };
+			return Pair<DirectionalLight&, Transform&>{dLight, transform};
 		}
 	};
 

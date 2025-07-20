@@ -4,6 +4,7 @@
 #include "core/window.h"
 #include "render/material.h"
 #include "render/camera.h"
+#include "render/light.h"
 #include "application/camera_controller.h"
 
 using namespace Byte;
@@ -22,7 +23,7 @@ int main() {
 	float fpsTimer{ 0.0f };
 
 	Repository repository;
-	Mesh mesh{ Primitive::quad() };
+	Mesh mesh{ Primitive::cube() };
 	Material material{};
 	material.color(Vec4{ 0.4f,0.8f,0.1f, 1.0f });
 	Shader shader{ "../Render/shader/default.vert","../Render/shader/forward.frag" };
@@ -38,9 +39,11 @@ int main() {
 
 	renderer.submit(std::move(shader));
 
-	world.createEntity<Camera, Transform>(Camera{}, Transform{});
+	EntityID camera{ world.createEntity<Camera, Transform>(Camera{}, Transform{}) };
+	EntityID directionalLight{ 
+		world.createEntity<DirectionalLight, Transform>(DirectionalLight{}, Transform{}) };
 
-	RenderContext context{ world,repository };
+	RenderContext context{ world,repository, camera, directionalLight };
 
 	CameraController controller;
 
@@ -51,6 +54,8 @@ int main() {
 
 		frameCount++;
 		fpsTimer += deltaTime;
+
+		world.get<Transform>(directionalLight).rotate(Vec3{ 0.0,1.0f,0.0f } *deltaTime * 100);
 
 		auto [_, cameraTransform] = context.camera();
 

@@ -355,5 +355,125 @@ namespace Byte::OpenGL {
                     throw std::invalid_argument("Invalid BufferMode");
                 }
             }
+
         };
+
+        struct Framebuffer {
+            static GLenum convert(DataType type) {
+                switch (type) {
+                case DataType::BYTE:
+                    return GL_BYTE;
+                case DataType::UNSIGNED_BYTE:
+                    return GL_UNSIGNED_BYTE;
+                case DataType::SHORT:
+                    return GL_SHORT;
+                case DataType::UNSIGNED_SHORT:
+                    return GL_UNSIGNED_SHORT;
+                case DataType::INT:
+                    return GL_INT;
+                case DataType::UNSIGNED_INT:
+                    return GL_UNSIGNED_INT;
+                case DataType::FLOAT:
+                    return GL_FLOAT;
+                default:
+                    throw std::invalid_argument("Invalid DataType");
+                }
+            }
+
+            static GLenum convert(ColorFormat format) {
+                switch (format) {
+                case ColorFormat::DEPTH:
+                    return GL_DEPTH_COMPONENT;
+                case ColorFormat::RED:
+                    return GL_RED;
+                case ColorFormat::GREEN:
+                    return GL_GREEN;
+                case ColorFormat::BLUE:
+                    return GL_BLUE;
+                case ColorFormat::ALPHA:
+                    return GL_ALPHA;
+                case ColorFormat::RGB:
+                    return GL_RGB;
+                case ColorFormat::RGBA:
+                    return GL_RGBA;
+                case ColorFormat::RGBA32F:
+                    return GL_RGBA32F;
+                case ColorFormat::RGB32F:
+                    return GL_RGB32F;
+                case ColorFormat::RGBA16F:
+                    return GL_RGBA16F;
+                case ColorFormat::RGB16F:
+                    return GL_RGB16F;
+                case ColorFormat::R11F_G11F_B10F:
+                    return GL_R11F_G11F_B10F;
+                case ColorFormat::R16F:
+                    return GL_R16F;
+                case ColorFormat::R32F:
+                    return GL_R32F;
+                case ColorFormat::R16:
+                    return GL_R16;
+                case ColorFormat::RGB16:
+                    return GL_RGB16;
+                case ColorFormat::RGBA16:
+                    return GL_RGBA16;
+                default:
+                    throw std::invalid_argument("Invalid ColorFormat");
+                }
+            }
+
+            static GLenum convert(AttachmentType type) {
+                switch (type) {
+                case AttachmentType::COLOR_0:
+                    return GL_COLOR_ATTACHMENT0;
+                case AttachmentType::COLOR_1:
+                    return GL_COLOR_ATTACHMENT1;
+                case AttachmentType::COLOR_2:
+                    return GL_COLOR_ATTACHMENT2;
+                case AttachmentType::COLOR_3:
+                    return GL_COLOR_ATTACHMENT3;
+                case AttachmentType::DEPTH:
+                    return GL_DEPTH_ATTACHMENT;
+                default:
+                    throw std::invalid_argument("Invalid AttachmentType");
+                }
+            }
+
+        };
+
+        struct Texture {
+            static GLenum convert(TextureFilter filter) {
+                switch (filter) {
+                case TextureFilter::NEAREST:
+                    return GL_NEAREST;
+                case TextureFilter::LINEAR:
+                    return GL_LINEAR;
+                case TextureFilter::NEAREST_MIPMAP_NEAREST:
+                    return GL_NEAREST_MIPMAP_NEAREST;
+                case TextureFilter::LINEAR_MIPMAP_NEAREST:
+                    return GL_LINEAR_MIPMAP_NEAREST;
+                case TextureFilter::NEAREST_MIPMAP_LINEAR:
+                    return GL_NEAREST_MIPMAP_LINEAR;
+                case TextureFilter::LINEAR_MIPMAP_LINEAR:
+                    return GL_LINEAR_MIPMAP_LINEAR;
+                default:
+                    throw std::invalid_argument("Invalid TextureFilter");
+                }
+            }
+
+            static GLenum convert(TextureWrap wrap) {
+                switch (wrap) {
+                case TextureWrap::REPEAT:
+                    return GL_REPEAT;
+                case TextureWrap::MIRRORED_REPEAT:
+                    return GL_MIRRORED_REPEAT;
+                case TextureWrap::CLAMP_TO_EDGE:
+                    return GL_CLAMP_TO_EDGE;
+                case TextureWrap::CLAMP_TO_BORDER:
+                    return GL_CLAMP_TO_BORDER;
+                default:
+                    throw std::invalid_argument("Invalid TextureWrap");
+                }
+            }
+        };
+
 }

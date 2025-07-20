@@ -3,7 +3,7 @@
 namespace Byte {
 
 	Renderer::~Renderer() {
-		clearGPU();
+		clearMemory();
 	}
 
 	void Renderer::initialize(Window& window) {
@@ -61,7 +61,7 @@ namespace Byte {
 
 	}
 
-	void Renderer::clearGPU() {
+	void Renderer::clearMemory() {
 		for (auto& [_, shader] : _data.shaders) {
 			_data.device.release(shader);
 		}

@@ -46,7 +46,7 @@ namespace Byte {
 			return _data.device;
 		}
 
-		void clearGPU();
+		void clearMemory();
 
 		template<typename... Passes>
 		static Renderer build() {

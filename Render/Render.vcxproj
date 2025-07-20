@@ -132,6 +132,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="render\camera.h" />
+    <ClInclude Include="render\light.h" />
     <ClInclude Include="render\material.h" />
     <ClInclude Include="render\render_context.h" />
     <ClInclude Include="render\framebuffer.h" />

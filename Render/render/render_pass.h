@@ -28,7 +28,8 @@ namespace Byte {
 	public:
 		void render(RenderData& data, RenderContext& context) override {
 			auto [camera, cameraTransform] = context.camera();
-			
+			auto [dLight, dLightTransform] = context.directionalLight();
+
 			Mat4 projection{ camera.perspective(16.0f / 9.0f) };
 			Mat4 view{ cameraTransform.view() };
 
@@ -44,6 +45,9 @@ namespace Byte {
 				data.device.uniform(shader, "uProjection", projection);
 				data.device.uniform(shader, "uView", view);
 				data.device.uniform(shader, material);
+				data.device.uniform(shader, "uDLight.direction", dLightTransform.front());
+				data.device.uniform(shader, "uDLight.color", dLight.color);
+				data.device.uniform(shader, "uDLight.intensity", dLight.intensity);
 
 				data.device.draw(mesh.indexCount());
 			}
