@@ -23,7 +23,7 @@ namespace Byte {
 		GRADIENT,
 	};
 
-	enum class DataType : uint32_t {
+	enum class DataType : uint8_t {
 		BYTE,
 		UNSIGNED_BYTE,
 		SHORT,
@@ -33,7 +33,7 @@ namespace Byte {
 		FLOAT
 	};
 
-	enum class ColorFormat : uint32_t {
+	enum class ColorFormat : uint8_t {
 		DEPTH,
 		RED,
 		GREEN,
@@ -53,7 +53,7 @@ namespace Byte {
 		RGBA16
 	};
 
-	enum class AttachmentType : uint32_t {
+	enum class AttachmentType : uint8_t {
 		COLOR_0,
 		COLOR_1,
 		COLOR_2,
@@ -61,7 +61,7 @@ namespace Byte {
 		DEPTH
 	};
 
-	enum class TextureFilter : uint32_t {
+	enum class TextureFilter : uint8_t {
 		NEAREST,
 		LINEAR,
 		NEAREST_MIPMAP_NEAREST,
@@ -70,7 +70,7 @@ namespace Byte {
 		LINEAR_MIPMAP_LINEAR
 	};
 
-	enum class TextureWrap : uint32_t {
+	enum class TextureWrap : uint8_t {
 		REPEAT,
 		MIRRORED_REPEAT,
 		CLAMP_TO_EDGE,
@@ -96,6 +96,17 @@ namespace Byte {
 		TRIANGLES,
 		TRIANGLE_STRIP,
 		TRIANGLE_FAN
+	};
+
+	enum class RenderState : uint8_t {
+		ENABLE_DEPTH,
+		DISABLE_DEPTH,
+		ENABLE_BLEND,
+		DISABLE_BLEND,
+		ENABLE_CULLING,
+		DISABLE_CULLING,
+		CULL_BACK,
+		CULL_FRONT
 	};
 
 }

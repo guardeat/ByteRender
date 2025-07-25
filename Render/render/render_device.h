@@ -108,6 +108,10 @@ namespace Byte {
 			OpenGL::Draw::elementsInstanced(size, instanceCount, drawType);
 		}
 
+		void state(RenderState state) {
+			OpenGL::state(state);
+		}
+
 		void clear() {
 			for (auto& [assetID, renderArray] : _meshArrays) {
 				OpenGL::Memory::release(renderArray);

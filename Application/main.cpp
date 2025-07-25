@@ -14,9 +14,7 @@ int main() {
 
 	Window window{ 1280,720 };
 
-	Renderer renderer{ Renderer::build<DrawPass>() };
-
-	renderer.initialize(window);
+	Renderer renderer{ Renderer::build<SkyboxPass, DrawPass>() };
 
 	auto lastTime{ std::chrono::high_resolution_clock::now() };
 	int frameCount{ 0 };
@@ -36,6 +34,10 @@ int main() {
 
 	repository.mesh(mesh.assetID(), std::move(mesh));
 	repository.material(material.assetID(), std::move(material));
+	
+	Material skybox{};
+	renderer.parameter("skybox_material", skybox.assetID());
+	repository.material(skybox.assetID(), std::move(skybox));
 
 	renderer.submit(std::move(shader));
 
@@ -47,6 +49,8 @@ int main() {
 
 	CameraController controller;
 
+	renderer.initialize(window);
+
 	while (!glfwWindowShouldClose(&window.handle())) {
 		auto currentTime{ std::chrono::high_resolution_clock::now() };
 		float deltaTime{ std::chrono::duration<float>(currentTime - lastTime).count() };
@@ -54,8 +58,6 @@ int main() {
 
 		frameCount++;
 		fpsTimer += deltaTime;
-
-		world.get<Transform>(directionalLight).rotate(Vec3{ 0.0,1.0f,0.0f } *deltaTime * 100);
 
 		auto [_, cameraTransform] = context.camera();
 

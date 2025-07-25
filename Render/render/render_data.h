@@ -15,6 +15,8 @@ namespace Byte {
 		size_t height{};
 
 		Map<AssetID, Shader> shaders;
+		Map<AssetID, Mesh> meshes;
+
 		Map<Tag, Framebuffer> framebuffers;
 
 		Map<Tag, Variant<bool, int, uint64_t, float, Vec3, Quaternion,Mat4>> parameters;
@@ -22,12 +24,12 @@ namespace Byte {
 		RenderDevice device;
 
 		template<typename Type>
-		void parameter(const Tag& tag, const Type& value) {
-			parameters[tag] = value;
+		void parameter(const Tag& tag, Type&& value) {
+			parameters[tag] = std::move(value);
 		}
 
 		template<typename Type>
-		void parameter(const Tag& tag) {
+		const Type& parameter(const Tag& tag) {
 			return std::get<Type>(parameters.at(tag));
 		}
 	};

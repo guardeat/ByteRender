@@ -38,12 +38,14 @@ namespace Byte {
 
 		void submit(Shader&& shader);
 
-		RenderDevice& device() {
-			return _data.device;
+		template<typename Type>
+		void parameter(const Tag& tag, Type&& value) {
+			_data.parameter(tag, std::move(value));
 		}
 
-		const RenderDevice& device() const {
-			return _data.device;
+		template<typename Type>
+		const Type& parameter(const Tag& tag) {
+			return _data.parameter(tag);
 		}
 
 		void clearMemory();

@@ -50,6 +50,35 @@ namespace Byte::OpenGL {
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         }
 
+        inline void state(RenderState state) {
+            switch (state) {
+            case RenderState::ENABLE_DEPTH:
+                glEnable(GL_DEPTH_TEST);
+                break;
+            case RenderState::DISABLE_DEPTH:
+                glDisable(GL_DEPTH_TEST);
+                break;
+            case RenderState::ENABLE_BLEND:
+                glEnable(GL_BLEND);
+                break;
+            case RenderState::DISABLE_BLEND:
+                glDisable(GL_BLEND);
+                break;
+            case RenderState::ENABLE_CULLING:
+                glEnable(GL_CULL_FACE);
+                break;
+            case RenderState::DISABLE_CULLING:
+                glDisable(GL_CULL_FACE);
+                break;
+            case RenderState::CULL_BACK:
+                glCullFace(GL_BACK);
+                break;
+            case RenderState::CULL_FRONT:
+                glCullFace(GL_FRONT);
+                break;
+            }
+        }
+
         struct Draw {
             static void elements(size_t size, DrawType drawType = DrawType::TRIANGLES) {
                 glDrawElements(convert(drawType), static_cast<GLint>(size), GL_UNSIGNED_INT, 0);

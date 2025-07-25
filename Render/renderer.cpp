@@ -8,6 +8,7 @@ namespace Byte {
 
 	void Renderer::initialize(Window& window) {
 		_data.device.initialize(window);
+		_pipeline.initialize(_data);
 	}
 
 	void Renderer::render(RenderContext& context) {
@@ -32,6 +33,12 @@ namespace Byte {
 		for (auto& [_, shader] : _data.shaders) {
 			if (!shader.id()) {
 				_data.device.load(shader);
+			}
+		}
+
+		for (auto& [_, mesh] : _data.meshes) {
+			if(!_data.device.containsMesh(mesh.assetID())) {
+				_data.device.load(mesh);
 			}
 		}
 

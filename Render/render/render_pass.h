@@ -24,6 +24,57 @@ namespace Byte {
 
 	};
 
+	class SkyboxPass : public RenderPass {
+	private:
+		AssetID _skyboxShader{};
+		AssetID _quad{};
+		AssetID _skyboxMaterial{};
+
+	public:
+		void render(RenderData& data, RenderContext& context) override {
+			Mesh& quad{ data.meshes.at(_quad) };
+			Shader& skyboxShader{ data.shaders.at(_skyboxShader) };
+			Material& skyboxMaterial{ context.material(_skyboxMaterial) };
+
+			auto [dLight, dLightTransform] = context.directionalLight();
+
+			auto [camera, cameraTransform] = context.camera();
+
+			Mat4 projection{ camera.perspective(16.0f / 9.0f) };
+			Mat4 view{ cameraTransform.view() };
+			Mat4 inverseViewProjection{ (projection * view).inverse() };
+
+			data.device.bind(skyboxShader);
+			data.device.bind(quad);
+
+			data.device.uniform(skyboxShader, skyboxMaterial);
+			data.device.uniform(skyboxShader, "uDLight.direction", dLightTransform.front());
+			data.device.uniform(skyboxShader, "uDLight.color", dLight.color);
+			data.device.uniform(skyboxShader, "uDLight.intensity", dLight.intensity);
+			data.device.uniform(skyboxShader, "uInverseViewProjection", inverseViewProjection);
+
+			data.device.state(RenderState::DISABLE_DEPTH);
+			data.device.draw(quad.indexCount());
+			data.device.state(RenderState::ENABLE_DEPTH);
+		}
+
+		UniquePtr<RenderPass> clone() const override {
+			return std::make_unique<SkyboxPass>();
+		}
+
+		void initialize(RenderData& data) {
+			Shader skyboxShader{ "../Render/shader/skybox.vert","../Render/shader/skybox.frag" };
+			_skyboxShader = skyboxShader.assetID();
+			data.shaders.emplace(skyboxShader.assetID(), std::move(skyboxShader));
+
+			Mesh quad{ Primitive::quad() };
+			_quad = quad.assetID();
+			data.meshes.emplace(quad.assetID(), std::move(quad));
+
+			_skyboxMaterial = data.parameter<AssetID>("skybox_material");
+		}
+	};
+
 	class DrawPass: public RenderPass {
 	public:
 		void render(RenderData& data, RenderContext& context) override {
@@ -53,7 +104,7 @@ namespace Byte {
 			}
 		}
 
-		virtual UniquePtr<RenderPass> clone() const {
+		UniquePtr<RenderPass> clone() const override {
 			return std::make_unique<DrawPass>();
 		}
 	};
