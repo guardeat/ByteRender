@@ -41,7 +41,9 @@ namespace Byte {
 			auto [camera, cameraTransform] = context.camera();
 
 			Mat4 projection{ camera.perspective(16.0f / 9.0f) };
-			Mat4 view{ cameraTransform.view() };
+			Transform cTemp{ cameraTransform };
+			cTemp.position(Vec3{});
+			Mat4 view{ cTemp.view() };
 			Mat4 inverseViewProjection{ (projection * view).inverse() };
 
 			data.device.bind(skyboxShader);
@@ -64,6 +66,7 @@ namespace Byte {
 
 		void initialize(RenderData& data) {
 			Shader skyboxShader{ "../Render/shader/skybox.vert","../Render/shader/skybox.frag" };
+			skyboxShader.uniforms().insert("uScatter");
 			_skyboxShader = skyboxShader.assetID();
 			data.shaders.emplace(skyboxShader.assetID(), std::move(skyboxShader));
 

@@ -7,6 +7,8 @@
 #include "render/light.h"
 #include "application/camera_controller.h"
 
+//TODO: Carry all gpu stuff to device. TextureIDs, ShaderIDs and FrameBufferIDs. Also write frame buffer.
+
 using namespace Byte;
 
 int main() {
@@ -36,6 +38,7 @@ int main() {
 	repository.material(material.assetID(), std::move(material));
 	
 	Material skybox{};
+	skybox.parameter("uScatter", Vec3{ 0.1f,0.2f,0.9f });
 	renderer.parameter("skybox_material", skybox.assetID());
 	repository.material(skybox.assetID(), std::move(skybox));
 
