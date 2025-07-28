@@ -14,21 +14,11 @@ namespace Byte {
 		Path _fragment;
 		Path _geometry;
 
-		ShaderID _id{};
-
 		Set<Tag> _uniforms;
 
 	public:
 		Shader(Path&& vertex, Path&& fragment, Path&& geometry = "")
 			:_vertex{ std::move(vertex) }, _fragment{ std::move(fragment) }, _geometry{ std::move(geometry) } {
-		}
-
-		ShaderID id() const {
-			return _id;
-		}
-
-		void id(ShaderID newID) {
-			_id = newID;
 		}
 
 		const Path& vertex() const {

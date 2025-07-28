@@ -22,8 +22,6 @@ namespace Byte {
 
 		Path _path{};
 
-		TextureID _id{};
-
 	public:
 		Texture() = default;
 
@@ -112,14 +110,6 @@ namespace Byte {
 
 		void path(const Path& value) { 
 			_path = value; 
-		}
-
-		TextureID id() const { 
-			return _id; 
-		}
-
-		void id(TextureID value) {
-			_id = value; 
 		}
 	};
 

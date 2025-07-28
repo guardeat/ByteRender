@@ -5,6 +5,7 @@
 #include "render_context.h"
 #include "render_data.h"
 #include "camera.h"
+#include "renderable.h"
 
 namespace Byte {
 

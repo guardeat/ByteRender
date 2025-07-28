@@ -1,13 +1,14 @@
 #pragma once
 
 #include "core/core_types.h"
+#include "core/asset.h"
 #include "core/layout.h"
 #include "ecs/ecs.h"
-#include "renderable.h"
+#include "render_types.h"
 
 namespace Byte {
 
-	class InstancedRenderable : public Renderable {
+	class RenderBatch : public Asset {
 	private:
 		Vector<RenderID> _keys;
 		Vector<float> _data;
@@ -20,11 +21,6 @@ namespace Byte {
 
 		}
 
-	};
-
-	class RenderInstance {
-	private:
-		EntityID _renderableID{};
 	};
 
 }

@@ -7,7 +7,7 @@
 #include "opengl_api.h"
 #include "render_types.h"
 #include "render_array.h"
-#include "instanced_renderable.h"
+#include "render_batch.h"
 #include "shader.h"
 
 namespace Byte {
@@ -15,7 +15,9 @@ namespace Byte {
 	class RenderDevice {
 	private:
 		Map<AssetID, RenderArray> _meshArrays;
-		Map<RenderID, RenderArray> _instancedArrays;
+		Map<AssetID, ShaderID> _shaderIDs;
+		Map<AssetID, TextureID> _textureIDs;
+		Map<AssetID, RenderArray> _instancedArrays;
 
 	public:
 		void initialize(Window& window) {
@@ -27,12 +29,7 @@ namespace Byte {
 			_meshArrays.emplace(mesh.assetID(), meshArray);
 		}
 
-		void release(Mesh& mesh) {
-			OpenGL::Memory::release(_meshArrays.at(mesh.assetID()));
-			_meshArrays.erase(mesh.assetID());
-		}
-
-		void load(InstancedRenderable& instanced) {
+		void load(RenderBatch& instanced) {
 
 		}
 
@@ -45,19 +42,37 @@ namespace Byte {
 				geometry = OpenGL::Shader::compileShader(shader.geometry(), ShaderType::GEOMETRY);
 			}
 
-			shader.id(OpenGL::Shader::buildProgram(vertex, fragment, geometry));
+			_shaderIDs.emplace(shader.assetID(), OpenGL::Shader::buildProgram(vertex, fragment, geometry));
+		}
+
+		void load(Texture& texture) {
+
+		}
+
+		bool loaded(Mesh& mesh) {
+			return _meshArrays.contains(mesh.assetID());
+		}
+
+		bool loaded(Shader& shader) {
+			return _shaderIDs.contains(shader.assetID());
+		}
+
+		bool loaded(Texture& texture) {
+			return _textureIDs.contains(texture.assetID());
+		}
+
+		void release(Mesh& mesh) {
+			OpenGL::Memory::release(_meshArrays.at(mesh.assetID()));
+			_meshArrays.erase(mesh.assetID());
 		}
 
 		void release(Shader& shader) {
-			OpenGL::Shader::releaseProgram(shader.id());
+			ShaderID id{ _shaderIDs.at(shader.assetID()) };
+			OpenGL::Shader::releaseProgram(id);
 		}
 
-		bool containsMesh(AssetID id) {
-			return _meshArrays.contains(id);
-		}
+		void release(Texture& texture) {
 
-		bool containsInstanced(RenderID id) {
-			return _instancedArrays.contains(id);
 		}
 
 		void update(Window& window) {
@@ -70,34 +85,37 @@ namespace Byte {
 		}
 
 		void bind(const Shader& shader) {
-			OpenGL::Shader::bind(shader.id());
+			ShaderID id{ _shaderIDs.at(shader.assetID()) };
+			OpenGL::Shader::bind(id);
 		}
 
 		template<typename Type>
 		void uniform(const Shader& shader, const Tag& tag, const Type& value) {
-			OpenGL::Shader::uniform(shader.id(), tag, value);
+			ShaderID id{ _shaderIDs.at(shader.assetID()) };
+			OpenGL::Shader::uniform(id, tag, value);
 		}
 
 		void uniform(const Shader& shader, Material& material) {
-			bind(shader);
+			ShaderID id{ _shaderIDs.at(shader.assetID()) };
 
 			if (shader.uniforms().contains("uColor")) {
-				uniform(shader, "uColor", material.color());
+				OpenGL::Shader::uniform(id, "uColor", material.color());
 			}
 
 			for (const auto& [tag, input] : material.parameters()) {
 				if (shader.uniforms().contains(tag)) {
-					std::visit([this, &tag, &shader](const auto& inputValue) {
-						OpenGL::Shader::uniform(shader.id(), tag, inputValue);
+					std::visit([this, &tag, &id, &shader](const auto& inputValue) {
+						OpenGL::Shader::uniform(id, tag, inputValue);
 						}, input);
 				}
 			}
 		}
 
 		void uniform(const Shader& shader, const Transform& transform) {
-			OpenGL::Shader::uniform(shader.id(), "uPosition", transform.position());
-			OpenGL::Shader::uniform(shader.id(), "uScale", transform.scale());
-			OpenGL::Shader::uniform(shader.id(), "uRotation", transform.rotation());
+			ShaderID id{ _shaderIDs.at(shader.assetID()) };
+			OpenGL::Shader::uniform(id, "uPosition", transform.position());
+			OpenGL::Shader::uniform(id, "uScale", transform.scale());
+			OpenGL::Shader::uniform(id, "uRotation", transform.rotation());
 		}
 
 		void draw(size_t size, DrawType drawType = DrawType::TRIANGLES) {
@@ -122,6 +140,16 @@ namespace Byte {
 				OpenGL::Memory::release(renderArray);
 			}
 			_instancedArrays.clear();
+
+			for (auto& [assetID, shaderID] : _shaderIDs) {
+				OpenGL::Shader::releaseProgram(shaderID);
+			}
+			_shaderIDs.clear();
+
+			for (auto& [assetID, textureID] : _textureIDs) {
+				//TODO:
+			}
+			_textureIDs.clear();
 		}
 
 	};

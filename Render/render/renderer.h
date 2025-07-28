@@ -5,7 +5,6 @@
 #include "render_context.h"
 #include "render_device.h"
 #include "render_data.h"
-#include "instanced_renderable.h"
 #include "pipeline.h"
 
 namespace Byte {
@@ -23,12 +22,6 @@ namespace Byte {
 		void initialize(Window& window);
 
 		void render(RenderContext& context);
-
-		void load(Mesh& mesh);
-
-		void load(InstancedRenderable& instanced);
-
-		void load(Texture& instanced);
 
 		void load(RenderContext& context);
 
