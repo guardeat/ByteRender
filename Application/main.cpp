@@ -7,7 +7,8 @@
 #include "render/light.h"
 #include "application/camera_controller.h"
 
-//TODO: Write frame buffer.
+//TODO: Write framebuffer.
+//TODO: Need a automatic release system from gpu. Also optimize loading.
 
 using namespace Byte;
 

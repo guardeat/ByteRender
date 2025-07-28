@@ -43,6 +43,23 @@ namespace Byte {
 		}
 	}
 
+	void Renderer::release(Mesh& mesh) {
+		_data.device.release(mesh);
+	}
+
+	void Renderer::release(InstanceGroup& group) {
+		_data.device.release(group);
+	}
+
+	void Renderer::release(Shader& shader) {
+		_data.device.release(shader);
+		_data.shaders.erase(shader.assetID());
+	}
+
+	void Renderer::release(Texture& texture) {
+		_data.device.release(texture);
+	}
+
 	void Renderer::submit(Shader&& shader)
 	{
 		_data.shaders.emplace(shader.assetID(), std::move(shader));

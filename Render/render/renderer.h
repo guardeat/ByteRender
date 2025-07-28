@@ -25,6 +25,14 @@ namespace Byte {
 
 		void load(RenderContext& context);
 
+		void release(Mesh& mesh);
+
+		void release(InstanceGroup& group);
+
+		void release(Shader& shader);
+
+		void release(Texture& texture);
+
 		void update(Window& window);
 
 		void resize(size_t width, size_t height);

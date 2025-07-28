@@ -7,29 +7,46 @@
 #include "opengl_api.h"
 #include "render_types.h"
 #include "render_array.h"
-#include "render_batch.h"
+#include "instance_group.h"
 #include "shader.h"
+#include "texture.h"
 
 namespace Byte {
 
+	template<typename Accessor>
+	struct GPUEntity {
+		Accessor accessor;
+		size_t inactiveFrames{};
+	};
+
 	class RenderDevice {
 	private:
-		Map<AssetID, RenderArray> _meshArrays;
-		Map<AssetID, ShaderID> _shaderIDs;
-		Map<AssetID, TextureID> _textureIDs;
-		Map<AssetID, RenderArray> _instancedArrays;
+		Map<AssetID, GPUEntity<RenderArray>> _meshArrays;
+		Map<AssetID, GPUEntity<RenderArray>> _instancedArrays;
+		Map<AssetID, GPUEntity<ShaderID>> _shaderIDs;
+		Map<AssetID, GPUEntity<TextureID>> _textureIDs;
+
+		size_t _maxInactiveFrames{ 10 };
 
 	public:
+		RenderDevice(size_t maxInactiveFrames = 10)
+			: _maxInactiveFrames(maxInactiveFrames) {
+		}
+
+		~RenderDevice() {
+			clear();
+		}
+
 		void initialize(Window& window) {
 			OpenGL::initialize(window);
 		}
 
 		void load(Mesh& mesh) {
 			RenderArray meshArray{ OpenGL::Memory::buildRenderArray(mesh) };
-			_meshArrays.emplace(mesh.assetID(), meshArray);
+			_meshArrays.emplace(mesh.assetID(), std::move(meshArray));
 		}
 
-		void load(RenderBatch& instanced) {
+		void load(InstanceGroup& instanced, Mesh& mesh) {
 
 		}
 
@@ -53,6 +70,10 @@ namespace Byte {
 			return _meshArrays.contains(mesh.assetID());
 		}
 
+		bool loaded(InstanceGroup& group) {
+			return _instancedArrays.contains(group.assetID());
+		}
+
 		bool loaded(Shader& shader) {
 			return _shaderIDs.contains(shader.assetID());
 		}
@@ -61,42 +82,75 @@ namespace Byte {
 			return _textureIDs.contains(texture.assetID());
 		}
 
-		void release(Mesh& mesh) {
-			OpenGL::Memory::release(_meshArrays.at(mesh.assetID()));
-			_meshArrays.erase(mesh.assetID());
-		}
-
-		void release(Shader& shader) {
-			ShaderID id{ _shaderIDs.at(shader.assetID()) };
-			OpenGL::Shader::releaseProgram(id);
-		}
-
-		void release(Texture& texture) {
-
-		}
-
 		void update(Window& window) {
 			OpenGL::update(window);
+
+			releaseInactive(_meshArrays, OpenGL::Memory::release);
+			releaseInactive(_instancedArrays, OpenGL::Memory::release);
+			releaseInactive(_shaderIDs, OpenGL::Shader::releaseProgram);
+			releaseInactive(_textureIDs, OpenGL::Texture::release);
 		}
 
 		void bind(const Mesh& mesh) {
-			RenderArray renderArray{ _meshArrays.at(mesh.assetID()) };
-			OpenGL::Memory::bind(renderArray.id);
+			GPUEntity<RenderArray>& entity{ _meshArrays.at(mesh.assetID()) };
+			entity.inactiveFrames = 0;
+			OpenGL::Memory::bind(entity.accessor.id);
 		}
 
 		void bind(const Shader& shader) {
-			ShaderID id{ _shaderIDs.at(shader.assetID()) };
-			OpenGL::Shader::bind(id);
+			GPUEntity<ShaderID>& entity{ _shaderIDs.at(shader.assetID()) };
+			entity.inactiveFrames = 0;
+			OpenGL::Shader::bind(entity.accessor);
+		}
+
+		void bind(const InstanceGroup& group) {
+			GPUEntity<RenderArray>& entity{ _instancedArrays.at(group.assetID()) };
+			entity.inactiveFrames = 0;
+			OpenGL::Memory::bind(entity.accessor.id);
+		}
+
+		void bind(const Texture& texture) {
+			GPUEntity<TextureID>& entity{ _textureIDs.at(texture.assetID()) };
+			entity.inactiveFrames = 0;
+			OpenGL::Texture::bind(entity.accessor);
+		}
+
+		void release(Mesh& mesh) {
+			auto it{ _meshArrays.find(mesh.assetID()) };
+			if (it != _meshArrays.end()) {
+				OpenGL::Memory::release(it->second.accessor);
+				_meshArrays.erase(it);
+			}
+		}
+
+		void release(InstanceGroup& group) {
+			auto it{ _instancedArrays.find(group.assetID()) };
+			if (it != _instancedArrays.end()) {
+				OpenGL::Memory::release(it->second.accessor);
+				_instancedArrays.erase(it);
+			}
+		}
+
+		void release(Shader& shader) {
+			auto it{ _shaderIDs.find(shader.assetID()) };
+			if (it != _shaderIDs.end()) {
+				OpenGL::Shader::releaseProgram(it->second.accessor);
+				_shaderIDs.erase(it);
+			}
+		}
+
+		void release(Texture& texture) {
+			
 		}
 
 		template<typename Type>
 		void uniform(const Shader& shader, const Tag& tag, const Type& value) {
-			ShaderID id{ _shaderIDs.at(shader.assetID()) };
+			ShaderID id{ _shaderIDs.at(shader.assetID()).accessor };
 			OpenGL::Shader::uniform(id, tag, value);
 		}
 
 		void uniform(const Shader& shader, Material& material) {
-			ShaderID id{ _shaderIDs.at(shader.assetID()) };
+			ShaderID id{ _shaderIDs.at(shader.assetID()).accessor };
 
 			if (shader.uniforms().contains("uColor")) {
 				OpenGL::Shader::uniform(id, "uColor", material.color());
@@ -112,7 +166,7 @@ namespace Byte {
 		}
 
 		void uniform(const Shader& shader, const Transform& transform) {
-			ShaderID id{ _shaderIDs.at(shader.assetID()) };
+			ShaderID id{ _shaderIDs.at(shader.assetID()).accessor };
 			OpenGL::Shader::uniform(id, "uPosition", transform.position());
 			OpenGL::Shader::uniform(id, "uScale", transform.scale());
 			OpenGL::Shader::uniform(id, "uRotation", transform.rotation());
@@ -132,25 +186,43 @@ namespace Byte {
 
 		void clear() {
 			for (auto& [assetID, renderArray] : _meshArrays) {
-				OpenGL::Memory::release(renderArray);
+				OpenGL::Memory::release(renderArray.accessor);
 			}
 			_meshArrays.clear();
 
 			for (auto& [renderID, renderArray] : _instancedArrays) {
-				OpenGL::Memory::release(renderArray);
+				OpenGL::Memory::release(renderArray.accessor);
 			}
 			_instancedArrays.clear();
 
-			for (auto& [assetID, shaderID] : _shaderIDs) {
-				OpenGL::Shader::releaseProgram(shaderID);
+			for (auto& [assetID, shader] : _shaderIDs) {
+				OpenGL::Shader::releaseProgram(shader.accessor);
 			}
 			_shaderIDs.clear();
 
-			for (auto& [assetID, textureID] : _textureIDs) {
-				//TODO:
+			for (auto& [assetID, texture] : _textureIDs) {
+				OpenGL::Texture::release(texture.accessor);
 			}
 			_textureIDs.clear();
 		}
+
+		private:
+			template<typename Container, typename ReleaseFunc>
+			void releaseInactive(Container& container, ReleaseFunc releaseFunc) {
+				std::vector<AssetID> toErase;
+
+				for (auto& [id, entity] : container) {
+					entity.inactiveFrames++;
+					if (entity.inactiveFrames > _maxInactiveFrames) {
+						releaseFunc(entity.accessor);
+						toErase.push_back(id);
+					}
+				}
+
+				for (auto& id : toErase) {
+					container.erase(id);
+				}
+			}
 
 	};
 

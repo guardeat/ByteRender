@@ -470,6 +470,14 @@ namespace Byte::OpenGL {
         };
 
         struct Texture {
+            static void bind(TextureID id) {
+                
+            }
+
+            static void release(TextureID id) {
+
+            }
+
             static GLenum convert(TextureFilter filter) {
                 switch (filter) {
                 case TextureFilter::NEAREST:

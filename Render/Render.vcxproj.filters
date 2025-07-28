@@ -27,7 +27,7 @@
     <ClInclude Include="render\render_device.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="render\render_batch.h">
+    <ClInclude Include="render\instance_group.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="render\renderable.h">

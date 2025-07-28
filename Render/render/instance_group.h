@@ -8,7 +8,7 @@
 
 namespace Byte {
 
-	class RenderBatch : public Asset {
+	class InstanceGroup : public Asset {
 	private:
 		Vector<RenderID> _keys;
 		Vector<float> _data;
