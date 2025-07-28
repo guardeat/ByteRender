@@ -7,7 +7,7 @@
 #include "render/light.h"
 #include "application/camera_controller.h"
 
-//TODO: Carry all gpu stuff to device. TextureIDs, ShaderIDs and FrameBufferIDs. Also write frame buffer.
+//TODO: Write frame buffer.
 
 using namespace Byte;
 
