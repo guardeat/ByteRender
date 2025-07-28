@@ -118,7 +118,7 @@ namespace Byte::OpenGL {
         };
 
         struct Memory {
-            static void bind(uint32_t id = 0) {
+            static void bind(RenderArrayID id = 0) {
                 glBindVertexArray(id);
             }
 
@@ -222,81 +222,77 @@ namespace Byte::OpenGL {
         };
 
         struct Shader {
-            static void bind(uint32_t id = 0) {
+            static void bind(ShaderID id = 0) {
                 glUseProgram(id);
             }
 
-            static void releaseShader(uint32_t id) {
-                glDeleteShader(id);
-            }
-
             template<typename Type>
-            static void uniform(uint32_t id, const std::string& name, const Type& value) {
+            static void uniform(ShaderID id, const std::string& name, const Type& value) {
                 throw std::exception("No such uniform type");
             }
 
             template<>
-            static void uniform<bool>(uint32_t id, const std::string& name, const bool& value) {
+            static void uniform<bool>(ShaderID id, const std::string& name, const bool& value) {
                 auto loc{ glGetUniformLocation(id, name.c_str()) };
                 glUniform1i(loc, (int)value);
             }
 
             template<>
-            static void uniform<int>(uint32_t id, const std::string& name, const int& value) {
+            static void uniform<int>(ShaderID id, const std::string& name, const int& value) {
                 auto loc{ glGetUniformLocation(id, name.c_str()) };
                 glUniform1i(loc, value);
             }
 
             template<>
-            static void uniform<size_t>(uint32_t id, const std::string& name, const size_t& value) {
+            static void uniform<size_t>(ShaderID id, const std::string& name, const size_t& value) {
                 auto loc{ glGetUniformLocation(id, name.c_str()) };
                 glUniform1i(loc, static_cast<GLint>(value));
             }
 
             template<>
-            static void uniform<float>(uint32_t id, const std::string& name, const float& value) {
+            static void uniform<float>(ShaderID id, const std::string& name, const float& value) {
                 auto loc{ glGetUniformLocation(id, name.c_str()) };
                 glUniform1f(loc, value);
             }
 
             template<>
-            static void uniform<Vec2>(uint32_t id, const std::string& name, const Vec2& value) {
+            static void uniform<Vec2>(ShaderID id, const std::string& name, const Vec2& value) {
                 auto loc{ glGetUniformLocation(id, name.c_str()) };
                 glUniform2f(loc, value.x, value.y);
             }
 
             template<>
-            static void uniform<Vec3>(uint32_t id, const std::string& name, const Vec3& value) {
+            static void uniform<Vec3>(ShaderID id, const std::string& name, const Vec3& value) {
                 auto loc{ glGetUniformLocation(id, name.c_str()) };
                 glUniform3f(loc, value.x, value.y, value.z);
             }
 
             template<>
-            static void uniform<Vec4>(uint32_t id, const std::string& name, const Vec4& value) {
+            static void uniform<Vec4>(ShaderID id, const std::string& name, const Vec4& value) {
                 auto loc{ glGetUniformLocation(id, name.c_str()) };
                 glUniform4f(loc, value.x, value.y, value.z, value.w);
             }
 
             template<>
-            static void uniform<Quaternion>(uint32_t id, const std::string& name, const Quaternion& value) {
+            static void uniform<Quaternion>(ShaderID id, const std::string& name, const Quaternion& value) {
                 auto loc{ glGetUniformLocation(id, name.c_str()) };
                 glUniform4f(loc, value.x, value.y, value.z, value.w);
             }
 
             template<>
-            static void uniform<Mat2>(uint32_t id, const std::string& name, const Mat2& value) {
+            static void uniform<Mat2>(ShaderID id, const std::string& name, const Mat2& value) {
                 auto loc{ glGetUniformLocation(id, name.c_str()) };
                 glUniformMatrix2fv(loc, 1, GL_FALSE, value.data);
             }
 
             template<>
-            static void uniform<Mat3>(uint32_t id, const std::string& name, const Mat3& value) {
+            static void uniform<Mat3>(ShaderID id, const std::string& name, const Mat3& value) {
                 auto loc{ glGetUniformLocation(id, name.c_str()) };
                 glUniformMatrix3fv(loc, 1, GL_FALSE, value.data);
             }
 
             template<>
-            static void uniform<Mat4>(uint32_t id, const std::string& name, const Mat4& value) {
+            static void uniform<Mat4>(ShaderID id, const std::string& name, const Mat4& value) {
                 auto loc{ glGetUniformLocation(id, name.c_str()) };
                 glUniformMatrix4fv(loc, 1, GL_FALSE, value.data);
             }
@@ -337,11 +333,11 @@ namespace Byte::OpenGL {
                 }
             }
 
-            static void releaseProgram(uint32_t id) {
+            static void releaseProgram(ShaderID id) {
                 glDeleteProgram(id);
             }
 
-            static uint32_t buildProgram(
+            static ShaderID buildProgram(
                 uint32_t vertex,
                 uint32_t fragment,
                 uint32_t geometry = 0) {
@@ -356,6 +352,12 @@ namespace Byte::OpenGL {
 
                 glLinkProgram(id);
                 checkProgram(id);
+
+                glDeleteShader(vertex);
+                glDeleteShader(fragment);
+                if (geometry) {
+                    glDeleteShader(geometry);
+                }
 
                 return id;
             }

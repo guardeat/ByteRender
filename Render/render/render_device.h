@@ -23,8 +23,8 @@ namespace Byte {
 	private:
 		Map<AssetID, GPUEntity<RenderArray>> _meshArrays;
 		Map<AssetID, GPUEntity<RenderArray>> _instancedArrays;
-		Map<AssetID, GPUEntity<ShaderID>> _shaderIDs;
 		Map<AssetID, GPUEntity<TextureID>> _textureIDs;
+		Map<AssetID, ShaderID> _shaderIDs;
 
 		size_t _maxInactiveFrames{ 10 };
 
@@ -87,7 +87,6 @@ namespace Byte {
 
 			releaseInactive(_meshArrays, OpenGL::Memory::release);
 			releaseInactive(_instancedArrays, OpenGL::Memory::release);
-			releaseInactive(_shaderIDs, OpenGL::Shader::releaseProgram);
 			releaseInactive(_textureIDs, OpenGL::Texture::release);
 		}
 
@@ -98,9 +97,8 @@ namespace Byte {
 		}
 
 		void bind(const Shader& shader) {
-			GPUEntity<ShaderID>& entity{ _shaderIDs.at(shader.assetID()) };
-			entity.inactiveFrames = 0;
-			OpenGL::Shader::bind(entity.accessor);
+			ShaderID id{ _shaderIDs.at(shader.assetID()) };
+			OpenGL::Shader::bind(id);
 		}
 
 		void bind(const InstanceGroup& group) {
@@ -134,23 +132,27 @@ namespace Byte {
 		void release(Shader& shader) {
 			auto it{ _shaderIDs.find(shader.assetID()) };
 			if (it != _shaderIDs.end()) {
-				OpenGL::Shader::releaseProgram(it->second.accessor);
+				OpenGL::Shader::releaseProgram(it->second);
 				_shaderIDs.erase(it);
 			}
 		}
 
 		void release(Texture& texture) {
-			
+			auto it{ _textureIDs.find(texture.assetID()) };
+			if (it != _textureIDs.end()) {
+				OpenGL::Texture::release(it->second.accessor);
+				_textureIDs.erase(it);
+			}
 		}
 
 		template<typename Type>
 		void uniform(const Shader& shader, const Tag& tag, const Type& value) {
-			ShaderID id{ _shaderIDs.at(shader.assetID()).accessor };
+			ShaderID id{ _shaderIDs.at(shader.assetID()) };
 			OpenGL::Shader::uniform(id, tag, value);
 		}
 
 		void uniform(const Shader& shader, Material& material) {
-			ShaderID id{ _shaderIDs.at(shader.assetID()).accessor };
+			ShaderID id{ _shaderIDs.at(shader.assetID()) };
 
 			if (shader.uniforms().contains("uColor")) {
 				OpenGL::Shader::uniform(id, "uColor", material.color());
@@ -166,7 +168,7 @@ namespace Byte {
 		}
 
 		void uniform(const Shader& shader, const Transform& transform) {
-			ShaderID id{ _shaderIDs.at(shader.assetID()).accessor };
+			ShaderID id{ _shaderIDs.at(shader.assetID()) };
 			OpenGL::Shader::uniform(id, "uPosition", transform.position());
 			OpenGL::Shader::uniform(id, "uScale", transform.scale());
 			OpenGL::Shader::uniform(id, "uRotation", transform.rotation());
@@ -196,7 +198,7 @@ namespace Byte {
 			_instancedArrays.clear();
 
 			for (auto& [assetID, shader] : _shaderIDs) {
-				OpenGL::Shader::releaseProgram(shader.accessor);
+				OpenGL::Shader::releaseProgram(shader);
 			}
 			_shaderIDs.clear();
 
