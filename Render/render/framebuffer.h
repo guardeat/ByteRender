@@ -15,7 +15,15 @@ namespace Byte {
 		size_t _width{};
 		size_t _height{};
 
+		bool _resize{ true };
+
+		float _resizeFactor{ 1.0f };
+
 	public:
+		Framebuffer(size_t width, size_t height)
+			: _width{ width }, _height{height} {
+		}
+
 		void texture(Tag&& tag, Texture&& texture) {
 			_textures.emplace(std::move(tag), std::move(texture));
 		}
@@ -58,6 +66,22 @@ namespace Byte {
 
 		size_t height() const {
 			return _height;
+		}
+
+		bool resize() const {
+			return _resize;
+		}
+
+		void resize(bool newResize) {
+			_resize = newResize;
+		}
+
+		float resizeFactor() const {
+			return _resizeFactor;
+		}
+
+		void resizeFactor(float newResizeFactor) {
+			_resizeFactor = newResizeFactor;
 		}
 	};
 

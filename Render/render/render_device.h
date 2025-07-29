@@ -133,6 +133,35 @@ namespace Byte {
 			OpenGL::GFramebuffer::bind(buffer, _framebufferIDs.at(buffer.assetID()));
 		}
 
+		void bindDefault(size_t width, size_t height) {
+			OpenGL::GFramebuffer::bind(width, height);
+		}
+
+		void clearBuffer() {
+			OpenGL::clear();
+		}
+
+		void resize(Framebuffer& buffer, size_t width, size_t height) {
+			if (buffer.resize()) {
+				AssetID assetID{ buffer.assetID() };
+
+				Vector<TextureID> ids;
+				for (auto& [_, texture] : buffer.textures()) {
+					ids.push_back(_textureIDs.at(texture.assetID()).accessor);
+					_textureIDs.erase(texture.assetID());
+				}
+
+				OpenGL::GFramebuffer::release(_framebufferIDs.at(assetID), ids);
+				_framebufferIDs.erase(assetID);
+
+				buffer.attachments().clear();
+				buffer.width(static_cast<size_t>(static_cast<float>(width) * buffer.resizeFactor()));
+				buffer.height(static_cast<size_t>(static_cast<float>(height) * buffer.resizeFactor()));
+				
+				load(buffer);
+			}
+		}
+
 		void release(Mesh& mesh) {
 			auto it{ _meshArrays.find(mesh.assetID()) };
 			if (it != _meshArrays.end()) {

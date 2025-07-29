@@ -7,6 +7,9 @@ namespace Byte {
 	}
 
 	void Renderer::initialize(Window& window) {
+		_data.width = window.width();
+		_data.height = window.height();
+
 		_data.device.initialize(window);
 		_pipeline.initialize(_data);
 	}
@@ -21,6 +24,12 @@ namespace Byte {
 		for (auto& [_, shader] : _data.shaders) {
 			if (!_data.device.loaded(shader)) {
 				_data.device.load(shader);
+			}
+		}
+
+		for (auto& [_, buffer] : _data.framebuffers) {
+			if (!_data.device.loaded(buffer)) {
+				_data.device.load(buffer);
 			}
 		}
 
@@ -74,7 +83,12 @@ namespace Byte {
 	}
 
 	void Renderer::resize(size_t width, size_t height) {
+		_data.width = width;
+		_data.height = height;
 
+		for (auto& [id, buffer] : _data.framebuffers) {
+			_data.device.resize(buffer, width, height);
+		}
 	}
 
 	void Renderer::clearMemory() {

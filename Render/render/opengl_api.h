@@ -52,6 +52,10 @@ namespace Byte::OpenGL {
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         }
 
+        inline void clear() {
+            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        }
+
         inline void state(RenderState state) {
             switch (state) {
             case RenderState::ENABLE_DEPTH:
@@ -584,6 +588,11 @@ namespace Byte::OpenGL {
                 }
 
                 glViewport(0, 0, static_cast<GLsizei>(buffer.width()), static_cast<GLsizei>(buffer.height()));
+            }
+
+            static void bind(size_t width, size_t height) {
+                glBindFramebuffer(GL_FRAMEBUFFER, 0);
+                glViewport(0, 0, static_cast<GLsizei>(width), static_cast<GLsizei>(height));
             }
 
             static Pair<FramebufferID,Map<AssetID, TextureID>> build(Framebuffer& buffer) {

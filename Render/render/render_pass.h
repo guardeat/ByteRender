@@ -30,6 +30,7 @@ namespace Byte {
 		AssetID _skyboxShader{};
 		AssetID _quad{};
 		AssetID _skyboxMaterial{};
+		AssetID _colorBuffer{};
 
 	public:
 		void render(RenderData& data, RenderContext& context) override {
@@ -46,6 +47,10 @@ namespace Byte {
 			cTemp.position(Vec3{});
 			Mat4 view{ cTemp.view() };
 			Mat4 inverseViewProjection{ (projection * view).inverse() };
+			
+			Framebuffer& colorBuffer{ data.framebuffers.at(_colorBuffer) };
+			data.device.bind(colorBuffer);
+			data.device.clearBuffer();
 
 			data.device.bind(skyboxShader);
 			data.device.bind(quad);
@@ -59,6 +64,8 @@ namespace Byte {
 			data.device.state(RenderState::DISABLE_DEPTH);
 			data.device.draw(quad.indexCount());
 			data.device.state(RenderState::ENABLE_DEPTH);
+
+			data.device.bindDefault(data.width, data.height);
 		}
 
 		UniquePtr<RenderPass> clone() const override {
@@ -76,6 +83,20 @@ namespace Byte {
 			data.meshes.emplace(quad.assetID(), std::move(quad));
 
 			_skyboxMaterial = data.parameter<AssetID>("skybox_material");
+
+			Framebuffer colorBuffer{ data.width, data.height };
+			data.parameter<AssetID>("color_buffer_id", colorBuffer.assetID());
+			_colorBuffer = colorBuffer.assetID();
+
+			Texture colorTexture{};
+			colorTexture.attachment(AttachmentType::COLOR_0);
+			colorTexture.internalFormat(ColorFormat::R11F_G11F_B10F);
+			colorTexture.format(ColorFormat::RGB);
+			colorTexture.dataType(DataType::FLOAT);
+
+			colorBuffer.texture(Tag{ "color" }, std::move(colorTexture));
+
+			data.framebuffers.emplace(colorBuffer.assetID(), std::move(colorBuffer));
 		}
 	};
 
