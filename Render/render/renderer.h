@@ -39,6 +39,8 @@ namespace Byte {
 
 		void submit(Shader&& shader);
 
+		void clearMemory();
+
 		template<typename Type>
 		void parameter(const Tag& tag, Type&& value) {
 			_data.parameter(tag, std::move(value));
@@ -48,8 +50,6 @@ namespace Byte {
 		const Type& parameter(const Tag& tag) {
 			return _data.parameter(tag);
 		}
-
-		void clearMemory();
 
 		template<typename... Passes>
 		static Renderer build() {

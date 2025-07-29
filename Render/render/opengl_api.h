@@ -576,7 +576,7 @@ namespace Byte::OpenGL {
         };
 
         struct GFramebuffer {
-            static void bind(Framebuffer& buffer, FramebufferID id) {
+            static void bind(const Framebuffer& buffer, FramebufferID id) {
                 glBindFramebuffer(GL_FRAMEBUFFER, id);
 
                 if (!buffer.attachments().empty()) {

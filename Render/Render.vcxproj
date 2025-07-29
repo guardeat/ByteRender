@@ -155,6 +155,8 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="shader\default.vert" />
+    <None Include="shader\final.frag" />
+    <None Include="shader\final.vert" />
     <None Include="shader\forward.frag" />
     <None Include="shader\skybox.frag" />
     <None Include="shader\skybox.vert" />

@@ -80,5 +80,7 @@
     <None Include="shader\forward.frag" />
     <None Include="shader\skybox.frag" />
     <None Include="shader\skybox.vert" />
+    <None Include="shader\final.frag" />
+    <None Include="shader\final.vert" />
   </ItemGroup>
 </Project>

@@ -80,6 +80,7 @@ namespace Byte {
 
 			Mesh quad{ Primitive::quad() };
 			_quad = quad.assetID();
+			data.parameter<AssetID>("quad_mesh_id", quad.assetID());
 			data.meshes.emplace(quad.assetID(), std::move(quad));
 
 			_skyboxMaterial = data.parameter<AssetID>("skybox_material");
@@ -101,6 +102,11 @@ namespace Byte {
 	};
 
 	class DrawPass: public RenderPass {
+	private:
+		AssetID _colorBuffer{};
+		AssetID _quad{};
+		AssetID _finalShader{};
+
 	public:
 		void render(RenderData& data, RenderContext& context) override {
 			auto [camera, cameraTransform] = context.camera();
@@ -108,6 +114,9 @@ namespace Byte {
 
 			Mat4 projection{ camera.perspective(16.0f / 9.0f) };
 			Mat4 view{ cameraTransform.view() };
+
+			Framebuffer& colorBuffer{ data.framebuffers.at(_colorBuffer) };
+			data.device.bind(colorBuffer);
 
 			for (auto [renderable, transform] : context.view<Renderable, Transform>()) {
 				Mesh& mesh{ context.mesh(renderable.mesh()) };
@@ -127,10 +136,32 @@ namespace Byte {
 
 				data.device.draw(mesh.indexCount());
 			}
+			
+			Mesh& quad{ data.meshes.at(_quad) };
+			Shader& finalShader{ data.shaders.at(_finalShader) };
+
+			data.device.bind(quad);
+			data.device.bind(finalShader);
+			data.device.bindDefault(data.width, data.height);
+			
+			data.device.uniform(finalShader, "uAlbedo", colorBuffer.texture("color"));
+			data.device.uniform(finalShader, "uGamma", data.parameter<float>("gamma"));
+			data.device.draw(quad.indexCount());
 		}
 
 		UniquePtr<RenderPass> clone() const override {
 			return std::make_unique<DrawPass>();
+		}
+
+		void initialize(RenderData& data) override {
+			_colorBuffer = data.parameter<AssetID>("color_buffer_id");
+			_quad = data.parameter<AssetID>("quad_mesh_id");
+
+			Shader finalShader{ "../Render/shader/final.vert","../Render/shader/final.frag" };
+			_finalShader = finalShader.assetID();
+			data.shaders.emplace(finalShader.assetID(), std::move(finalShader));
+
+			data.parameter("gamma", 2.2f);
 		}
 	};
 

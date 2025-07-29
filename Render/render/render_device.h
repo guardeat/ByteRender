@@ -123,13 +123,13 @@ namespace Byte {
 			OpenGL::GMemory::bind(entity.accessor.id);
 		}
 
-		void bind(const Texture& texture) {
+		void bind(const Texture& texture, TextureUnit unit = TextureUnit::UNIT_0) {
 			GPUEntity<TextureID>& entity{ _textureIDs.at(texture.assetID()) };
 			entity.inactiveFrames = 0;
-			OpenGL::GTexture::bind(entity.accessor);
+			OpenGL::GTexture::bind(entity.accessor, unit);
 		}
 
-		void bind(Framebuffer& buffer) {
+		void bind(const Framebuffer& buffer) {
 			OpenGL::GFramebuffer::bind(buffer, _framebufferIDs.at(buffer.assetID()));
 		}
 
@@ -234,6 +234,17 @@ namespace Byte {
 			OpenGL::GShader::uniform(id, "uPosition", transform.position());
 			OpenGL::GShader::uniform(id, "uScale", transform.scale());
 			OpenGL::GShader::uniform(id, "uRotation", transform.rotation());
+		}
+
+		void uniform(
+			const Shader& shader, 
+			const Tag& uniform,
+			const Texture& texture, 
+			TextureUnit unit = TextureUnit::UNIT_0) {
+			bind(texture, unit);
+
+			ShaderID id{ _shaderIDs.at(shader.assetID()) };
+			OpenGL::GShader::uniform(id, uniform, static_cast<int>(unit));
 		}
 
 		void draw(size_t size, DrawType drawType = DrawType::TRIANGLES) {

@@ -130,6 +130,22 @@ namespace Byte {
 		bool hasParameter(const Tag& tag) const {
 			return _parameters.contains(tag);
 		}
+
+		Map<Tag, AssetID>& shaders() {
+			return _shaders;
+		}
+
+		const Map<Tag, AssetID>& shaders() const {
+			return _shaders;
+		}
+
+		Map<Tag, AssetID>& textures() {
+			return _textures;
+		}
+
+		const Map<Tag, AssetID>& textures() const {
+			return _textures;
+		}
 	};
 
 }
