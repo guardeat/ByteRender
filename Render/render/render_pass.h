@@ -42,7 +42,8 @@ namespace Byte {
 
 			auto [camera, cameraTransform] = context.camera();
 
-			Mat4 projection{ camera.perspective(16.0f / 9.0f) };
+			float aspect{ static_cast<float>(data.width) / static_cast<float>(data.height) };
+			Mat4 projection{ camera.perspective(aspect) };
 			Transform cTemp{ cameraTransform };
 			cTemp.position(Vec3{});
 			Mat4 view{ cTemp.view() };
@@ -112,7 +113,8 @@ namespace Byte {
 			auto [camera, cameraTransform] = context.camera();
 			auto [dLight, dLightTransform] = context.directionalLight();
 
-			Mat4 projection{ camera.perspective(16.0f / 9.0f) };
+			float aspect{ static_cast<float>(data.width) / static_cast<float>(data.height) };
+			Mat4 projection{ camera.perspective(aspect) };
 			Mat4 view{ cameraTransform.view() };
 
 			Framebuffer& colorBuffer{ data.framebuffers.at(_colorBuffer) };
@@ -142,6 +144,7 @@ namespace Byte {
 
 			data.device.bind(quad);
 			data.device.bind(finalShader);
+
 			data.device.bindDefault(data.width, data.height);
 			
 			data.device.uniform(finalShader, "uAlbedo", colorBuffer.texture("color"));

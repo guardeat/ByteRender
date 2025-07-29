@@ -148,6 +148,8 @@ namespace Byte {
 				Vector<TextureID> ids;
 				for (auto& [_, texture] : buffer.textures()) {
 					ids.push_back(_textureIDs.at(texture.assetID()).accessor);
+					texture.width(width);
+					texture.height(height);
 					_textureIDs.erase(texture.assetID());
 				}
 

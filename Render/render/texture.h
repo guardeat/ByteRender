@@ -4,7 +4,7 @@
 
 namespace Byte {
 
-	class Texture: public Asset {
+	class Texture : public Asset {
 	private:
 		ColorFormat _internalFormat{ ColorFormat::RGBA };
 		ColorFormat _format{ ColorFormat::RGBA };
@@ -18,7 +18,7 @@ namespace Byte {
 		TextureFilter _minFilter{ TextureFilter::LINEAR };
 		TextureFilter _magFilter{ TextureFilter::LINEAR };
 
-		AttachmentType _attachmentType;
+		AttachmentType _attachmentType{ AttachmentType::COLOR_0 };
 
 		Vector<uint8_t> _data{};
 
