@@ -24,7 +24,7 @@ int main() {
 	float fpsTimer{ 0.0f };
 
 	Repository repository;
-	Mesh mesh{ Primitive::cube() };
+	Mesh mesh{ Primitive::sphere(48) };
 	Material material{};
 	material.color(Vec4{ 0.4f,0.8f,0.1f, 1.0f });
 	Shader shader{ "../Render/shader/default.vert","../Render/shader/forward.frag" };

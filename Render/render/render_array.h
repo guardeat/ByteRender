@@ -3,9 +3,16 @@
 #include <cstdint>
 
 #include <core/core_types.h>
-#include "render_buffer.h"
 
 namespace Byte {
+
+	struct RenderBuffer {
+		RenderBufferID id;
+
+		Layout layout;
+
+		BufferMode mode;
+	};
 
 	struct RenderArray {
 		RenderArrayID id;

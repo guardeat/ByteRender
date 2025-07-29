@@ -136,11 +136,9 @@
     <ClInclude Include="render\material.h" />
     <ClInclude Include="render\render_context.h" />
     <ClInclude Include="render\framebuffer.h" />
-    <ClInclude Include="render\frame_buffer.h" />
     <ClInclude Include="render\opengl_api.h" />
     <ClInclude Include="render\pipeline.h" />
     <ClInclude Include="render\renderer.h" />
-    <ClInclude Include="render\render_buffer.h" />
     <ClInclude Include="render\render_data.h" />
     <ClInclude Include="render\render_device.h" />
     <ClInclude Include="render\instance_group.h" />

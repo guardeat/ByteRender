@@ -18,6 +18,8 @@ namespace Byte {
 		TextureFilter _minFilter{ TextureFilter::LINEAR };
 		TextureFilter _magFilter{ TextureFilter::LINEAR };
 
+		AttachmentType _attachmentType;
+
 		Vector<uint8_t> _data{};
 
 		Path _path{};
@@ -94,6 +96,18 @@ namespace Byte {
 
 		void magFilter(TextureFilter value) { 
 			_magFilter = value; 
+		}
+
+		AttachmentType attachment() const {
+			return _attachmentType;
+		}
+
+		void attachment(AttachmentType newType) {
+			_attachmentType = newType;
+		}
+
+		Vector<uint8_t>& data() {
+			return _data;
 		}
 
 		const Vector<uint8_t>& data() const {

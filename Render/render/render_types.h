@@ -61,6 +61,17 @@ namespace Byte {
 		DEPTH
 	};
 
+	enum class TextureUnit : uint8_t {
+		UNIT_0,
+		UNIT_1,
+		UNIT_2,
+		UNIT_3,
+		UNIT_4,
+		UNIT_5,
+		UNIT_6,
+		UNIT_7
+	};
+
 	enum class TextureFilter : uint8_t {
 		NEAREST,
 		LINEAR,

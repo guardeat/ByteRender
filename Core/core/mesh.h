@@ -8,6 +8,7 @@
 #include "uid_generator.h"
 #include "layout.h"
 #include "asset.h"
+#include "byte_math.h"
 
 namespace Byte {
 
@@ -125,6 +126,51 @@ namespace Byte {
 
 			return Mesh(std::move(vertices), std::move(indices), std::move(layout));
 		}
+
+		static Mesh sphere(uint32_t resolution = 24) {
+			Vector<float> vertices{};
+			Vector<uint32_t> indices{};
+
+			float PI{ pi<float>() };
+			uint32_t rings{ resolution };
+			uint32_t sectors{ resolution * 2 };
+
+			for (uint32_t i{ 0 }; i <= rings; ++i) {
+				float v{ static_cast<float>(i) / static_cast<float>(rings) };
+				float theta{ v * PI };
+
+				for (uint32_t j{ 0 }; j <= sectors; ++j) {
+					float u{ static_cast<float>(j) / static_cast<float>(sectors) };
+					float phi{ u * 2.0f * PI };
+
+					float x{ sin(theta) * cos(phi) };
+					float y{ sin(theta) * sin(phi) };
+					float z{ cos(theta) };
+
+					vertices.insert(vertices.end(), {
+						0.5f * x, 0.5f * y, 0.5f * z,
+						x, y, z,
+						u, v
+						});
+				}
+			}
+
+			for (uint32_t i{ 0 }; i < rings; ++i) {
+				for (uint32_t j{ 0 }; j < sectors; ++j) {
+					uint32_t first{ i * (sectors + 1) + j };
+					uint32_t second{ first + sectors + 1 };
+
+					indices.insert(indices.end(), {
+						first, second, first + 1,
+						second, second + 1, first + 1
+						});
+				}
+			}
+
+			Layout layout{ 3, 3, 2 };
+			return Mesh(std::move(vertices), std::move(indices), std::move(layout));
+		}
+
 	};
 
 }

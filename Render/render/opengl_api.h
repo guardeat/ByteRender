@@ -9,6 +9,8 @@
 #include "core/mesh.h"
 #include "core/byte_math.h"
 #include "render_array.h"
+#include "framebuffer.h"
+#include "texture.h"
 
 namespace Byte::OpenGL {
 
@@ -79,7 +81,143 @@ namespace Byte::OpenGL {
             }
         }
 
-        struct Draw {
+        inline GLenum convert(AttachmentType type) {
+            switch (type) {
+            case AttachmentType::COLOR_0:
+                return GL_COLOR_ATTACHMENT0;
+            case AttachmentType::COLOR_1:
+                return GL_COLOR_ATTACHMENT1;
+            case AttachmentType::COLOR_2:
+                return GL_COLOR_ATTACHMENT2;
+            case AttachmentType::COLOR_3:
+                return GL_COLOR_ATTACHMENT3;
+            case AttachmentType::DEPTH:
+                return GL_DEPTH_ATTACHMENT;
+            default:
+                throw std::invalid_argument("Invalid AttachmentType");
+            }
+        }
+
+        inline GLenum convert(DataType type) {
+            switch (type) {
+            case DataType::BYTE:
+                return GL_BYTE;
+            case DataType::UNSIGNED_BYTE:
+                return GL_UNSIGNED_BYTE;
+            case DataType::SHORT:
+                return GL_SHORT;
+            case DataType::UNSIGNED_SHORT:
+                return GL_UNSIGNED_SHORT;
+            case DataType::INT:
+                return GL_INT;
+            case DataType::UNSIGNED_INT:
+                return GL_UNSIGNED_INT;
+            case DataType::FLOAT:
+                return GL_FLOAT;
+            default:
+                throw std::invalid_argument("Invalid DataType");
+            }
+        }
+
+        inline GLenum convert(ColorFormat format) {
+            switch (format) {
+            case ColorFormat::DEPTH:
+                return GL_DEPTH_COMPONENT;
+            case ColorFormat::RED:
+                return GL_RED;
+            case ColorFormat::GREEN:
+                return GL_GREEN;
+            case ColorFormat::BLUE:
+                return GL_BLUE;
+            case ColorFormat::ALPHA:
+                return GL_ALPHA;
+            case ColorFormat::RGB:
+                return GL_RGB;
+            case ColorFormat::RGBA:
+                return GL_RGBA;
+            case ColorFormat::RGBA32F:
+                return GL_RGBA32F;
+            case ColorFormat::RGB32F:
+                return GL_RGB32F;
+            case ColorFormat::RGBA16F:
+                return GL_RGBA16F;
+            case ColorFormat::RGB16F:
+                return GL_RGB16F;
+            case ColorFormat::R11F_G11F_B10F:
+                return GL_R11F_G11F_B10F;
+            case ColorFormat::R16F:
+                return GL_R16F;
+            case ColorFormat::R32F:
+                return GL_R32F;
+            case ColorFormat::R16:
+                return GL_R16;
+            case ColorFormat::RGB16:
+                return GL_RGB16;
+            case ColorFormat::RGBA16:
+                return GL_RGBA16;
+            default:
+                throw std::invalid_argument("Invalid ColorFormat");
+            }
+        }
+
+        inline GLenum convert(TextureUnit unit) {
+            switch (unit) {
+            case TextureUnit::UNIT_0:
+                return GL_TEXTURE0;
+            case TextureUnit::UNIT_1:
+                return GL_TEXTURE1;
+            case TextureUnit::UNIT_2:
+                return GL_TEXTURE2;
+            case TextureUnit::UNIT_3:
+                return GL_TEXTURE3;
+            case TextureUnit::UNIT_4:
+                return GL_TEXTURE4;
+            case TextureUnit::UNIT_5:
+                return GL_TEXTURE5;
+            case TextureUnit::UNIT_6:
+                return GL_TEXTURE6;
+            case TextureUnit::UNIT_7:
+                return GL_TEXTURE7;
+            default:
+                return GL_TEXTURE0;
+            }
+        }
+
+        inline GLenum convert(TextureFilter filter) {
+            switch (filter) {
+            case TextureFilter::NEAREST:
+                return GL_NEAREST;
+            case TextureFilter::LINEAR:
+                return GL_LINEAR;
+            case TextureFilter::NEAREST_MIPMAP_NEAREST:
+                return GL_NEAREST_MIPMAP_NEAREST;
+            case TextureFilter::LINEAR_MIPMAP_NEAREST:
+                return GL_LINEAR_MIPMAP_NEAREST;
+            case TextureFilter::NEAREST_MIPMAP_LINEAR:
+                return GL_NEAREST_MIPMAP_LINEAR;
+            case TextureFilter::LINEAR_MIPMAP_LINEAR:
+                return GL_LINEAR_MIPMAP_LINEAR;
+            default:
+                throw std::invalid_argument("Invalid TextureFilter");
+            }
+        }
+
+        inline GLenum convert(TextureWrap wrap) {
+            switch (wrap) {
+            case TextureWrap::REPEAT:
+                return GL_REPEAT;
+            case TextureWrap::MIRRORED_REPEAT:
+                return GL_MIRRORED_REPEAT;
+            case TextureWrap::CLAMP_TO_EDGE:
+                return GL_CLAMP_TO_EDGE;
+            case TextureWrap::CLAMP_TO_BORDER:
+                return GL_CLAMP_TO_BORDER;
+            default:
+                throw std::invalid_argument("Invalid TextureWrap");
+            }
+        }
+
+        struct GDraw {
             static void elements(size_t size, DrawType drawType = DrawType::TRIANGLES) {
                 glDrawElements(convert(drawType), static_cast<GLint>(size), GL_UNSIGNED_INT, 0);
             }
@@ -117,13 +255,13 @@ namespace Byte::OpenGL {
             }
         };
 
-        struct Memory {
+        struct GMemory {
             static void bind(RenderArrayID id = 0) {
                 glBindVertexArray(id);
             }
 
             template<typename Type>
-            static RenderBuffer buildRenderBuffer(
+            static RenderBuffer build(
                 const Vector<Type>& data,
                 Layout layout,
                 BufferMode mode,
@@ -162,7 +300,7 @@ namespace Byte::OpenGL {
                 return buffer;
             }
 
-            static RenderArray buildRenderArray(Mesh& mesh) {
+            static RenderArray build(Mesh& mesh) {
                 RenderArray renderArray{};
                 GLuint id;
                 glGenVertexArrays(1, &id);
@@ -170,7 +308,7 @@ namespace Byte::OpenGL {
 
                 renderArray.id = static_cast<RenderArrayID>(id);
 
-                RenderBuffer vertexBuffer{ buildRenderBuffer<float>(
+                RenderBuffer vertexBuffer{ build<float>(
                     mesh.vertices(),
                     mesh.layout(),
                     mesh.dynamic() ? BufferMode::DYNAMIC : BufferMode::STATIC,
@@ -179,7 +317,7 @@ namespace Byte::OpenGL {
 
                 renderArray.renderBuffers.push_back(vertexBuffer);
 
-                RenderBuffer indexBuffer{ buildRenderBuffer<uint32_t>(
+                RenderBuffer indexBuffer{ build<uint32_t>(
                     mesh.indices(),
                     Layout{},
                     mesh.dynamic() ? BufferMode::DYNAMIC : BufferMode::STATIC,
@@ -221,7 +359,7 @@ namespace Byte::OpenGL {
             }
         };
 
-        struct Shader {
+        struct GShader {
             static void bind(ShaderID id = 0) {
                 glUseProgram(id);
             }
@@ -389,130 +527,132 @@ namespace Byte::OpenGL {
 
         };
 
-        struct Framebuffer {
-            static GLenum convert(DataType type) {
-                switch (type) {
-                case DataType::BYTE:
-                    return GL_BYTE;
-                case DataType::UNSIGNED_BYTE:
-                    return GL_UNSIGNED_BYTE;
-                case DataType::SHORT:
-                    return GL_SHORT;
-                case DataType::UNSIGNED_SHORT:
-                    return GL_UNSIGNED_SHORT;
-                case DataType::INT:
-                    return GL_INT;
-                case DataType::UNSIGNED_INT:
-                    return GL_UNSIGNED_INT;
-                case DataType::FLOAT:
-                    return GL_FLOAT;
-                default:
-                    throw std::invalid_argument("Invalid DataType");
-                }
-            }
-
-            static GLenum convert(ColorFormat format) {
-                switch (format) {
-                case ColorFormat::DEPTH:
-                    return GL_DEPTH_COMPONENT;
-                case ColorFormat::RED:
-                    return GL_RED;
-                case ColorFormat::GREEN:
-                    return GL_GREEN;
-                case ColorFormat::BLUE:
-                    return GL_BLUE;
-                case ColorFormat::ALPHA:
-                    return GL_ALPHA;
-                case ColorFormat::RGB:
-                    return GL_RGB;
-                case ColorFormat::RGBA:
-                    return GL_RGBA;
-                case ColorFormat::RGBA32F:
-                    return GL_RGBA32F;
-                case ColorFormat::RGB32F:
-                    return GL_RGB32F;
-                case ColorFormat::RGBA16F:
-                    return GL_RGBA16F;
-                case ColorFormat::RGB16F:
-                    return GL_RGB16F;
-                case ColorFormat::R11F_G11F_B10F:
-                    return GL_R11F_G11F_B10F;
-                case ColorFormat::R16F:
-                    return GL_R16F;
-                case ColorFormat::R32F:
-                    return GL_R32F;
-                case ColorFormat::R16:
-                    return GL_R16;
-                case ColorFormat::RGB16:
-                    return GL_RGB16;
-                case ColorFormat::RGBA16:
-                    return GL_RGBA16;
-                default:
-                    throw std::invalid_argument("Invalid ColorFormat");
-                }
-            }
-
-            static GLenum convert(AttachmentType type) {
-                switch (type) {
-                case AttachmentType::COLOR_0:
-                    return GL_COLOR_ATTACHMENT0;
-                case AttachmentType::COLOR_1:
-                    return GL_COLOR_ATTACHMENT1;
-                case AttachmentType::COLOR_2:
-                    return GL_COLOR_ATTACHMENT2;
-                case AttachmentType::COLOR_3:
-                    return GL_COLOR_ATTACHMENT3;
-                case AttachmentType::DEPTH:
-                    return GL_DEPTH_ATTACHMENT;
-                default:
-                    throw std::invalid_argument("Invalid AttachmentType");
-                }
-            }
-
-        };
-
-        struct Texture {
-            static void bind(TextureID id) {
-                
+        struct GTexture {
+            static void bind(TextureID id, TextureUnit unit = TextureUnit::UNIT_0) {
+                glActiveTexture(convert(unit));
+                glBindTexture(GL_TEXTURE_2D, id);
             }
 
             static void release(TextureID id) {
-
+                glDeleteTextures(1, &id);
             }
 
-            static GLenum convert(TextureFilter filter) {
-                switch (filter) {
-                case TextureFilter::NEAREST:
-                    return GL_NEAREST;
-                case TextureFilter::LINEAR:
-                    return GL_LINEAR;
-                case TextureFilter::NEAREST_MIPMAP_NEAREST:
-                    return GL_NEAREST_MIPMAP_NEAREST;
-                case TextureFilter::LINEAR_MIPMAP_NEAREST:
-                    return GL_LINEAR_MIPMAP_NEAREST;
-                case TextureFilter::NEAREST_MIPMAP_LINEAR:
-                    return GL_NEAREST_MIPMAP_LINEAR;
-                case TextureFilter::LINEAR_MIPMAP_LINEAR:
-                    return GL_LINEAR_MIPMAP_LINEAR;
-                default:
-                    throw std::invalid_argument("Invalid TextureFilter");
-                }
-            }
+            static TextureID build(Texture& texture) {
+                TextureID textureID;
 
-            static GLenum convert(TextureWrap wrap) {
-                switch (wrap) {
-                case TextureWrap::REPEAT:
-                    return GL_REPEAT;
-                case TextureWrap::MIRRORED_REPEAT:
-                    return GL_MIRRORED_REPEAT;
-                case TextureWrap::CLAMP_TO_EDGE:
-                    return GL_CLAMP_TO_EDGE;
-                case TextureWrap::CLAMP_TO_BORDER:
-                    return GL_CLAMP_TO_BORDER;
-                default:
-                    throw std::invalid_argument("Invalid TextureWrap");
-                }
+                GLint glWidth{ static_cast<GLint>(texture.width()) };
+                GLint glHeight{ static_cast<GLint>(texture.height()) };
+
+                glGenTextures(1, &textureID);
+
+                glBindTexture(GL_TEXTURE_2D, textureID);
+
+                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, convert(texture.wrapS()));
+                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, convert(texture.wrapT()));
+                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, convert(texture.minFilter()));
+                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, convert(texture.magFilter()));
+
+                uint8_t* textureData{ texture.data().empty() ? nullptr : texture.data().data() };
+
+                glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+                glTexImage2D(
+                    GL_TEXTURE_2D, 0,
+                    convert(texture.internalFormat()),
+                    glWidth, glHeight, 0,
+                    convert(texture.format()),
+                    convert(texture.dataType()),
+                    textureData);
+
+                glGenerateMipmap(GL_TEXTURE_2D);
+
+                glBindTexture(GL_TEXTURE_2D, 0);
+
+                return textureID;
             }
         };
 
+        struct GFramebuffer {
+            static void bind(Framebuffer& buffer, FramebufferID id) {
+                glBindFramebuffer(GL_FRAMEBUFFER, id);
+
+                if (!buffer.attachments().empty()) {
+                    Vector<uint32_t> attachments;
+                    for (auto& att : buffer.attachments()) {
+                        attachments.push_back(convert(att));
+                    }
+                    glDrawBuffers(static_cast<GLsizei>(attachments.size()), attachments.data());
+                }
+
+                glViewport(0, 0, static_cast<GLsizei>(buffer.width()), static_cast<GLsizei>(buffer.height()));
+            }
+
+            static Pair<FramebufferID,Map<AssetID, TextureID>> build(Framebuffer& buffer) {
+                FramebufferID id{};
+                Map<AssetID, TextureID> textureIDs{};
+                glGenFramebuffers(1, &id);
+                glBindFramebuffer(GL_FRAMEBUFFER, id);
+
+                GLint glWidth{ static_cast<GLint>(buffer.width()) };
+                GLint glHeight{ static_cast<GLint>(buffer.height()) };
+
+                bool hasDepth{ false };
+
+                for (auto& [tag, att] : buffer.textures()) {
+                    size_t width{ att.width() ? att.width() : buffer.width()};
+                    size_t height{ att.height() ? att.height() : buffer.height()};
+
+                    att.width(width);
+                    att.height(height);
+
+                    TextureID attID{ GTexture::build(att) };
+                    textureIDs.emplace(att.assetID(), attID);
+                    glFramebufferTexture2D(
+                        GL_FRAMEBUFFER, convert(att.attachment()),GL_TEXTURE_2D, attID, 0);
+
+                    if (att.attachment() == AttachmentType::DEPTH) {
+                        hasDepth = true;
+                    }
+                    else {
+                        buffer.attachments().push_back(att.attachment());
+                    }
+                }
+
+                std::sort(buffer.attachments().begin(), buffer.attachments().end(), 
+                    [](AttachmentType a, AttachmentType b) {
+                        return static_cast<uint8_t>(a) < static_cast<uint8_t>(b);
+                    });
+
+                if (!hasDepth) {
+                    unsigned int rboDepth;
+                    glGenRenderbuffers(1, &rboDepth);
+                    glBindRenderbuffer(GL_RENDERBUFFER, rboDepth);
+                    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, glWidth, glHeight);
+                    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, rboDepth);
+                }
+
+                if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
+                    Vector<TextureID> toDelete{};
+                    for (auto [_, deleteID] : textureIDs) {
+                        toDelete.push_back(deleteID);
+                    }
+                    release(id,toDelete);
+                    throw std::exception("Framebuffer not complete");
+                }
+
+                glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+                return std::make_pair(id,std::move(textureIDs));
+            }
+
+            static void release(FramebufferID id, Vector<TextureID> textureIDs) {
+                if (!textureIDs.empty()) {
+                    glDeleteTextures(static_cast<GLsizei>(textureIDs.size()), textureIDs.data());
+                }
+
+                if (id) {
+                    glDeleteFramebuffers(1, &id);
+                }
+            }
+
+        };
 }

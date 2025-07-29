@@ -15,9 +15,8 @@ namespace Byte {
 		size_t height{};
 
 		Map<AssetID, Shader> shaders;
+		Map<AssetID, Framebuffer> framebuffers;
 		Map<AssetID, Mesh> meshes;
-
-		Map<Tag, Framebuffer> framebuffers;
 
 		Map<Tag, Variant<bool, int, uint64_t, float, Vec3, Quaternion,Mat4>> parameters;
 
