@@ -30,7 +30,7 @@ int main() {
 
 	World world;
 	MeshRenderer meshRenderer{ mesh.assetID(),material.assetID() };
-	world.createEntity<MeshRenderer, Transform>(std::move(meshRenderer), Transform{});
+	world.create<MeshRenderer, Transform>(std::move(meshRenderer), Transform{});
 
 	repository.mesh(mesh.assetID(), std::move(mesh));
 	repository.material(material.assetID(), std::move(material));
@@ -42,9 +42,9 @@ int main() {
 
 	renderer.submit(std::move(shader));
 
-	EntityID camera{ world.createEntity<Camera, Transform>(Camera{}, Transform{}) };
+	EntityID camera{ world.create<Camera, Transform>(Camera{}, Transform{}) };
 	EntityID directionalLight{ 
-		world.createEntity<DirectionalLight, Transform>(DirectionalLight{}, Transform{}) };
+		world.create<DirectionalLight, Transform>(DirectionalLight{}, Transform{}) };
 
 	RenderContext context{ world,repository, camera, directionalLight };
 

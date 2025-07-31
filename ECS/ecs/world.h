@@ -12,10 +12,10 @@
 namespace Byte {
 
 	template<
-	typename _EntityID,
-	template<typename> class _EntityIDGenerator,
-	template<typename> class _Container,
-	size_t _MAX_COMPONENT_COUNT>
+		typename _EntityID,
+		template<typename> class _EntityIDGenerator,
+		template<typename> class _Container,
+		size_t _MAX_COMPONENT_COUNT>
 	class _World {
 	public:
 		inline static constexpr size_t MAX_COMPONENT_COUNT{ _MAX_COMPONENT_COUNT };
@@ -58,27 +58,27 @@ namespace Byte {
 
 		_World& operator=(_World&& right) noexcept = default;
 
-		EntityID createEntity() {
+		EntityID create() {
 			EntityID id{ EntityIDGenerator::generate() };
-			_entities.emplace(id,EntityData{});
+			_entities.emplace(id, EntityData{});
 			return id;
 		}
 
 		template<typename Component, typename... Components>
-		EntityID createEntity(Component&& component, Components&&... components) {
-			EntityID out{ createEntity() };
+		EntityID create(Component&& component, Components&&... components) {
+			EntityID out{ create() };
 			attach(out, std::forward<Component>(component), std::forward<Components>(components)...);
 			return out;
 		}
 
-		void destroyEntity(EntityID id) {
+		void destroy(EntityID id) {
 			EntityData& data{ _entities.at(id) };
 			data.arche->erase(data._index);
 			_entities.erase(id);
 		}
 
-		EntityID copyEntity(EntityID source) {
-			EntityID out{ createEntity() };
+		EntityID clone(EntityID source) {
+			EntityID out{ create() };
 			EntityData& sourceData{ _entities.at(source) };
 			sourceData.arche->copyEntity(sourceData._index, out, *sourceData.arche);
 			_entities.at(out).arche = sourceData.arche;
@@ -99,15 +99,15 @@ namespace Byte {
 			}
 
 			auto result{ _arches.find(signature) };
-			if (result != _arches.end()){
+			if (result != _arches.end()) {
 				newArche = &result->second;
 			}
 			else {
 				if (oldArche) {
-					_arches.emplace(signature,Archetype::template build<Component, Components...>(*oldArche));
+					_arches.emplace(signature, Archetype::template build<Component, Components...>(*oldArche));
 				}
 				else {
-					_arches.emplace(signature,Archetype::template build<Component, Components...>());
+					_arches.emplace(signature, Archetype::template build<Component, Components...>());
 				}
 				newArche = &_arches[signature];
 			}
@@ -183,7 +183,7 @@ namespace Byte {
 
 			return false;
 		}
-		
+
 		size_t size() const {
 			return _entities.size();
 		}
@@ -193,7 +193,7 @@ namespace Byte {
 			out._arches = _arches;
 			out._entities = _entities;
 
-			for (auto pair: _entities) {
+			for (auto pair : _entities) {
 				auto& test{ out._entities.at(pair.first) };
 				auto& test2{ out._arches.at(pair.second.arche->signature()) };
 				out._entities.at(pair.first).arche = &out._arches.at(pair.second.arche->signature());
