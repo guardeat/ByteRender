@@ -265,7 +265,7 @@ namespace Byte::OpenGL {
             }
 
             template<typename Type>
-            static RenderBuffer build(
+            static RenderBufferID build(
                 const Vector<Type>& data,
                 Layout layout,
                 BufferMode mode,
@@ -296,12 +296,7 @@ namespace Byte::OpenGL {
                     offset += layout[attribIndex] * sizeof(Type);
                 }
 
-                RenderBuffer buffer{};
-                buffer.id = bufferID;
-                buffer.layout = std::move(layout);
-                buffer.mode = mode;
-
-                return buffer;
+                return bufferID;
             }
 
             static RenderArray build(Mesh& mesh) {
@@ -312,7 +307,7 @@ namespace Byte::OpenGL {
 
                 renderArray.id = static_cast<RenderArrayID>(id);
 
-                RenderBuffer vertexBuffer{ build<float>(
+                RenderBufferID vertexBuffer{ build<float>(
                     mesh.vertices(),
                     mesh.layout(),
                     mesh.dynamic() ? BufferMode::DYNAMIC : BufferMode::STATIC,
@@ -321,7 +316,7 @@ namespace Byte::OpenGL {
 
                 renderArray.renderBuffers.push_back(vertexBuffer);
 
-                RenderBuffer indexBuffer{ build<uint32_t>(
+                RenderBufferID indexBuffer{ build<uint32_t>(
                     mesh.indices(),
                     Layout{},
                     mesh.dynamic() ? BufferMode::DYNAMIC : BufferMode::STATIC,
@@ -336,13 +331,13 @@ namespace Byte::OpenGL {
             }
 
             static void release(RenderArray& renderArray) {
-                if (renderArray.indexBuffer.id != 0) {
-                    glDeleteBuffers(1, &renderArray.indexBuffer.id);
+                if (renderArray.indexBuffer != 0) {
+                    glDeleteBuffers(1, &renderArray.indexBuffer);
                 }
 
                 for (auto& buffer : renderArray.renderBuffers) {
-                    if (buffer.id != 0) {
-                        glDeleteBuffers(1, &buffer.id);
+                    if (buffer != 0) {
+                        glDeleteBuffers(1, &buffer);
                     }
                 }
 

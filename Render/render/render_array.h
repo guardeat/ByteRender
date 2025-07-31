@@ -6,20 +6,12 @@
 
 namespace Byte {
 
-	struct RenderBuffer {
-		RenderBufferID id;
-
-		Layout layout;
-
-		BufferMode mode;
-	};
-
 	struct RenderArray {
 		RenderArrayID id;
 
-		Vector<RenderBuffer> renderBuffers;
+		Vector<RenderBufferID> renderBuffers;
 
-		RenderBuffer indexBuffer;
+		RenderBufferID indexBuffer;
 	};
 
 }
