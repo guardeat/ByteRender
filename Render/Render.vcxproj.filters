@@ -42,9 +42,6 @@
     <ClInclude Include="render\pipeline.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="render\render_array.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="render\framebuffer.h">
       <Filter>Header Files</Filter>
     </ClInclude>

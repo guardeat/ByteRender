@@ -8,7 +8,7 @@
 #include "core/window.h"
 #include "core/mesh.h"
 #include "core/byte_math.h"
-#include "render_array.h"
+#include "render_types.h"
 #include "framebuffer.h"
 #include "texture.h"
 
@@ -260,12 +260,12 @@ namespace Byte::OpenGL {
         };
 
         struct GMemory {
-            static void bind(RenderArrayID id = 0) {
+            static void bind(GPUBuffer id = 0) {
                 glBindVertexArray(id);
             }
 
             template<typename Type>
-            static RenderBufferID build(
+            static GPUBuffer build(
                 const Vector<Type>& data,
                 Layout layout,
                 BufferMode mode,
@@ -299,15 +299,15 @@ namespace Byte::OpenGL {
                 return bufferID;
             }
 
-            static RenderArray build(Mesh& mesh) {
-                RenderArray renderArray{};
+            static GPUBufferGroup build(Mesh& mesh) {
+                GPUBufferGroup renderArray{};
                 GLuint id;
                 glGenVertexArrays(1, &id);
                 glBindVertexArray(id);
 
-                renderArray.id = static_cast<RenderArrayID>(id);
+                renderArray.id = static_cast<GPUBuffer>(id);
 
-                RenderBufferID vertexBuffer{ build<float>(
+                GPUBuffer vertexBuffer{ build<float>(
                     mesh.vertices(),
                     mesh.layout(),
                     mesh.dynamic() ? BufferMode::DYNAMIC : BufferMode::STATIC,
@@ -316,7 +316,7 @@ namespace Byte::OpenGL {
 
                 renderArray.renderBuffers.push_back(vertexBuffer);
 
-                RenderBufferID indexBuffer{ build<uint32_t>(
+                GPUBuffer indexBuffer{ build<uint32_t>(
                     mesh.indices(),
                     Layout{},
                     mesh.dynamic() ? BufferMode::DYNAMIC : BufferMode::STATIC,
@@ -330,14 +330,14 @@ namespace Byte::OpenGL {
                 return renderArray;
             }
 
-            static void release(RenderArray& renderArray) {
+            static void release(GPUBufferGroup& renderArray) {
                 if (renderArray.indexBuffer != 0) {
-                    glDeleteBuffers(1, &renderArray.indexBuffer);
+                    glDeleteBuffers(1, &renderArray.indexBuffer.id);
                 }
 
                 for (auto& buffer : renderArray.renderBuffers) {
                     if (buffer != 0) {
-                        glDeleteBuffers(1, &buffer);
+                        glDeleteBuffers(1, &buffer.id);
                     }
                 }
 
@@ -359,77 +359,77 @@ namespace Byte::OpenGL {
         };
 
         struct GShader {
-            static void bind(ShaderID id = 0) {
+            static void bind(GPUShader id = 0) {
                 glUseProgram(id);
             }
 
             template<typename Type>
-            static void uniform(ShaderID id, const std::string& name, const Type& value) {
+            static void uniform(GPUShader id, const std::string& name, const Type& value) {
                 throw std::exception("No such uniform type");
             }
 
             template<>
-            static void uniform<bool>(ShaderID id, const std::string& name, const bool& value) {
+            static void uniform<bool>(GPUShader id, const std::string& name, const bool& value) {
                 auto loc{ glGetUniformLocation(id, name.c_str()) };
                 glUniform1i(loc, (int)value);
             }
 
             template<>
-            static void uniform<int>(ShaderID id, const std::string& name, const int& value) {
+            static void uniform<int>(GPUShader id, const std::string& name, const int& value) {
                 auto loc{ glGetUniformLocation(id, name.c_str()) };
                 glUniform1i(loc, value);
             }
 
             template<>
-            static void uniform<size_t>(ShaderID id, const std::string& name, const size_t& value) {
+            static void uniform<size_t>(GPUShader id, const std::string& name, const size_t& value) {
                 auto loc{ glGetUniformLocation(id, name.c_str()) };
                 glUniform1i(loc, static_cast<GLint>(value));
             }
 
             template<>
-            static void uniform<float>(ShaderID id, const std::string& name, const float& value) {
+            static void uniform<float>(GPUShader id, const std::string& name, const float& value) {
                 auto loc{ glGetUniformLocation(id, name.c_str()) };
                 glUniform1f(loc, value);
             }
 
             template<>
-            static void uniform<Vec2>(ShaderID id, const std::string& name, const Vec2& value) {
+            static void uniform<Vec2>(GPUShader id, const std::string& name, const Vec2& value) {
                 auto loc{ glGetUniformLocation(id, name.c_str()) };
                 glUniform2f(loc, value.x, value.y);
             }
 
             template<>
-            static void uniform<Vec3>(ShaderID id, const std::string& name, const Vec3& value) {
+            static void uniform<Vec3>(GPUShader id, const std::string& name, const Vec3& value) {
                 auto loc{ glGetUniformLocation(id, name.c_str()) };
                 glUniform3f(loc, value.x, value.y, value.z);
             }
 
             template<>
-            static void uniform<Vec4>(ShaderID id, const std::string& name, const Vec4& value) {
+            static void uniform<Vec4>(GPUShader id, const std::string& name, const Vec4& value) {
                 auto loc{ glGetUniformLocation(id, name.c_str()) };
                 glUniform4f(loc, value.x, value.y, value.z, value.w);
             }
 
             template<>
-            static void uniform<Quaternion>(ShaderID id, const std::string& name, const Quaternion& value) {
+            static void uniform<Quaternion>(GPUShader id, const std::string& name, const Quaternion& value) {
                 auto loc{ glGetUniformLocation(id, name.c_str()) };
                 glUniform4f(loc, value.x, value.y, value.z, value.w);
             }
 
             template<>
-            static void uniform<Mat2>(ShaderID id, const std::string& name, const Mat2& value) {
+            static void uniform<Mat2>(GPUShader id, const std::string& name, const Mat2& value) {
                 auto loc{ glGetUniformLocation(id, name.c_str()) };
                 glUniformMatrix2fv(loc, 1, GL_FALSE, value.data);
             }
 
             template<>
-            static void uniform<Mat3>(ShaderID id, const std::string& name, const Mat3& value) {
+            static void uniform<Mat3>(GPUShader id, const std::string& name, const Mat3& value) {
                 auto loc{ glGetUniformLocation(id, name.c_str()) };
                 glUniformMatrix3fv(loc, 1, GL_FALSE, value.data);
             }
 
             template<>
-            static void uniform<Mat4>(ShaderID id, const std::string& name, const Mat4& value) {
+            static void uniform<Mat4>(GPUShader id, const std::string& name, const Mat4& value) {
                 auto loc{ glGetUniformLocation(id, name.c_str()) };
                 glUniformMatrix4fv(loc, 1, GL_FALSE, value.data);
             }
@@ -470,11 +470,11 @@ namespace Byte::OpenGL {
                 }
             }
 
-            static void releaseProgram(ShaderID id) {
+            static void releaseProgram(GPUShader id) {
                 glDeleteProgram(id);
             }
 
-            static ShaderID buildProgram(
+            static GPUShader buildProgram(
                 uint32_t vertex,
                 uint32_t fragment,
                 uint32_t geometry = 0) {
@@ -527,22 +527,22 @@ namespace Byte::OpenGL {
         };
 
         struct GTexture {
-            static void bind(TextureID id, TextureUnit unit = TextureUnit::UNIT_0) {
+            static void bind(GPUTexture id, TextureUnit unit = TextureUnit::UNIT_0) {
                 glActiveTexture(convert(unit));
                 glBindTexture(GL_TEXTURE_2D, id);
             }
 
-            static void release(TextureID id) {
-                glDeleteTextures(1, &id);
+            static void release(GPUTexture id) {
+                glDeleteTextures(1, &id.id);
             }
 
-            static TextureID build(Texture& texture) {
-                TextureID textureID;
+            static GPUTexture build(Texture& texture) {
+                GPUTexture textureID;
 
                 GLint glWidth{ static_cast<GLint>(texture.width()) };
                 GLint glHeight{ static_cast<GLint>(texture.height()) };
 
-                glGenTextures(1, &textureID);
+                glGenTextures(1, &textureID.id);
 
                 glBindTexture(GL_TEXTURE_2D, textureID);
 
@@ -571,7 +571,7 @@ namespace Byte::OpenGL {
         };
 
         struct GFramebuffer {
-            static void bind(const Framebuffer& buffer, FramebufferID id) {
+            static void bind(const Framebuffer& buffer, GPUFramebuffer id) {
                 glBindFramebuffer(GL_FRAMEBUFFER, id);
 
                 if (!buffer.attachments().empty()) {
@@ -590,10 +590,10 @@ namespace Byte::OpenGL {
                 glViewport(0, 0, static_cast<GLsizei>(width), static_cast<GLsizei>(height));
             }
 
-            static Pair<FramebufferID,Map<AssetID, TextureID>> build(Framebuffer& buffer) {
-                FramebufferID id{};
-                Map<AssetID, TextureID> textureIDs{};
-                glGenFramebuffers(1, &id);
+            static Pair<GPUFramebuffer,Map<AssetID, GPUTexture>> build(Framebuffer& buffer) {
+                GPUFramebuffer id{};
+                Map<AssetID, GPUTexture> textureIDs{};
+                glGenFramebuffers(1, &id.id);
                 glBindFramebuffer(GL_FRAMEBUFFER, id);
 
                 GLint glWidth{ static_cast<GLint>(buffer.width()) };
@@ -608,7 +608,7 @@ namespace Byte::OpenGL {
                     att.width(width);
                     att.height(height);
 
-                    TextureID attID{ GTexture::build(att) };
+                    GPUTexture attID{ GTexture::build(att) };
                     textureIDs.emplace(att.assetID(), attID);
                     glFramebufferTexture2D(
                         GL_FRAMEBUFFER, convert(att.attachment()),GL_TEXTURE_2D, attID, 0);
@@ -635,9 +635,9 @@ namespace Byte::OpenGL {
                 }
 
                 if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
-                    Vector<TextureID> toDelete{};
+                    Vector<GPUResourceID> toDelete{};
                     for (auto [_, deleteID] : textureIDs) {
-                        toDelete.push_back(deleteID);
+                        toDelete.push_back(deleteID.id);
                     }
                     release(id,toDelete);
                     throw std::exception("Framebuffer not complete");
@@ -648,13 +648,13 @@ namespace Byte::OpenGL {
                 return std::make_pair(id,std::move(textureIDs));
             }
 
-            static void release(FramebufferID id, Vector<TextureID> textureIDs) {
+            static void release(GPUFramebuffer id, const Vector<GPUResourceID>& textureIDs) {
                 if (!textureIDs.empty()) {
                     glDeleteTextures(static_cast<GLsizei>(textureIDs.size()), textureIDs.data());
                 }
 
                 if (id) {
-                    glDeleteFramebuffers(1, &id);
+                    glDeleteFramebuffers(1, &id.id);
                 }
             }
 

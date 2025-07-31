@@ -6,7 +6,6 @@
 #include "core/transform.h"
 #include "opengl_api.h"
 #include "render_types.h"
-#include "render_array.h"
 #include "instance_group.h"
 #include "shader.h"
 #include "texture.h"
@@ -15,18 +14,14 @@ namespace Byte {
 
 	class RenderDevice {
 	private:
-		Map<AssetID, RenderArray> _meshArrays;
-		Map<AssetID, RenderArray> _instancedArrays;
-		Map<AssetID, TextureID> _textureIDs;
-		Map<AssetID, ShaderID> _shaderIDs;
-		Map<AssetID, FramebufferID> _framebufferIDs;
-
-		size_t _maxInactiveFrames{ 10 };
+		Map<AssetID, GPUBufferGroup> _meshes;
+		Map<AssetID, GPUBufferGroup> _instanceGroups;
+		Map<AssetID, GPUTexture> _textures;
+		Map<AssetID, GPUShader> _shaders;
+		Map<AssetID, GPUFramebuffer> _framebuffers;
 
 	public:
-		RenderDevice(size_t maxInactiveFrames = 10)
-			: _maxInactiveFrames(maxInactiveFrames) {
-		}
+		RenderDevice() = default;
 
 		~RenderDevice() {
 			clear();
@@ -37,8 +32,8 @@ namespace Byte {
 		}
 
 		void load(Mesh& mesh) {
-			RenderArray meshArray{ OpenGL::GMemory::build(mesh) };
-			_meshArrays.emplace(mesh.assetID(), std::move(meshArray));
+			GPUBufferGroup bufferGroup{ OpenGL::GMemory::build(mesh) };
+			_meshes.emplace(mesh.assetID(), std::move(bufferGroup));
 		}
 
 		void load(InstanceGroup& instanced, Mesh& mesh) {
@@ -54,42 +49,42 @@ namespace Byte {
 				geometry = OpenGL::GShader::compileShader(shader.geometry(), ShaderType::GEOMETRY);
 			}
 
-			_shaderIDs.emplace(shader.assetID(), OpenGL::GShader::buildProgram(vertex, fragment, geometry));
+			_shaders.emplace(shader.assetID(), OpenGL::GShader::buildProgram(vertex, fragment, geometry));
 		}
 
 		void load(Texture& texture) {
-			TextureID id{ OpenGL::GTexture::build(texture) };
-			_textureIDs.emplace(texture.assetID(), id);
+			GPUTexture id{ OpenGL::GTexture::build(texture) };
+			_textures.emplace(texture.assetID(), id);
 		}
 
 		void load(Framebuffer& buffer) {
 			auto [id, textures] = OpenGL::GFramebuffer::build(buffer);
 
 			for (auto [assetID, gID] : textures) {
-				_textureIDs.emplace(assetID, gID);
+				_textures.emplace(assetID, gID);
 			}
 
-			_framebufferIDs.emplace(buffer.assetID(), id);
+			_framebuffers.emplace(buffer.assetID(), id);
 		}
 
 		bool loaded(Mesh& mesh) {
-			return _meshArrays.contains(mesh.assetID());
+			return _meshes.contains(mesh.assetID());
 		}
 
 		bool loaded(InstanceGroup& group) {
-			return _instancedArrays.contains(group.assetID());
+			return _instanceGroups.contains(group.assetID());
 		}
 
 		bool loaded(Shader& shader) {
-			return _shaderIDs.contains(shader.assetID());
+			return _shaders.contains(shader.assetID());
 		}
 
 		bool loaded(Texture& texture) {
-			return _textureIDs.contains(texture.assetID());
+			return _textures.contains(texture.assetID());
 		}
 
 		bool loaded(Framebuffer& buffer) {
-			return _framebufferIDs.contains(buffer.assetID());
+			return _framebuffers.contains(buffer.assetID());
 		}
 
 		void update(Window& window) {
@@ -97,27 +92,27 @@ namespace Byte {
 		}
 
 		void bind(const Mesh& mesh) {
-			RenderArray& renderArray{ _meshArrays.at(mesh.assetID()) };
-			OpenGL::GMemory::bind(renderArray.id);
+			GPUBufferGroup& bufferGroup{ _meshes.at(mesh.assetID()) };
+			OpenGL::GMemory::bind(bufferGroup.id);
 		}
 
 		void bind(const Shader& shader) {
-			ShaderID id{ _shaderIDs.at(shader.assetID()) };
+			GPUShader id{ _shaders.at(shader.assetID()) };
 			OpenGL::GShader::bind(id);
 		}
 
 		void bind(const InstanceGroup& group) {
-			RenderArray renderArray{ _instancedArrays.at(group.assetID()) };
-			OpenGL::GMemory::bind(renderArray.id);
+			GPUBufferGroup bufferGroup{ _instanceGroups.at(group.assetID()) };
+			OpenGL::GMemory::bind(bufferGroup.id);
 		}
 
 		void bind(const Texture& texture, TextureUnit unit = TextureUnit::UNIT_0) {
-			TextureID id{ _textureIDs.at(texture.assetID()) };
+			GPUTexture id{ _textures.at(texture.assetID()) };
 			OpenGL::GTexture::bind(id, unit);
 		}
 
 		void bind(const Framebuffer& buffer) {
-			OpenGL::GFramebuffer::bind(buffer, _framebufferIDs.at(buffer.assetID()));
+			OpenGL::GFramebuffer::bind(buffer, _framebuffers.at(buffer.assetID()));
 		}
 
 		void bindDefault(size_t width, size_t height) {
@@ -132,16 +127,16 @@ namespace Byte {
 			if (buffer.resize()) {
 				AssetID assetID{ buffer.assetID() };
 
-				Vector<TextureID> ids;
+				Vector<GPUResourceID> ids;
 				for (auto& [_, texture] : buffer.textures()) {
-					ids.push_back(_textureIDs.at(texture.assetID()));
+					ids.push_back(_textures.at(texture.assetID()).id);
 					texture.width(width);
 					texture.height(height);
-					_textureIDs.erase(texture.assetID());
+					_textures.erase(texture.assetID());
 				}
 
-				OpenGL::GFramebuffer::release(_framebufferIDs.at(assetID), ids);
-				_framebufferIDs.erase(assetID);
+				OpenGL::GFramebuffer::release(_framebuffers.at(assetID), ids);
+				_framebuffers.erase(assetID);
 
 				buffer.attachments().clear();
 				buffer.width(static_cast<size_t>(static_cast<float>(width) * buffer.resizeFactor()));
@@ -152,58 +147,58 @@ namespace Byte {
 		}
 
 		void release(Mesh& mesh) {
-			auto it{ _meshArrays.find(mesh.assetID()) };
-			if (it != _meshArrays.end()) {
+			auto it{ _meshes.find(mesh.assetID()) };
+			if (it != _meshes.end()) {
 				OpenGL::GMemory::release(it->second);
-				_meshArrays.erase(it);
+				_meshes.erase(it);
 			}
 		}
 
 		void release(InstanceGroup& group) {
-			auto it{ _instancedArrays.find(group.assetID()) };
-			if (it != _instancedArrays.end()) {
+			auto it{ _instanceGroups.find(group.assetID()) };
+			if (it != _instanceGroups.end()) {
 				OpenGL::GMemory::release(it->second);
-				_instancedArrays.erase(it);
+				_instanceGroups.erase(it);
 			}
 		}
 
 		void release(Shader& shader) {
-			auto it{ _shaderIDs.find(shader.assetID()) };
-			if (it != _shaderIDs.end()) {
+			auto it{ _shaders.find(shader.assetID()) };
+			if (it != _shaders.end()) {
 				OpenGL::GShader::releaseProgram(it->second);
-				_shaderIDs.erase(it);
+				_shaders.erase(it);
 			}
 		}
 
 		void release(Texture& texture) {
-			auto it{ _textureIDs.find(texture.assetID()) };
-			if (it != _textureIDs.end()) {
+			auto it{ _textures.find(texture.assetID()) };
+			if (it != _textures.end()) {
 				OpenGL::GTexture::release(it->second);
-				_textureIDs.erase(it);
+				_textures.erase(it);
 			}
 		}
 
 		void release(Framebuffer& buffer) {
-			auto it{ _framebufferIDs.find(buffer.assetID()) };
-			if (it != _framebufferIDs.end()) {
-				Vector<TextureID> ids;
+			auto it{ _framebuffers.find(buffer.assetID()) };
+			if (it != _framebuffers.end()) {
+				Vector<GPUResourceID> ids;
 				for (auto& [_, texture] : buffer.textures()) {
-					ids.push_back(_textureIDs.at(texture.assetID()));
+					ids.push_back(_textures.at(texture.assetID()).id);
 				}
 
 				OpenGL::GFramebuffer::release(it->second, ids);
-				_framebufferIDs.erase(it);
+				_framebuffers.erase(it);
 			}
 		}
 
 		template<typename Type>
 		void uniform(const Shader& shader, const Tag& tag, const Type& value) {
-			ShaderID id{ _shaderIDs.at(shader.assetID()) };
+			GPUShader id{ _shaders.at(shader.assetID()) };
 			OpenGL::GShader::uniform(id, tag, value);
 		}
 
 		void uniform(const Shader& shader, Material& material) {
-			ShaderID id{ _shaderIDs.at(shader.assetID()) };
+			GPUShader id{ _shaders.at(shader.assetID()) };
 
 			if (shader.uniforms().contains("uColor")) {
 				OpenGL::GShader::uniform(id, "uColor", material.color());
@@ -219,7 +214,7 @@ namespace Byte {
 		}
 
 		void uniform(const Shader& shader, const Transform& transform) {
-			ShaderID id{ _shaderIDs.at(shader.assetID()) };
+			GPUShader id{ _shaders.at(shader.assetID()) };
 			OpenGL::GShader::uniform(id, "uPosition", transform.position());
 			OpenGL::GShader::uniform(id, "uScale", transform.scale());
 			OpenGL::GShader::uniform(id, "uRotation", transform.rotation());
@@ -232,7 +227,7 @@ namespace Byte {
 			TextureUnit unit = TextureUnit::UNIT_0) {
 			bind(texture, unit);
 
-			ShaderID id{ _shaderIDs.at(shader.assetID()) };
+			GPUShader id{ _shaders.at(shader.assetID()) };
 			OpenGL::GShader::uniform(id, uniform, static_cast<int>(unit));
 		}
 
@@ -249,30 +244,30 @@ namespace Byte {
 		}
 
 		void clear() {
-			for (auto& [assetID, renderArray] : _meshArrays) {
-				OpenGL::GMemory::release(renderArray);
+			for (auto& [assetID, group] : _meshes) {
+				OpenGL::GMemory::release(group);
 			}
-			_meshArrays.clear();
+			_meshes.clear();
 
-			for (auto& [renderID, renderArray] : _instancedArrays) {
-				OpenGL::GMemory::release(renderArray);
+			for (auto& [renderID, group] : _instanceGroups) {
+				OpenGL::GMemory::release(group);
 			}
-			_instancedArrays.clear();
+			_instanceGroups.clear();
 
-			for (auto& [assetID, shader] : _shaderIDs) {
+			for (auto& [assetID, shader] : _shaders) {
 				OpenGL::GShader::releaseProgram(shader);
 			}
-			_shaderIDs.clear();
+			_shaders.clear();
 
-			for (auto& [assetID, texture] : _textureIDs) {
+			for (auto& [assetID, texture] : _textures) {
 				OpenGL::GTexture::release(texture);
 			}
-			_textureIDs.clear();
+			_textures.clear();
 
-			for (auto& [tag, buffer] : _framebufferIDs) {
-				OpenGL::GTexture::release(buffer);
+			for (auto& [tag, buffer] : _framebuffers) {
+				OpenGL::GFramebuffer::release(buffer, Vector<GPUResourceID>{});
 			}
-			_framebufferIDs.clear();
+			_framebuffers.clear();
 		}
 
 	};

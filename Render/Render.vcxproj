@@ -148,7 +148,6 @@
     <ClInclude Include="render\render_types.h" />
     <ClInclude Include="render\shader.h" />
     <ClInclude Include="render\texture.h" />
-    <ClInclude Include="render\render_array.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="external\glad.c" />

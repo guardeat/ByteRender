@@ -59,11 +59,11 @@ namespace Byte {
 			return _repository->material(id);
 		}
 
-		Texture& texture(TextureID id) {
+		Texture& texture(AssetID id) {
 			return _repository->texture(id);
 		}
 
-		const Texture& texture(TextureID id) const {
+		const Texture& texture(AssetID id) const {
 			return _repository->texture(id);
 		}
 

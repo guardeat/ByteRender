@@ -131,7 +131,7 @@ namespace Byte {
 			Vector<float> vertices{};
 			Vector<uint32_t> indices{};
 
-			float PI{ pi<float>() };
+			constexpr float PI{ pi<float>() };
 			uint32_t rings{ resolution };
 			uint32_t sectors{ resolution * 2 };
 
