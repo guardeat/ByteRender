@@ -13,13 +13,14 @@
 #include "texture.h"
 #include "instance_group.h"
 
-namespace Byte::OpenGL {
+namespace Byte {
 
-        inline void framebufferSizeCallback(GLFWwindow* window, int width, int height) {
+    struct OpenGL {
+        static void framebufferSizeCallback(GLFWwindow* window, int width, int height) {
             glViewport(0, 0, width, height);
         }
 
-        inline void initialize(Window& window) {
+        static void initialize(Window& window) {
             static bool initialized{ false };
 
             glfwMakeContextCurrent(&window.handle());
@@ -48,16 +49,16 @@ namespace Byte::OpenGL {
             }
         }
 
-        inline void update(Window& window) {
+        static void update(Window& window) {
             glfwSwapBuffers(&window.handle());
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         }
 
-        inline void clear() {
+        static void clear() {
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         }
 
-        inline void state(RenderState state) {
+        static void state(RenderState state) {
             switch (state) {
             case RenderState::ENABLE_DEPTH:
                 glEnable(GL_DEPTH_TEST);
@@ -86,7 +87,7 @@ namespace Byte::OpenGL {
             }
         }
 
-        inline GLenum convert(AttachmentType type) {
+        static GLenum convert(AttachmentType type) {
             switch (type) {
             case AttachmentType::COLOR_0:
                 return GL_COLOR_ATTACHMENT0;
@@ -103,7 +104,7 @@ namespace Byte::OpenGL {
             }
         }
 
-        inline GLenum convert(DataType type) {
+        static GLenum convert(DataType type) {
             switch (type) {
             case DataType::BYTE:
                 return GL_BYTE;
@@ -124,7 +125,7 @@ namespace Byte::OpenGL {
             }
         }
 
-        inline GLenum convert(ColorFormat format) {
+        static GLenum convert(ColorFormat format) {
             switch (format) {
             case ColorFormat::DEPTH:
                 return GL_DEPTH_COMPONENT;
@@ -165,7 +166,7 @@ namespace Byte::OpenGL {
             }
         }
 
-        inline GLenum convert(TextureUnit unit) {
+        static GLenum convert(TextureUnit unit) {
             switch (unit) {
             case TextureUnit::UNIT_0:
                 return GL_TEXTURE0;
@@ -188,7 +189,7 @@ namespace Byte::OpenGL {
             }
         }
 
-        inline GLenum convert(TextureFilter filter) {
+        static GLenum convert(TextureFilter filter) {
             switch (filter) {
             case TextureFilter::NEAREST:
                 return GL_NEAREST;
@@ -207,7 +208,7 @@ namespace Byte::OpenGL {
             }
         }
 
-        inline GLenum convert(TextureWrap wrap) {
+        static GLenum convert(TextureWrap wrap) {
             switch (wrap) {
             case TextureWrap::REPEAT:
                 return GL_REPEAT;
@@ -254,460 +255,447 @@ namespace Byte::OpenGL {
             }
         }
 
-        struct GDraw {
-            static void elements(size_t size, DrawType drawType = DrawType::TRIANGLES) {
-                glDrawElements(convert(drawType), static_cast<GLint>(size), GL_UNSIGNED_INT, 0);
+        static GLenum convert(ShaderType type) {
+            switch (type) {
+            case ShaderType::VERTEX:
+                return GL_VERTEX_SHADER;
+            case ShaderType::FRAGMENT:
+                return GL_FRAGMENT_SHADER;
+            case ShaderType::GEOMETRY:
+                return GL_GEOMETRY_SHADER;
+            default:
+                throw std::invalid_argument("Invalid BufferMode");
             }
+        }
 
-            static void elementsInstanced(
-                size_t size,
-                size_t instanceCount,
-                DrawType drawType = DrawType::TRIANGLES) {
-                if (instanceCount) {
-                    GLint glSize{ static_cast<GLint>(size) };
-                    GLsizei glCount{ static_cast<GLsizei>(instanceCount) };
-                    glDrawElementsInstanced(convert(drawType), glSize, GL_UNSIGNED_INT, 0, glCount);
+        static void draw(size_t size, DrawType drawType = DrawType::TRIANGLES) {
+            glDrawElements(convert(drawType), static_cast<GLint>(size), GL_UNSIGNED_INT, 0);
+        }
+
+        static void draw(size_t size, size_t instanceCount, DrawType drawType = DrawType::TRIANGLES) {
+            if (instanceCount) {
+                GLint glSize{ static_cast<GLint>(size) };
+                GLsizei glCount{ static_cast<GLsizei>(instanceCount) };
+                glDrawElementsInstanced(convert(drawType), glSize, GL_UNSIGNED_INT, 0, glCount);
+            }
+        }
+
+        static void bind(GPUBufferGroup id = 0) {
+            glBindVertexArray(id);
+        }
+
+        template<typename Type>
+        static GPUBuffer build(
+            const Vector<Type>& data,
+            Layout layout,
+            BufferMode mode,
+            GLenum type,
+            GLuint attributeStart = 0,
+            bool instanced = false
+        ) {
+            GLuint bufferID{};
+            glGenBuffers(1, &bufferID);
+
+            GLint target{ (type == GL_UNSIGNED_INT) ? GL_ELEMENT_ARRAY_BUFFER : GL_ARRAY_BUFFER };
+
+            glBindBuffer(target, bufferID);
+            glBufferData(target, data.size() * sizeof(Type), data.data(), convert(mode));
+
+            size_t stride{ layout.stride() * sizeof(Type) };
+
+            size_t offset{};
+            for (GLuint attribIndex{}; attribIndex < layout.size(); ++attribIndex) {
+                glEnableVertexAttribArray(attribIndex + attributeStart);
+                glVertexAttribPointer(
+                    attribIndex + attributeStart,
+                    layout[attribIndex],
+                    type,
+                    GL_FALSE,
+                    static_cast<GLsizei>(stride),
+                    reinterpret_cast<const void*>(offset)
+                );
+                if (instanced) {
+                    glVertexAttribDivisor(attribIndex + attributeStart, 1);
                 }
-            }
-        };
-
-        struct GMemory {
-            static void bind(GPUBuffer id = 0) {
-                glBindVertexArray(id);
+                offset += layout[attribIndex] * sizeof(Type);
             }
 
-            template<typename Type>
-            static GPUBuffer build(
-                const Vector<Type>& data,
-                Layout layout,
-                BufferMode mode,
-                GLenum type,
-                GLuint attributeStart = 0,
-                bool instanced = false
-            ) {
-                GLuint bufferID{};
-                glGenBuffers(1, &bufferID);
+            return bufferID;
+        }
 
-                GLint target{ (type == GL_UNSIGNED_INT) ? GL_ELEMENT_ARRAY_BUFFER : GL_ARRAY_BUFFER };
+        static GPUBufferGroup build(Mesh& mesh) {
+            GPUBufferGroup bufferGroup{};
+            GLuint id;
+            glGenVertexArrays(1, &id);
+            glBindVertexArray(id);
 
-                glBindBuffer(target, bufferID);
-                glBufferData(target, data.size() * sizeof(Type), data.data(), convert(mode));
+            bufferGroup.id = static_cast<GPUBuffer>(id);
 
-                size_t stride{ layout.stride() * sizeof(Type) };
+            GPUBuffer vertexBuffer{ build<float>(
+                mesh.vertices(),
+                mesh.layout(),
+                mesh.dynamic() ? BufferMode::DYNAMIC : BufferMode::STATIC,
+                GL_FLOAT
+            ) };
 
-                size_t offset{};
-                for (GLuint attribIndex{}; attribIndex < layout.size(); ++attribIndex) {
-                    glEnableVertexAttribArray(attribIndex + attributeStart);
-                    glVertexAttribPointer(
-                        attribIndex + attributeStart,
-                        layout[attribIndex],
-                        type,
-                        GL_FALSE,
-                        static_cast<GLsizei>(stride),
-                        reinterpret_cast<const void*>(offset)
-                    );
-                    if (instanced) {
-                        glVertexAttribDivisor(attribIndex + attributeStart, 1);
-                    }
-                    offset += layout[attribIndex] * sizeof(Type);
-                }
+            bufferGroup.renderBuffers.push_back(vertexBuffer);
 
-                return bufferID;
+            GPUBuffer indexBuffer{ build<uint32_t>(
+                mesh.indices(),
+                Layout{},
+                mesh.dynamic() ? BufferMode::DYNAMIC : BufferMode::STATIC,
+                GL_UNSIGNED_INT
+            ) };
+
+            bufferGroup.indexBuffer = indexBuffer;
+
+            glBindVertexArray(0);
+
+            return  bufferGroup;
+        }
+
+        static GPUBufferGroup build(InstanceGroup& group, GPUBufferGroup& meshGroup) {
+            GPUBufferGroup bufferGroup{};
+
+            GLuint vao{};
+            glGenVertexArrays(1, &vao);
+            glBindVertexArray(vao);
+            bufferGroup.id = static_cast<GPUBuffer>(vao);
+
+            for (const auto& buffer : meshGroup.renderBuffers) {
+                glBindBuffer(GL_ARRAY_BUFFER, buffer);
+            }
+            if (meshGroup.indexBuffer != 0) {
+                glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, meshGroup.indexBuffer);
             }
 
-            static GPUBufferGroup build(Mesh& mesh) {
-                GPUBufferGroup bufferGroup{};
-                GLuint id;
-                glGenVertexArrays(1, &id);
-                glBindVertexArray(id);
+            GLuint attribIndex{ static_cast<GLuint>(meshGroup.renderBuffers.size()) };
+            GPUBuffer instanceBuffer{
+                build<float>(
+                    group.data(),
+                    group.layout(),
+                    group.dynamic() ? BufferMode::DYNAMIC : BufferMode::STATIC,
+                    GL_FLOAT,
+                    attribIndex,
+                    true
+                )
+            };
 
-                bufferGroup.id = static_cast<GPUBuffer>(id);
+            bufferGroup.renderBuffers.push_back(instanceBuffer);
 
-                GPUBuffer vertexBuffer{ build<float>(
-                    mesh.vertices(),
-                    mesh.layout(),
-                    mesh.dynamic() ? BufferMode::DYNAMIC : BufferMode::STATIC,
-                    GL_FLOAT
-                ) };
+            glBindVertexArray(0);
 
-                bufferGroup.renderBuffers.push_back(vertexBuffer);
+            return bufferGroup;
+        }
 
-                GPUBuffer indexBuffer{ build<uint32_t>(
-                    mesh.indices(),
-                    Layout{},
-                    mesh.dynamic() ? BufferMode::DYNAMIC : BufferMode::STATIC,
-                    GL_UNSIGNED_INT
-                ) };
-
-                bufferGroup.indexBuffer = indexBuffer;
-
-                glBindVertexArray(0);
-
-                return  bufferGroup;
+        static void release(GPUBufferGroup bufferGroup) {
+            if (bufferGroup.indexBuffer != 0) {
+                glDeleteBuffers(1, &bufferGroup.indexBuffer.id);
             }
 
-            static GPUBufferGroup build(InstanceGroup& group, GPUBufferGroup& meshGroup) {
-                GPUBufferGroup bufferGroup{};
-
-                GLuint vao{};
-                glGenVertexArrays(1, &vao);
-                glBindVertexArray(vao);
-                bufferGroup.id = static_cast<GPUBuffer>(vao);
-
-                for (const auto& buffer : meshGroup.renderBuffers) {
-                    glBindBuffer(GL_ARRAY_BUFFER, buffer);
-                }
-                if (meshGroup.indexBuffer != 0) {
-                    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, meshGroup.indexBuffer);
-                }
-
-                GLuint attribIndex{ static_cast<GLuint>(meshGroup.renderBuffers.size()) };
-                GPUBuffer instanceBuffer{
-                    build<float>(
-                        group.data(),
-                        group.layout(),
-                        group.dynamic() ? BufferMode::DYNAMIC : BufferMode::STATIC,
-                        GL_FLOAT,
-                        attribIndex,
-                        true
-                    )
-                };
-
-                bufferGroup.renderBuffers.push_back(instanceBuffer);
-
-                glBindVertexArray(0);
-
-                return bufferGroup;
-            }
-
-            static void release(GPUBufferGroup& bufferGroup) {
-                if (bufferGroup.indexBuffer != 0) {
-                    glDeleteBuffers(1, &bufferGroup.indexBuffer.id);
-                }
-
-                for (auto& buffer : bufferGroup.renderBuffers) {
-                    if (buffer != 0) {
-                        glDeleteBuffers(1, &buffer.id);
-                    }
-                }
-
-                if (bufferGroup.id != 0) {
-                    glDeleteVertexArrays(1, &bufferGroup.id);
-                }
-            }
-
-            template<typename T>
-            static void bufferData(GPUBuffer buffer, const Vector<T>& data, size_t size, bool dynamic = false) {
-                glBindBuffer(GL_ARRAY_BUFFER, buffer.id);
-                glBufferData(GL_ARRAY_BUFFER, size * sizeof(T), data.data(), dynamic ? GL_DYNAMIC_DRAW : GL_STATIC_DRAW);
-            }
-
-            template<typename T>
-            static void subBufferData(GPUBuffer buffer, const Vector<T>& data, size_t offset = 0) {
-                glBindBuffer(GL_ARRAY_BUFFER, buffer.id);
-                glBufferSubData(GL_ARRAY_BUFFER, offset, data.size() * sizeof(T), data.data());
-            }
-        };
-
-        struct GShader {
-            static void bind(GPUShader id = 0) {
-                glUseProgram(id);
-            }
-
-            template<typename Type>
-            static void uniform(GPUShader id, const std::string& name, const Type& value) {
-                throw std::exception("No such uniform type");
-            }
-
-            template<>
-            static void uniform<bool>(GPUShader id, const std::string& name, const bool& value) {
-                auto loc{ glGetUniformLocation(id, name.c_str()) };
-                glUniform1i(loc, (int)value);
-            }
-
-            template<>
-            static void uniform<int>(GPUShader id, const std::string& name, const int& value) {
-                auto loc{ glGetUniformLocation(id, name.c_str()) };
-                glUniform1i(loc, value);
-            }
-
-            template<>
-            static void uniform<size_t>(GPUShader id, const std::string& name, const size_t& value) {
-                auto loc{ glGetUniformLocation(id, name.c_str()) };
-                glUniform1i(loc, static_cast<GLint>(value));
-            }
-
-            template<>
-            static void uniform<float>(GPUShader id, const std::string& name, const float& value) {
-                auto loc{ glGetUniformLocation(id, name.c_str()) };
-                glUniform1f(loc, value);
-            }
-
-            template<>
-            static void uniform<Vec2>(GPUShader id, const std::string& name, const Vec2& value) {
-                auto loc{ glGetUniformLocation(id, name.c_str()) };
-                glUniform2f(loc, value.x, value.y);
-            }
-
-            template<>
-            static void uniform<Vec3>(GPUShader id, const std::string& name, const Vec3& value) {
-                auto loc{ glGetUniformLocation(id, name.c_str()) };
-                glUniform3f(loc, value.x, value.y, value.z);
-            }
-
-            template<>
-            static void uniform<Vec4>(GPUShader id, const std::string& name, const Vec4& value) {
-                auto loc{ glGetUniformLocation(id, name.c_str()) };
-                glUniform4f(loc, value.x, value.y, value.z, value.w);
-            }
-
-            template<>
-            static void uniform<Quaternion>(GPUShader id, const std::string& name, const Quaternion& value) {
-                auto loc{ glGetUniformLocation(id, name.c_str()) };
-                glUniform4f(loc, value.x, value.y, value.z, value.w);
-            }
-
-            template<>
-            static void uniform<Mat2>(GPUShader id, const std::string& name, const Mat2& value) {
-                auto loc{ glGetUniformLocation(id, name.c_str()) };
-                glUniformMatrix2fv(loc, 1, GL_FALSE, value.data);
-            }
-
-            template<>
-            static void uniform<Mat3>(GPUShader id, const std::string& name, const Mat3& value) {
-                auto loc{ glGetUniformLocation(id, name.c_str()) };
-                glUniformMatrix3fv(loc, 1, GL_FALSE, value.data);
-            }
-
-            template<>
-            static void uniform<Mat4>(GPUShader id, const std::string& name, const Mat4& value) {
-                auto loc{ glGetUniformLocation(id, name.c_str()) };
-                glUniformMatrix4fv(loc, 1, GL_FALSE, value.data);
-            }
-
-            static uint32_t compileShader(const Path& shaderPath, ShaderType shaderType) {
-                std::string shaderCode;
-                std::ifstream shaderFile;
-
-                shaderFile.exceptions(std::ifstream::failbit | std::ifstream::badbit);
-
-                shaderFile.open(shaderPath);
-                std::stringstream shaderStream;
-
-                shaderStream << shaderFile.rdbuf();
-
-                shaderFile.close();
-
-                shaderCode = shaderStream.str();
-
-                const char* sCode{ shaderCode.c_str() };
-
-                uint32_t id{ glCreateShader(convert(shaderType)) };
-                glShaderSource(id, 1, &sCode, NULL);
-                glCompileShader(id);
-                checkShader(id);
-
-                return id;
-            }
-
-            static void checkShader(uint32_t shader) {
-                int success;
-                char infoLog[1024];
-
-                glGetShaderiv(shader, GL_COMPILE_STATUS, &success);
-                if (!success) {
-                    glGetShaderInfoLog(shader, 1024, NULL, infoLog);
-                    throw std::exception{ infoLog };
+            for (auto& buffer : bufferGroup.renderBuffers) {
+                if (buffer != 0) {
+                    glDeleteBuffers(1, &buffer.id);
                 }
             }
 
-            static void releaseProgram(GPUShader id) {
-                glDeleteProgram(id);
+            if (bufferGroup.id != 0) {
+                glDeleteVertexArrays(1, &bufferGroup.id);
+            }
+        }
+
+        template<typename T>
+        static void bufferData(GPUBuffer buffer, const Vector<T>& data, size_t size, bool dynamic = false) {
+            glBindBuffer(GL_ARRAY_BUFFER, buffer.id);
+            glBufferData(GL_ARRAY_BUFFER, size * sizeof(T), data.data(), dynamic ? GL_DYNAMIC_DRAW : GL_STATIC_DRAW);
+        }
+
+        template<typename T>
+        static void subBufferData(GPUBuffer buffer, const Vector<T>& data, size_t offset = 0) {
+            glBindBuffer(GL_ARRAY_BUFFER, buffer.id);
+            glBufferSubData(GL_ARRAY_BUFFER, offset, data.size() * sizeof(T), data.data());
+        }
+
+        static void bind(GPUShader id = 0) {
+            glUseProgram(id);
+        }
+
+        template<typename Type>
+        static void uniform(GPUShader id, const std::string& name, const Type& value) {
+            throw std::exception("No such uniform type");
+        }
+
+        template<>
+        static void uniform<bool>(GPUShader id, const std::string& name, const bool& value) {
+            auto loc{ glGetUniformLocation(id, name.c_str()) };
+            glUniform1i(loc, (int)value);
+        }
+
+        template<>
+        static void uniform<int>(GPUShader id, const std::string& name, const int& value) {
+            auto loc{ glGetUniformLocation(id, name.c_str()) };
+            glUniform1i(loc, value);
+        }
+
+        template<>
+        static void uniform<size_t>(GPUShader id, const std::string& name, const size_t& value) {
+            auto loc{ glGetUniformLocation(id, name.c_str()) };
+            glUniform1i(loc, static_cast<GLint>(value));
+        }
+
+        template<>
+        static void uniform<float>(GPUShader id, const std::string& name, const float& value) {
+            auto loc{ glGetUniformLocation(id, name.c_str()) };
+            glUniform1f(loc, value);
+        }
+
+        template<>
+        static void uniform<Vec2>(GPUShader id, const std::string& name, const Vec2& value) {
+            auto loc{ glGetUniformLocation(id, name.c_str()) };
+            glUniform2f(loc, value.x, value.y);
+        }
+
+        template<>
+        static void uniform<Vec3>(GPUShader id, const std::string& name, const Vec3& value) {
+            auto loc{ glGetUniformLocation(id, name.c_str()) };
+            glUniform3f(loc, value.x, value.y, value.z);
+        }
+
+        template<>
+        static void uniform<Vec4>(GPUShader id, const std::string& name, const Vec4& value) {
+            auto loc{ glGetUniformLocation(id, name.c_str()) };
+            glUniform4f(loc, value.x, value.y, value.z, value.w);
+        }
+
+        template<>
+        static void uniform<Quaternion>(GPUShader id, const std::string& name, const Quaternion& value) {
+            auto loc{ glGetUniformLocation(id, name.c_str()) };
+            glUniform4f(loc, value.x, value.y, value.z, value.w);
+        }
+
+        template<>
+        static void uniform<Mat2>(GPUShader id, const std::string& name, const Mat2& value) {
+            auto loc{ glGetUniformLocation(id, name.c_str()) };
+            glUniformMatrix2fv(loc, 1, GL_FALSE, value.data);
+        }
+
+        template<>
+        static void uniform<Mat3>(GPUShader id, const std::string& name, const Mat3& value) {
+            auto loc{ glGetUniformLocation(id, name.c_str()) };
+            glUniformMatrix3fv(loc, 1, GL_FALSE, value.data);
+        }
+
+        template<>
+        static void uniform<Mat4>(GPUShader id, const std::string& name, const Mat4& value) {
+            auto loc{ glGetUniformLocation(id, name.c_str()) };
+            glUniformMatrix4fv(loc, 1, GL_FALSE, value.data);
+        }
+
+        static uint32_t compileShader(const Path& shaderPath, ShaderType shaderType) {
+            std::string shaderCode;
+            std::ifstream shaderFile;
+
+            shaderFile.exceptions(std::ifstream::failbit | std::ifstream::badbit);
+
+            shaderFile.open(shaderPath);
+            std::stringstream shaderStream;
+
+            shaderStream << shaderFile.rdbuf();
+
+            shaderFile.close();
+
+            shaderCode = shaderStream.str();
+
+            const char* sCode{ shaderCode.c_str() };
+
+            uint32_t id{ glCreateShader(convert(shaderType)) };
+            glShaderSource(id, 1, &sCode, NULL);
+            glCompileShader(id);
+            checkShader(id);
+
+            return id;
+        }
+
+        static void checkShader(uint32_t shader) {
+            int success;
+            char infoLog[1024];
+
+            glGetShaderiv(shader, GL_COMPILE_STATUS, &success);
+            if (!success) {
+                glGetShaderInfoLog(shader, 1024, NULL, infoLog);
+                throw std::exception{ infoLog };
+            }
+        }
+
+        static void release(GPUShader id) {
+            glDeleteProgram(id);
+        }
+
+        static GPUShader build(
+            uint32_t vertex,
+            uint32_t fragment,
+            uint32_t geometry = 0) {
+            uint32_t id{ glCreateProgram() };
+
+            glAttachShader(id, vertex);
+            glAttachShader(id, fragment);
+
+            if (geometry) {
+                glAttachShader(id, geometry);
             }
 
-            static GPUShader buildProgram(
-                uint32_t vertex,
-                uint32_t fragment,
-                uint32_t geometry = 0) {
-                uint32_t id{ glCreateProgram() };
+            glLinkProgram(id);
+            checkProgram(id);
 
-                glAttachShader(id, vertex);
-                glAttachShader(id, fragment);
+            glDeleteShader(vertex);
+            glDeleteShader(fragment);
+            if (geometry) {
+                glDeleteShader(geometry);
+            }
 
-                if (geometry) {
-                    glAttachShader(id, geometry);
+            return id;
+        }
+
+        static void checkProgram(uint32_t program) {
+            int success;
+            char infoLog[1024];
+
+            glGetProgramiv(program, GL_LINK_STATUS, &success);
+            if (!success) {
+                glGetShaderInfoLog(program, 1024, NULL, infoLog);
+                throw std::exception{ infoLog };
+            }
+
+        }
+
+        static void bind(GPUTexture id, TextureUnit unit = TextureUnit::UNIT_0) {
+            glActiveTexture(convert(unit));
+            glBindTexture(GL_TEXTURE_2D, id);
+        }
+
+        static void release(GPUTexture id) {
+            glDeleteTextures(1, &id.id);
+        }
+
+        static GPUTexture build(Texture& texture) {
+            GPUTexture textureID;
+
+            GLint glWidth{ static_cast<GLint>(texture.width()) };
+            GLint glHeight{ static_cast<GLint>(texture.height()) };
+
+            glGenTextures(1, &textureID.id);
+
+            glBindTexture(GL_TEXTURE_2D, textureID);
+
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, convert(texture.wrapS()));
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, convert(texture.wrapT()));
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, convert(texture.minFilter()));
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, convert(texture.magFilter()));
+
+            uint8_t* textureData{ texture.data().empty() ? nullptr : texture.data().data() };
+
+            glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+            glTexImage2D(
+                GL_TEXTURE_2D, 0,
+                convert(texture.internalFormat()),
+                glWidth, glHeight, 0,
+                convert(texture.format()),
+                convert(texture.dataType()),
+                textureData);
+
+            glGenerateMipmap(GL_TEXTURE_2D);
+
+            glBindTexture(GL_TEXTURE_2D, 0);
+
+            return textureID;
+        }
+
+        static void bind(const Framebuffer& buffer, GPUFramebuffer id) {
+            glBindFramebuffer(GL_FRAMEBUFFER, id);
+
+            if (!buffer.attachments().empty()) {
+                Vector<uint32_t> attachments;
+                for (auto& att : buffer.attachments()) {
+                    attachments.push_back(convert(att));
                 }
+                glDrawBuffers(static_cast<GLsizei>(attachments.size()), attachments.data());
+            }
 
-                glLinkProgram(id);
-                checkProgram(id);
+            glViewport(0, 0, static_cast<GLsizei>(buffer.width()), static_cast<GLsizei>(buffer.height()));
+        }
 
-                glDeleteShader(vertex);
-                glDeleteShader(fragment);
-                if (geometry) {
-                    glDeleteShader(geometry);
+        static void bind(size_t width, size_t height) {
+            glBindFramebuffer(GL_FRAMEBUFFER, 0);
+            glViewport(0, 0, static_cast<GLsizei>(width), static_cast<GLsizei>(height));
+        }
+
+        static Pair<GPUFramebuffer, Map<AssetID, GPUTexture>> build(Framebuffer& buffer) {
+            GPUFramebuffer id{};
+            Map<AssetID, GPUTexture> textureIDs{};
+            glGenFramebuffers(1, &id.id);
+            glBindFramebuffer(GL_FRAMEBUFFER, id);
+
+            GLint glWidth{ static_cast<GLint>(buffer.width()) };
+            GLint glHeight{ static_cast<GLint>(buffer.height()) };
+
+            bool hasDepth{ false };
+
+            for (auto& [tag, att] : buffer.textures()) {
+                size_t width{ att.width() ? att.width() : buffer.width() };
+                size_t height{ att.height() ? att.height() : buffer.height() };
+
+                att.width(width);
+                att.height(height);
+
+                GPUTexture attID{ build(att) };
+                textureIDs.emplace(att.assetID(), attID);
+                glFramebufferTexture2D(
+                    GL_FRAMEBUFFER, convert(att.attachment()), GL_TEXTURE_2D, attID, 0);
+
+                if (att.attachment() == AttachmentType::DEPTH) {
+                    hasDepth = true;
                 }
-
-                return id;
-            }
-
-            static void checkProgram(uint32_t program) {
-                int success;
-                char infoLog[1024];
-
-                glGetProgramiv(program, GL_LINK_STATUS, &success);
-                if (!success) {
-                    glGetShaderInfoLog(program, 1024, NULL, infoLog);
-                    throw std::exception{ infoLog };
-                }
-
-            }
-
-            static GLenum convert(ShaderType type) {
-                switch (type) {
-                case ShaderType::VERTEX:
-                    return GL_VERTEX_SHADER;
-                case ShaderType::FRAGMENT:
-                    return GL_FRAGMENT_SHADER;
-                case ShaderType::GEOMETRY:
-                    return GL_GEOMETRY_SHADER;
-                default:
-                    throw std::invalid_argument("Invalid BufferMode");
-                }
-            }
-
-        };
-
-        struct GTexture {
-            static void bind(GPUTexture id, TextureUnit unit = TextureUnit::UNIT_0) {
-                glActiveTexture(convert(unit));
-                glBindTexture(GL_TEXTURE_2D, id);
-            }
-
-            static void release(GPUTexture id) {
-                glDeleteTextures(1, &id.id);
-            }
-
-            static GPUTexture build(Texture& texture) {
-                GPUTexture textureID;
-
-                GLint glWidth{ static_cast<GLint>(texture.width()) };
-                GLint glHeight{ static_cast<GLint>(texture.height()) };
-
-                glGenTextures(1, &textureID.id);
-
-                glBindTexture(GL_TEXTURE_2D, textureID);
-
-                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, convert(texture.wrapS()));
-                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, convert(texture.wrapT()));
-                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, convert(texture.minFilter()));
-                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, convert(texture.magFilter()));
-
-                uint8_t* textureData{ texture.data().empty() ? nullptr : texture.data().data() };
-
-                glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-                glTexImage2D(
-                    GL_TEXTURE_2D, 0,
-                    convert(texture.internalFormat()),
-                    glWidth, glHeight, 0,
-                    convert(texture.format()),
-                    convert(texture.dataType()),
-                    textureData);
-
-                glGenerateMipmap(GL_TEXTURE_2D);
-
-                glBindTexture(GL_TEXTURE_2D, 0);
-
-                return textureID;
-            }
-        };
-
-        struct GFramebuffer {
-            static void bind(const Framebuffer& buffer, GPUFramebuffer id) {
-                glBindFramebuffer(GL_FRAMEBUFFER, id);
-
-                if (!buffer.attachments().empty()) {
-                    Vector<uint32_t> attachments;
-                    for (auto& att : buffer.attachments()) {
-                        attachments.push_back(convert(att));
-                    }
-                    glDrawBuffers(static_cast<GLsizei>(attachments.size()), attachments.data());
-                }
-
-                glViewport(0, 0, static_cast<GLsizei>(buffer.width()), static_cast<GLsizei>(buffer.height()));
-            }
-
-            static void bind(size_t width, size_t height) {
-                glBindFramebuffer(GL_FRAMEBUFFER, 0);
-                glViewport(0, 0, static_cast<GLsizei>(width), static_cast<GLsizei>(height));
-            }
-
-            static Pair<GPUFramebuffer,Map<AssetID, GPUTexture>> build(Framebuffer& buffer) {
-                GPUFramebuffer id{};
-                Map<AssetID, GPUTexture> textureIDs{};
-                glGenFramebuffers(1, &id.id);
-                glBindFramebuffer(GL_FRAMEBUFFER, id);
-
-                GLint glWidth{ static_cast<GLint>(buffer.width()) };
-                GLint glHeight{ static_cast<GLint>(buffer.height()) };
-
-                bool hasDepth{ false };
-
-                for (auto& [tag, att] : buffer.textures()) {
-                    size_t width{ att.width() ? att.width() : buffer.width()};
-                    size_t height{ att.height() ? att.height() : buffer.height()};
-
-                    att.width(width);
-                    att.height(height);
-
-                    GPUTexture attID{ GTexture::build(att) };
-                    textureIDs.emplace(att.assetID(), attID);
-                    glFramebufferTexture2D(
-                        GL_FRAMEBUFFER, convert(att.attachment()),GL_TEXTURE_2D, attID, 0);
-
-                    if (att.attachment() == AttachmentType::DEPTH) {
-                        hasDepth = true;
-                    }
-                    else {
-                        buffer.attachments().push_back(att.attachment());
-                    }
-                }
-
-                std::sort(buffer.attachments().begin(), buffer.attachments().end(), 
-                    [](AttachmentType a, AttachmentType b) {
-                        return static_cast<uint8_t>(a) < static_cast<uint8_t>(b);
-                    });
-
-                if (!hasDepth) {
-                    unsigned int rboDepth;
-                    glGenRenderbuffers(1, &rboDepth);
-                    glBindRenderbuffer(GL_RENDERBUFFER, rboDepth);
-                    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, glWidth, glHeight);
-                    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, rboDepth);
-                }
-
-                if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
-                    Vector<GPUResourceID> toDelete{};
-                    for (auto [_, deleteID] : textureIDs) {
-                        toDelete.push_back(deleteID.id);
-                    }
-                    release(id,toDelete);
-                    throw std::exception("Framebuffer not complete");
-                }
-
-                glBindFramebuffer(GL_FRAMEBUFFER, 0);
-
-                return std::make_pair(id,std::move(textureIDs));
-            }
-
-            static void release(GPUFramebuffer id, const Vector<GPUResourceID>& textureIDs) {
-                if (!textureIDs.empty()) {
-                    glDeleteTextures(static_cast<GLsizei>(textureIDs.size()), textureIDs.data());
-                }
-
-                if (id) {
-                    glDeleteFramebuffers(1, &id.id);
+                else {
+                    buffer.attachments().push_back(att.attachment());
                 }
             }
 
-        };
+            std::sort(buffer.attachments().begin(), buffer.attachments().end(),
+                [](AttachmentType a, AttachmentType b) {
+                    return static_cast<uint8_t>(a) < static_cast<uint8_t>(b);
+                });
+
+            if (!hasDepth) {
+                unsigned int rboDepth;
+                glGenRenderbuffers(1, &rboDepth);
+                glBindRenderbuffer(GL_RENDERBUFFER, rboDepth);
+                glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, glWidth, glHeight);
+                glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, rboDepth);
+            }
+
+            if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
+                Vector<GPUResourceID> toDelete{};
+                for (auto [_, deleteID] : textureIDs) {
+                    toDelete.push_back(deleteID.id);
+                }
+                release(id, toDelete);
+                throw std::exception("Framebuffer not complete");
+            }
+
+            glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+            return std::make_pair(id, std::move(textureIDs));
+        }
+
+        static void release(GPUFramebuffer id, const Vector<GPUResourceID>& textureIDs) {
+            if (!textureIDs.empty()) {
+                glDeleteTextures(static_cast<GLsizei>(textureIDs.size()), textureIDs.data());
+            }
+
+            if (id) {
+                glDeleteFramebuffers(1, &id.id);
+            }
+        }
+
+    };
 }
