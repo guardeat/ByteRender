@@ -11,6 +11,7 @@
 #include "render_types.h"
 #include "framebuffer.h"
 #include "texture.h"
+#include "instance_group.h"
 
 namespace Byte::OpenGL {
 
@@ -221,6 +222,38 @@ namespace Byte::OpenGL {
             }
         }
 
+        static GLenum convert(BufferMode mode) {
+            switch (mode) {
+            case BufferMode::STATIC:
+                return GL_STATIC_DRAW;
+            case BufferMode::DYNAMIC:
+                return GL_DYNAMIC_DRAW;
+            default:
+                throw std::invalid_argument("Invalid BufferMode");
+            }
+        }
+
+        static GLenum convert(DrawType type) {
+            switch (type) {
+            case DrawType::POINTS:
+                return GL_POINTS;
+            case DrawType::LINES:
+                return GL_LINES;
+            case DrawType::LINE_LOOP:
+                return GL_LINE_LOOP;
+            case DrawType::LINE_STRIP:
+                return GL_LINE_STRIP;
+            case DrawType::TRIANGLES:
+                return GL_TRIANGLES;
+            case DrawType::TRIANGLE_STRIP:
+                return GL_TRIANGLE_STRIP;
+            case DrawType::TRIANGLE_FAN:
+                return GL_TRIANGLE_FAN;
+            default:
+                throw std::invalid_argument("Invalid DrawType");
+            }
+        }
+
         struct GDraw {
             static void elements(size_t size, DrawType drawType = DrawType::TRIANGLES) {
                 glDrawElements(convert(drawType), static_cast<GLint>(size), GL_UNSIGNED_INT, 0);
@@ -236,27 +269,6 @@ namespace Byte::OpenGL {
                     glDrawElementsInstanced(convert(drawType), glSize, GL_UNSIGNED_INT, 0, glCount);
                 }
             }
-
-            static GLenum convert(DrawType type) {
-                switch (type) {
-                case DrawType::POINTS:        
-                    return GL_POINTS;
-                case DrawType::LINES:         
-                    return GL_LINES;
-                case DrawType::LINE_LOOP:      
-                    return GL_LINE_LOOP;
-                case DrawType::LINE_STRIP:    
-                    return GL_LINE_STRIP;
-                case DrawType::TRIANGLES:      
-                    return GL_TRIANGLES;
-                case DrawType::TRIANGLE_STRIP: 
-                    return GL_TRIANGLE_STRIP;
-                case DrawType::TRIANGLE_FAN:   
-                    return GL_TRIANGLE_FAN;
-                default:
-                    throw std::invalid_argument("Invalid DrawType");
-                }
-            }
         };
 
         struct GMemory {
@@ -270,8 +282,10 @@ namespace Byte::OpenGL {
                 Layout layout,
                 BufferMode mode,
                 GLenum type,
-                GLuint attributeStart = 0) {
-                GLuint bufferID{ 0 };
+                GLuint attributeStart = 0,
+                bool instanced = false
+            ) {
+                GLuint bufferID{};
                 glGenBuffers(1, &bufferID);
 
                 GLint target{ (type == GL_UNSIGNED_INT) ? GL_ELEMENT_ARRAY_BUFFER : GL_ARRAY_BUFFER };
@@ -292,7 +306,9 @@ namespace Byte::OpenGL {
                         static_cast<GLsizei>(stride),
                         reinterpret_cast<const void*>(offset)
                     );
-
+                    if (instanced) {
+                        glVertexAttribDivisor(attribIndex + attributeStart, 1);
+                    }
                     offset += layout[attribIndex] * sizeof(Type);
                 }
 
@@ -331,7 +347,37 @@ namespace Byte::OpenGL {
             }
 
             static GPUBufferGroup build(InstanceGroup& group, GPUBufferGroup& meshGroup) {
+                GPUBufferGroup bufferGroup{};
 
+                GLuint vao{};
+                glGenVertexArrays(1, &vao);
+                glBindVertexArray(vao);
+                bufferGroup.id = static_cast<GPUBuffer>(vao);
+
+                for (const auto& buffer : meshGroup.renderBuffers) {
+                    glBindBuffer(GL_ARRAY_BUFFER, buffer);
+                }
+                if (meshGroup.indexBuffer != 0) {
+                    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, meshGroup.indexBuffer);
+                }
+
+                GLuint attribIndex{ static_cast<GLuint>(meshGroup.renderBuffers.size()) };
+                GPUBuffer instanceBuffer{
+                    build<float>(
+                        group.data(),
+                        group.layout(),
+                        group.dynamic() ? BufferMode::DYNAMIC : BufferMode::STATIC,
+                        GL_FLOAT,
+                        attribIndex,
+                        true
+                    )
+                };
+
+                bufferGroup.renderBuffers.push_back(instanceBuffer);
+
+                glBindVertexArray(0);
+
+                return bufferGroup;
             }
 
             static void release(GPUBufferGroup& bufferGroup) {
@@ -350,15 +396,16 @@ namespace Byte::OpenGL {
                 }
             }
 
-            static GLenum convert(BufferMode mode) {
-                switch (mode) {
-                case BufferMode::STATIC:
-                    return GL_STATIC_DRAW;
-                case BufferMode::DYNAMIC:
-                    return GL_DYNAMIC_DRAW;
-                default:
-                    throw std::invalid_argument("Invalid BufferMode");
-                }
+            template<typename T>
+            static void bufferData(GPUBuffer buffer, const Vector<T>& data, size_t size, bool dynamic = false) {
+                glBindBuffer(GL_ARRAY_BUFFER, buffer.id);
+                glBufferData(GL_ARRAY_BUFFER, size * sizeof(T), data.data(), dynamic ? GL_DYNAMIC_DRAW : GL_STATIC_DRAW);
+            }
+
+            template<typename T>
+            static void subBufferData(GPUBuffer buffer, const Vector<T>& data, size_t offset = 0) {
+                glBindBuffer(GL_ARRAY_BUFFER, buffer.id);
+                glBufferSubData(GL_ARRAY_BUFFER, offset, data.size() * sizeof(T), data.data());
             }
         };
 

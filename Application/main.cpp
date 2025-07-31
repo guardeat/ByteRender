@@ -7,9 +7,6 @@
 #include "render/light.h"
 #include "application/camera_controller.h"
 
-//TODO: Write framebuffer.
-//TODO: Need a automatic release system from gpu. Also optimize loading.
-
 using namespace Byte;
 
 int main() {
@@ -32,8 +29,8 @@ int main() {
 	material.shader("default", shader.assetID());
 
 	World world;
-	MeshRenderer renderable{ mesh.assetID(),material.assetID() };
-	world.createEntity<MeshRenderer, Transform>(std::move(renderable), Transform{});
+	MeshRenderer meshRenderer{ mesh.assetID(),material.assetID() };
+	world.createEntity<MeshRenderer, Transform>(std::move(meshRenderer), Transform{});
 
 	repository.mesh(mesh.assetID(), std::move(mesh));
 	repository.material(material.assetID(), std::move(material));

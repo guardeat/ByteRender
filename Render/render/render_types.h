@@ -32,7 +32,9 @@ namespace Byte {
 		using GPUResource::GPUResource;
 
 		Vector<GPUBuffer> renderBuffers;
-		GPUBuffer indexBuffer;
+		GPUBuffer indexBuffer{};
+
+		size_t capacity{};
 	};
 
 	struct GPUShader : public GPUResource {

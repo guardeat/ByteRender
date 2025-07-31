@@ -41,8 +41,8 @@ namespace Byte {
 				load(mesh);
 			}
 			
-
-
+			GPUBufferGroup group{ OpenGL::GMemory::build(instanced, _meshes.at(mesh.assetID())) };
+			_instanceGroups.emplace(instanced.assetID(), std::move(group));
 		}
 
 		void load(Shader& shader) {
@@ -237,7 +237,16 @@ namespace Byte {
 		}
 
 		void updateBuffer(InstanceGroup& group) {
-
+			GPUBufferGroup& bufferGroup{ _meshes.at(group.mesh()) };
+			size_t size{ group.data().size() };
+			if (size > bufferGroup.capacity) {
+				size_t newSize{ bufferGroup.capacity * group.layout().stride() };
+				bufferGroup.capacity = size * 2;
+				OpenGL::GMemory::bufferData(bufferGroup.renderBuffers[0], group.data(), newSize, false);
+			}
+			else {
+				OpenGL::GMemory::subBufferData(bufferGroup.renderBuffers[0], group.data());
+			}
 		}
 
 		void draw(size_t size, DrawType drawType = DrawType::TRIANGLES) {
