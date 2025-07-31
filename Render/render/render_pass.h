@@ -5,7 +5,7 @@
 #include "render_context.h"
 #include "render_data.h"
 #include "camera.h"
-#include "renderable.h"
+#include "mesh_renderer.h"
 
 namespace Byte {
 
@@ -120,7 +120,7 @@ namespace Byte {
 			Framebuffer& colorBuffer{ data.framebuffers.at(_colorBuffer) };
 			data.device.bind(colorBuffer);
 
-			for (auto [renderable, transform] : context.view<Renderable, Transform>()) {
+			for (auto [renderable, transform] : context.view<MeshRenderer, Transform>()) {
 				Mesh& mesh{ context.mesh(renderable.mesh()) };
 				Material& material{ context.material(renderable.material()) };
 				Shader& shader{ data.shaders.at(material.shader("default")) };

@@ -132,8 +132,10 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="render\camera.h" />
+    <ClInclude Include="render\instance_renderer.h" />
     <ClInclude Include="render\light.h" />
     <ClInclude Include="render\material.h" />
+    <ClInclude Include="render\mesh_renderer.h" />
     <ClInclude Include="render\render_context.h" />
     <ClInclude Include="render\framebuffer.h" />
     <ClInclude Include="render\opengl_api.h" />
@@ -142,7 +144,6 @@
     <ClInclude Include="render\render_data.h" />
     <ClInclude Include="render\render_device.h" />
     <ClInclude Include="render\instance_group.h" />
-    <ClInclude Include="render\renderable.h" />
     <ClInclude Include="render\render_pass.h" />
     <ClInclude Include="render\render_types.h" />
     <ClInclude Include="render\shader.h" />

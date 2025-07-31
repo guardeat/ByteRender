@@ -32,8 +32,8 @@ int main() {
 	material.shader("default", shader.assetID());
 
 	World world;
-	Renderable renderable{ mesh.assetID(),material.assetID() };
-	world.createEntity<Renderable, Transform>(std::move(renderable), Transform{});
+	MeshRenderer renderable{ mesh.assetID(),material.assetID() };
+	world.createEntity<MeshRenderer, Transform>(std::move(renderable), Transform{});
 
 	repository.mesh(mesh.assetID(), std::move(mesh));
 	repository.material(material.assetID(), std::move(material));
