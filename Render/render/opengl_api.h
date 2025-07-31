@@ -300,12 +300,12 @@ namespace Byte::OpenGL {
             }
 
             static GPUBufferGroup build(Mesh& mesh) {
-                GPUBufferGroup renderArray{};
+                GPUBufferGroup bufferGroup{};
                 GLuint id;
                 glGenVertexArrays(1, &id);
                 glBindVertexArray(id);
 
-                renderArray.id = static_cast<GPUBuffer>(id);
+                bufferGroup.id = static_cast<GPUBuffer>(id);
 
                 GPUBuffer vertexBuffer{ build<float>(
                     mesh.vertices(),
@@ -314,7 +314,7 @@ namespace Byte::OpenGL {
                     GL_FLOAT
                 ) };
 
-                renderArray.renderBuffers.push_back(vertexBuffer);
+                bufferGroup.renderBuffers.push_back(vertexBuffer);
 
                 GPUBuffer indexBuffer{ build<uint32_t>(
                     mesh.indices(),
@@ -323,26 +323,30 @@ namespace Byte::OpenGL {
                     GL_UNSIGNED_INT
                 ) };
 
-                renderArray.indexBuffer = indexBuffer;
+                bufferGroup.indexBuffer = indexBuffer;
 
                 glBindVertexArray(0);
 
-                return renderArray;
+                return  bufferGroup;
             }
 
-            static void release(GPUBufferGroup& renderArray) {
-                if (renderArray.indexBuffer != 0) {
-                    glDeleteBuffers(1, &renderArray.indexBuffer.id);
+            static GPUBufferGroup build(InstanceGroup& group, GPUBufferGroup& meshGroup) {
+
+            }
+
+            static void release(GPUBufferGroup& bufferGroup) {
+                if (bufferGroup.indexBuffer != 0) {
+                    glDeleteBuffers(1, &bufferGroup.indexBuffer.id);
                 }
 
-                for (auto& buffer : renderArray.renderBuffers) {
+                for (auto& buffer : bufferGroup.renderBuffers) {
                     if (buffer != 0) {
                         glDeleteBuffers(1, &buffer.id);
                     }
                 }
 
-                if (renderArray.id != 0) {
-                    glDeleteVertexArrays(1, &renderArray.id);
+                if (bufferGroup.id != 0) {
+                    glDeleteVertexArrays(1, &bufferGroup.id);
                 }
             }
 

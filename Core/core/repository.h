@@ -7,12 +7,14 @@ namespace Byte {
 
 	class Material;
 	class Texture;
+	class InstanceGroup;
 
 	class Repository {
 	private:
 		Map<AssetID, Material> _materials;
 		Map<AssetID, Mesh> _meshes;
 		Map<AssetID, Texture> _textures;
+		Map<AssetID, InstanceGroup> _instanceGroups;
 
 	public:
 		Repository() = default;
@@ -39,6 +41,14 @@ namespace Byte {
 
 		const Map<AssetID, Texture>& textures() const {
 			return _textures;
+		}
+
+		Map<AssetID, InstanceGroup>& instanceGroups() {
+			return _instanceGroups;
+		}
+
+		const Map<AssetID, InstanceGroup>& instanceGroups() const {
+			return _instanceGroups;
 		}
 
 		Material& material(AssetID id) {
@@ -75,6 +85,18 @@ namespace Byte {
 
 		void texture(AssetID id, Texture&& value) {
 			_textures.emplace(id, std::move(value));
+		}
+
+		InstanceGroup& instanceGroup(AssetID id) {
+			return _instanceGroups.at(id);
+		}
+
+		const InstanceGroup& instanceGroup(AssetID id) const {
+			return _instanceGroups.at(id);
+		}
+
+		void instanceGroup(AssetID id, InstanceGroup&& value) {
+			_instanceGroups.emplace(id, std::move(value));
 		}
 	};
 

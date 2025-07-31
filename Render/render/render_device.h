@@ -37,6 +37,11 @@ namespace Byte {
 		}
 
 		void load(InstanceGroup& instanced, Mesh& mesh) {
+			if (!loaded(mesh)) {
+				load(mesh);
+			}
+			
+
 
 		}
 
@@ -229,6 +234,10 @@ namespace Byte {
 
 			GPUShader id{ _shaders.at(shader.assetID()) };
 			OpenGL::GShader::uniform(id, uniform, static_cast<int>(unit));
+		}
+
+		void updateBuffer(InstanceGroup& group) {
+
 		}
 
 		void draw(size_t size, DrawType drawType = DrawType::TRIANGLES) {

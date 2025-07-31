@@ -50,6 +50,16 @@ namespace Byte {
 				_data.device.load(texture);
 			}
 		}
+
+		for (auto& [id, instanceGroup] : context.repository().instanceGroups()) {
+			if (!_data.device.loaded(instanceGroup)) {
+				_data.device.load(instanceGroup,context.repository().mesh(instanceGroup.mesh()));
+			}
+
+			else if (instanceGroup.updated()) {
+				_data.device.updateBuffer(instanceGroup);
+			}
+		}
 	}
 
 	void Renderer::release(Mesh& mesh) {
