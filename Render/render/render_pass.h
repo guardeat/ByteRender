@@ -9,13 +9,27 @@
 
 namespace Byte {
 
-	class RenderPass {
+	class IRenderPass {
+	public:
+		virtual ~IRenderPass() = default;
+
+		virtual void render(RenderData& data, RenderContext& context) = 0;
+
+		virtual void initialize(RenderData& data) {
+		}
+
+		virtual void terminate(RenderData& data) {
+		}
+
+		virtual UniquePtr<IRenderPass> clone() const = 0;
+	};
+
+	template<typename Derived>
+	class RenderPass : public IRenderPass {
 	public:
 		virtual ~RenderPass() = default;
 
 		virtual void render(RenderData& data, RenderContext& context) = 0;
-
-		virtual UniquePtr<RenderPass> clone() const = 0;
 
 		virtual void initialize(RenderData& data) {
 		}
@@ -23,9 +37,12 @@ namespace Byte {
 		virtual void terminate(RenderData& data) {
 		}
 
+		UniquePtr<IRenderPass> clone() const override {
+			return std::make_unique<Derived>(static_cast<const Derived&>(*this));
+		}
 	};
 
-	class SkyboxPass : public RenderPass {
+	class SkyboxPass : public RenderPass<SkyboxPass> {
 	private:
 		AssetID _skyboxShader{};
 		AssetID _quad{};
@@ -69,10 +86,6 @@ namespace Byte {
 			data.device.bindDefault(data.width, data.height);
 		}
 
-		UniquePtr<RenderPass> clone() const override {
-			return std::make_unique<SkyboxPass>();
-		}
-
 		void initialize(RenderData& data) {
 			Shader skyboxShader{ "../Render/shader/skybox.vert","../Render/shader/skybox.frag" };
 			skyboxShader.uniforms().insert("uScatter");
@@ -102,7 +115,18 @@ namespace Byte {
 		}
 	};
 
-	class DrawPass: public RenderPass {
+	class GeometryPass : public RenderPass<GeometryPass> {
+	private:
+		AssetID _geometryBuffer{};
+
+	public:
+		void render(RenderData& data, RenderContext& context) override {
+			
+		}
+
+	};
+
+	class DrawPass: public RenderPass<DrawPass> {
 	private:
 		AssetID _colorBuffer{};
 		AssetID _quad{};
@@ -150,10 +174,6 @@ namespace Byte {
 			data.device.uniform(finalShader, "uAlbedo", colorBuffer.texture("color"));
 			data.device.uniform(finalShader, "uGamma", data.parameter<float>("gamma"));
 			data.device.draw(quad.indexCount());
-		}
-
-		UniquePtr<RenderPass> clone() const override {
-			return std::make_unique<DrawPass>();
 		}
 
 		void initialize(RenderData& data) override {

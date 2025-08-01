@@ -7,7 +7,7 @@ namespace Byte {
 
 	class Pipeline {
 	private:
-		Vector<UniquePtr<RenderPass>> _passes;
+		Vector<UniquePtr<IRenderPass>> _passes;
 
 	public:
 		Pipeline() = default;
