@@ -16,6 +16,8 @@ namespace Byte {
 
 		Set<Tag> _uniforms;
 
+		bool _useMaterial{ false };
+
 	public:
 		Shader(Path&& vertex, Path&& fragment, Path&& geometry = "")
 			:_vertex{ std::move(vertex) }, _fragment{ std::move(fragment) }, _geometry{ std::move(geometry) } {
@@ -39,6 +41,14 @@ namespace Byte {
 
 		const Set<Tag>& uniforms() const {
 			return _uniforms;
+		}
+
+		void useMaterial(bool value) {
+			_useMaterial = value;
+		}
+
+		bool useMaterial() const {
+			return _useMaterial;
 		}
 	};
 

@@ -148,6 +148,7 @@
     <ClInclude Include="render\render_types.h" />
     <ClInclude Include="render\shader.h" />
     <ClInclude Include="render\texture.h" />
+    <ClInclude Include="shader\lighting.frag" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="external\glad.c" />
@@ -155,9 +156,12 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="shader\default.vert" />
+    <None Include="shader\deferred.frag" />
     <None Include="shader\final.frag" />
     <None Include="shader\final.vert" />
     <None Include="shader\forward.frag" />
+    <None Include="shader\instanced.vert" />
+    <None Include="shader\quad.vert" />
     <None Include="shader\skybox.frag" />
     <None Include="shader\skybox.vert" />
   </ItemGroup>

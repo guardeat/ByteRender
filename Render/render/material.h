@@ -10,12 +10,12 @@ namespace Byte {
 
 	class Material : public Asset {
 	private:
-		float _metallic{ 1.0f };
-		float _roughness{ 1.0f };
+		float _metallic{ 0.0f };
+		float _roughness{ 0.9f };
 		float _emission{ 0.0f };
 		float _ambientOcclusion{ 0.5f };
 
-		Vec4 _color{ 0.5f, 0.5f, 0.5f, 1.0f };
+		Vec4 _color{ 1.0f, 1.0f, 1.0f, 1.0f };
 
 		TransparencyMode _transparency{ TransparencyMode::OPAQUE };
 

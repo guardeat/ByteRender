@@ -14,7 +14,7 @@ int main() {
 
 	Window window{ 1280,720 };
 
-	Renderer renderer{ Renderer::build<SkyboxPass, DrawPass>() };
+	Renderer renderer{ Renderer::build<SkyboxPass, GeometryPass, LightingPass, DrawPass>() };
 
 	auto lastTime{ std::chrono::high_resolution_clock::now() };
 	int frameCount{ 0 };

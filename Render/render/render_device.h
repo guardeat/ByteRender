@@ -205,8 +205,14 @@ namespace Byte {
 		void uniform(const Shader& shader, Material& material) {
 			GPUShader id{ _shaders.at(shader.assetID()) };
 
-			if (shader.uniforms().contains("uColor")) {
-				OpenGL::uniform(id, "uColor", material.color());
+			if (shader.useMaterial()) {
+				OpenGL::uniform(id, "uAlbedo", material.color());
+
+				OpenGL::uniform(id, "uMetallic", material.metallic());
+				OpenGL::uniform(id, "uRoughness", material.roughness());
+
+				OpenGL::uniform(id, "uEmission", material.emission());
+				OpenGL::uniform(id, "uAO", material.ambientOcclusion());
 			}
 
 			for (const auto& [tag, input] : material.parameters()) {

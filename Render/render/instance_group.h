@@ -117,6 +117,10 @@ namespace Byte {
 		bool updated() const {
 			return _update;
 		}
+
+		size_t count() const {
+			return _keys.size();
+		}
 	};
 
 }

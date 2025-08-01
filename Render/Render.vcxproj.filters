@@ -66,6 +66,9 @@
     <ClInclude Include="render\mesh_renderer.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="shader\lighting.frag">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="renderer.cpp">
@@ -82,5 +85,8 @@
     <None Include="shader\skybox.vert" />
     <None Include="shader\final.frag" />
     <None Include="shader\final.vert" />
+    <None Include="shader\deferred.frag" />
+    <None Include="shader\instanced.vert" />
+    <None Include="shader\quad.vert" />
   </ItemGroup>
 </Project>

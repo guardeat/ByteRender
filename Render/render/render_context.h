@@ -67,6 +67,22 @@ namespace Byte {
 			return _repository->texture(id);
 		}
 
+		InstanceGroup& instanceGroup(AssetID id) {
+			return _repository->instanceGroup(id);
+		}
+
+		const InstanceGroup& instanceGroup(AssetID id) const {
+			return _repository->instanceGroup(id);
+		}
+
+		Map<AssetID, InstanceGroup>& instanceGroups() {
+			return _repository->instanceGroups();
+		}
+
+		const Map<AssetID, InstanceGroup>& instanceGroups() const {
+			return _repository->instanceGroups();
+		}
+
 		Pair<Camera&, Transform&> camera() {
 			Camera& camera{ _world->get<Camera>(_camera) };
 			Transform& transform{ _world->get<Transform>(_camera) };

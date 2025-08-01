@@ -56,7 +56,6 @@ namespace Byte {
 			Material& skyboxMaterial{ context.material(_skyboxMaterial) };
 
 			auto [dLight, dLightTransform] = context.directionalLight();
-
 			auto [camera, cameraTransform] = context.camera();
 
 			float aspect{ static_cast<float>(data.width) / static_cast<float>(data.height) };
@@ -82,8 +81,6 @@ namespace Byte {
 			data.device.state(RenderState::DISABLE_DEPTH);
 			data.device.draw(quad.indexCount());
 			data.device.state(RenderState::ENABLE_DEPTH);
-
-			data.device.bindDefault(data.width, data.height);
 		}
 
 		void initialize(RenderData& data) {
@@ -118,12 +115,161 @@ namespace Byte {
 	class GeometryPass : public RenderPass<GeometryPass> {
 	private:
 		AssetID _geometryBuffer{};
+		AssetID _geometryShader{};
+		AssetID _instancedGeometryShader{};
 
 	public:
 		void render(RenderData& data, RenderContext& context) override {
-			
+			auto [camera, cameraTransform] = context.camera();
+			float aspect{ static_cast<float>(data.width) / static_cast<float>(data.height) };
+
+			Mat4 projection{ camera.perspective(aspect) };
+			Mat4 view{ cameraTransform.view() };
+
+			Framebuffer& geometryBuffer{ data.framebuffers.at(_geometryBuffer) };
+
+			data.device.bind(geometryBuffer);
+			data.device.clearBuffer();
+		
+			Shader geometryShader{ data.shaders.at(_geometryShader) };
+			data.device.bind(geometryShader);
+
+			for(auto[id, renderer, transform] : context.view<EntityID, MeshRenderer, Transform>()) {
+				Mesh& mesh{ context.mesh(renderer.mesh()) };
+				Material& material{ context.material(renderer.material()) };
+
+				data.device.bind(mesh);
+				data.device.uniform(geometryShader, transform);
+				data.device.uniform(geometryShader, "uProjection", projection);
+				data.device.uniform(geometryShader, "uView", view);
+				data.device.uniform(geometryShader, material);
+				
+				data.device.draw(mesh.indexCount());
+			}
+
+			Shader instancedGeometryShader{ data.shaders.at(_instancedGeometryShader) };
+			data.device.bind(instancedGeometryShader);
+
+			for (auto& [_, group] : context.instanceGroups()) {
+				Mesh& mesh{ context.mesh(group.mesh()) };
+				Material& material{ context.material(group.material()) };
+
+				data.device.bind(group);
+				data.device.uniform(instancedGeometryShader, "uProjection", projection);
+				data.device.uniform(instancedGeometryShader, "uView", view);
+				data.device.uniform(instancedGeometryShader, material);
+
+				data.device.draw(mesh.indexCount(), group.count());
+			}
 		}
 
+		void initialize(RenderData& data) override {
+			Framebuffer geometryBuffer{ data.width, data.height };
+
+			Texture normalTexture{};
+			normalTexture.attachment(AttachmentType::COLOR_0);
+			normalTexture.internalFormat(ColorFormat::RGB16F);
+			normalTexture.format(ColorFormat::RGB);
+			normalTexture.dataType(DataType::FLOAT);
+			geometryBuffer.texture(Tag{ "normal" }, std::move(normalTexture));
+
+			Texture albedoTexture{};
+			albedoTexture.attachment(AttachmentType::COLOR_1);
+			albedoTexture.internalFormat(ColorFormat::RGB16F);
+			albedoTexture.format(ColorFormat::RGB);
+			albedoTexture.dataType(DataType::FLOAT);
+			geometryBuffer.texture(Tag{ "albedo" }, std::move(albedoTexture));
+
+			Texture materialTexture{};
+			materialTexture.attachment(AttachmentType::COLOR_2);
+			materialTexture.internalFormat(ColorFormat::RGBA);
+			materialTexture.format(ColorFormat::RGBA);
+			materialTexture.dataType(DataType::UNSIGNED_BYTE);
+			geometryBuffer.texture(Tag{ "material" }, std::move(materialTexture));
+
+			Texture depthTexture{};
+			depthTexture.attachment(AttachmentType::DEPTH);
+			depthTexture.internalFormat(ColorFormat::DEPTH);
+			depthTexture.format(ColorFormat::DEPTH);
+			depthTexture.dataType(DataType::FLOAT);
+			geometryBuffer.texture(Tag{ "depth" }, std::move(depthTexture));
+
+			_geometryBuffer = geometryBuffer.assetID();
+			data.parameter("geometry_buffer_id", geometryBuffer.assetID());
+			data.framebuffers.emplace(geometryBuffer.assetID(), std::move(geometryBuffer));
+
+			Shader geometryShader{ "../Render/shader/default.vert", "../Render/shader/deferred.frag" };
+			geometryShader.useMaterial(true);
+			Shader instancedGeometryShader{ "../Render/shader/instanced.vert", "../Render/shader/deferred.frag" };
+			instancedGeometryShader.useMaterial(true);
+
+			_geometryShader = geometryShader.assetID();
+			_instancedGeometryShader = instancedGeometryShader.assetID();
+
+			data.parameter("geometry_shader_id", geometryShader.assetID());
+			data.parameter("instanced_geometry_shader_id", instancedGeometryShader.assetID());
+
+			data.shaders.emplace(geometryShader.assetID(), std::move(geometryShader));
+			data.shaders.emplace(instancedGeometryShader.assetID(), std::move(instancedGeometryShader));
+		}
+	};
+
+	class LightingPass : public RenderPass<LightingPass> {
+	private:
+		AssetID _geometryBuffer{};
+		AssetID _colorBuffer{};
+		AssetID _lightingShader{};
+		AssetID _quad{};
+
+	public:
+		void render(RenderData& data, RenderContext& context) override {
+			Framebuffer& geometryBuffer{ data.framebuffers.at(_geometryBuffer) };
+			Framebuffer& colorBuffer{ data.framebuffers.at(_colorBuffer) };
+
+			data.device.bind(colorBuffer);
+			
+			auto [directionalLight, dLightTransform] = context.directionalLight();
+			auto [camera, cameraTransform] = context.camera();
+			float aspect{ static_cast<float>(data.width) / static_cast<float>(data.height) };
+
+			Mat4 view{ cameraTransform.view() };
+			Mat4 inverseView{ view.inverse() };
+			Mat4 inverseProjection{ camera.perspective(aspect).inverse() };
+
+			Mesh& quad{ data.meshes.at(_quad) };
+
+			Shader& lightingShader{ data.shaders.at(_lightingShader) };
+			data.device.bind(quad);
+			data.device.bind(lightingShader);
+
+			data.device.uniform(lightingShader, "uNormal", geometryBuffer.texture("normal"));
+			data.device.uniform(lightingShader, "uAlbedo", geometryBuffer.texture("albedo"), TextureUnit::UNIT_1);
+			data.device.uniform(lightingShader, "uMaterial", geometryBuffer.texture("material"), TextureUnit::UNIT_2);
+			data.device.uniform(lightingShader, "uDepth", geometryBuffer.texture("depth"), TextureUnit::UNIT_3);
+
+			data.device.uniform(lightingShader, "uDLight.direction", dLightTransform.front());
+			data.device.uniform(lightingShader, "uDLight.color", directionalLight.color);
+			data.device.uniform(lightingShader, "uDLight.intensity", directionalLight.intensity);
+
+			data.device.uniform(lightingShader, "uView", view);
+			data.device.uniform(lightingShader, "uInverseView", inverseView);
+			data.device.uniform(lightingShader, "uInverseProjection", inverseProjection);
+			data.device.uniform(lightingShader, "uViewPos", cameraTransform.position());
+
+			data.device.draw(quad.indexCount());
+		}
+
+		void initialize(RenderData& data) override {
+			_geometryBuffer = data.parameter<AssetID>("geometry_buffer_id");
+			_quad = data.parameter<AssetID>("quad_mesh_id");
+
+			Shader lightingShader{ "../Render/shader/quad.vert", "../Render/shader/lighting.frag" };
+			_lightingShader = lightingShader.assetID();
+			data.parameter("lighting_shader_id", lightingShader.assetID());
+			data.shaders.emplace(lightingShader.assetID(), std::move(lightingShader));
+
+			_colorBuffer = data.parameter<AssetID>("color_buffer_id");
+		}
 	};
 
 	class DrawPass: public RenderPass<DrawPass> {
@@ -134,42 +280,15 @@ namespace Byte {
 
 	public:
 		void render(RenderData& data, RenderContext& context) override {
-			auto [camera, cameraTransform] = context.camera();
-			auto [dLight, dLightTransform] = context.directionalLight();
-
-			float aspect{ static_cast<float>(data.width) / static_cast<float>(data.height) };
-			Mat4 projection{ camera.perspective(aspect) };
-			Mat4 view{ cameraTransform.view() };
-
 			Framebuffer& colorBuffer{ data.framebuffers.at(_colorBuffer) };
-			data.device.bind(colorBuffer);
-
-			for (auto [renderer, transform] : context.view<MeshRenderer, Transform>()) {
-				Mesh& mesh{ context.mesh(renderer.mesh()) };
-				Material& material{ context.material(renderer.material()) };
-				Shader& shader{ data.shaders.at(material.shader("default")) };
-
-				data.device.bind(shader);
-				data.device.bind(mesh);
-
-				data.device.uniform(shader, transform);
-				data.device.uniform(shader, "uProjection", projection);
-				data.device.uniform(shader, "uView", view);
-				data.device.uniform(shader, material);
-				data.device.uniform(shader, "uDLight.direction", dLightTransform.front());
-				data.device.uniform(shader, "uDLight.color", dLight.color);
-				data.device.uniform(shader, "uDLight.intensity", dLight.intensity);
-
-				data.device.draw(mesh.indexCount());
-			}
 			
 			Mesh& quad{ data.meshes.at(_quad) };
 			Shader& finalShader{ data.shaders.at(_finalShader) };
 
+			data.device.bindDefault(data.width, data.height);
+
 			data.device.bind(quad);
 			data.device.bind(finalShader);
-
-			data.device.bindDefault(data.width, data.height);
 			
 			data.device.uniform(finalShader, "uAlbedo", colorBuffer.texture("color"));
 			data.device.uniform(finalShader, "uGamma", data.parameter<float>("gamma"));
