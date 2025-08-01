@@ -20,7 +20,7 @@ namespace Byte {
 		bool _dynamic{ false };
 
 	public:
-		InstanceGroup(AssetID mesh, AssetID material, Layout&& layout)
+		InstanceGroup(AssetID mesh, AssetID material, Layout&& layout = Layout{ 3,3,4 })
 			: Asset(), _mesh{ mesh }, _material{ material }, _layout{ std::move(layout) } {
 		}
 

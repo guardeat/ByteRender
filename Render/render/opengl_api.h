@@ -354,7 +354,7 @@ namespace Byte {
             return  bufferGroup;
         }
 
-        static GPUBufferGroup build(InstanceGroup& group, GPUBufferGroup& meshGroup) {
+        static GPUBufferGroup build(InstanceGroup& group, Mesh& mesh) {
             GPUBufferGroup bufferGroup{};
 
             GLuint vao{};
@@ -362,24 +362,33 @@ namespace Byte {
             glBindVertexArray(vao);
             bufferGroup.id = static_cast<GPUBuffer>(vao);
 
-            for (const auto& buffer : meshGroup.renderBuffers) {
-                glBindBuffer(GL_ARRAY_BUFFER, buffer);
-            }
-            if (meshGroup.indexBuffer != 0) {
-                glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, meshGroup.indexBuffer);
-            }
+            GPUBuffer vertexBuffer{ build<float>(
+                mesh.vertices(),
+                mesh.layout(),
+                mesh.dynamic() ? BufferMode::DYNAMIC : BufferMode::STATIC,
+                GL_FLOAT
+            )};
 
-            GLuint attribIndex{ static_cast<GLuint>(meshGroup.renderBuffers.size()) };
-            GPUBuffer instanceBuffer{
-                build<float>(
+            bufferGroup.renderBuffers.push_back(vertexBuffer);
+
+            GPUBuffer indexBuffer{ build<uint32_t>(
+                mesh.indices(),
+                Layout{},
+                mesh.dynamic() ? BufferMode::DYNAMIC : BufferMode::STATIC,
+                GL_UNSIGNED_INT
+            )};
+
+            bufferGroup.indexBuffer = indexBuffer;
+
+            GLuint attribIndex{ static_cast<GLuint>(mesh.layout().size()) };
+            GPUBuffer instanceBuffer{ build<float>(
                     group.data(),
                     group.layout(),
                     group.dynamic() ? BufferMode::DYNAMIC : BufferMode::STATIC,
                     GL_FLOAT,
                     attribIndex,
                     true
-                )
-            };
+            )};
 
             bufferGroup.renderBuffers.push_back(instanceBuffer);
 

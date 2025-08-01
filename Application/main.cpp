@@ -5,6 +5,7 @@
 #include "render/material.h"
 #include "render/camera.h"
 #include "render/light.h"
+#include "render/instance_renderer.h"
 #include "application/camera_controller.h"
 
 using namespace Byte;
@@ -21,7 +22,7 @@ int main() {
 	float fpsTimer{ 0.0f };
 
 	Repository repository;
-	Mesh mesh{ Primitive::sphere(48) };
+	Mesh mesh{ Primitive::sphere(18) };
 	Material material{};
 	material.color(Vec4{ 0.4f,0.8f,0.1f, 1.0f });
 	Shader shader{ "../Render/shader/default.vert","../Render/shader/forward.frag" };
@@ -30,7 +31,23 @@ int main() {
 
 	World world;
 	MeshRenderer meshRenderer{ mesh.assetID(),material.assetID() };
-	world.create<MeshRenderer, Transform>(std::move(meshRenderer), Transform{});
+	//world.create<MeshRenderer, Transform>(std::move(meshRenderer), Transform{});
+
+	InstanceGroup instanceGroup{ mesh.assetID(), material.assetID() };
+
+	for (size_t i{}; i < 10; ++i) {
+		for(size_t j{}; j < 10; ++j) {
+			for(size_t k{}; k < 10; ++k) {
+				InstanceRenderer instanceRenderer{ instanceGroup.assetID() };
+				EntityID entity{ world.create<InstanceRenderer, Transform>(std::move(instanceRenderer), Transform{}) };
+				auto& transform{ world.get<Transform>(entity) };
+				transform.position(Vec3{ static_cast<float>(i), static_cast<float>(j), static_cast<float>(k) });
+				instanceGroup.submit(entity,transform);
+			}
+		}
+	}
+
+	repository.instanceGroup(instanceGroup.assetID(), std::move(instanceGroup));
 
 	repository.mesh(mesh.assetID(), std::move(mesh));
 	repository.material(material.assetID(), std::move(material));
@@ -43,10 +60,9 @@ int main() {
 	renderer.submit(std::move(shader));
 
 	EntityID camera{ world.create<Camera, Transform>(Camera{}, Transform{}) };
-	EntityID directionalLight{ 
-		world.create<DirectionalLight, Transform>(DirectionalLight{}, Transform{}) };
+	EntityID dLight{ world.create<DirectionalLight, Transform>(DirectionalLight{}, Transform{}) };
 
-	RenderContext context{ world,repository, camera, directionalLight };
+	RenderContext context{ world,repository, camera, dLight };
 
 	CameraController controller;
 

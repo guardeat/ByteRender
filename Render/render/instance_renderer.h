@@ -9,7 +9,9 @@ namespace Byte {
 		AssetID _instanceGroup;
 
 	public:
-
+		InstanceRenderer(AssetID instanceGroup)
+			: _instanceGroup{ instanceGroup } {
+		}
 	};
 
 }
