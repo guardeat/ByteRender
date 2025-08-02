@@ -149,6 +149,8 @@
     <ClInclude Include="render\shader.h" />
     <ClInclude Include="render\texture.h" />
     <ClInclude Include="shader\lighting.frag" />
+    <ClInclude Include="shader\point_light.frag" />
+    <ClInclude Include="shader\point_light.vert" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="external\glad.c" />

@@ -84,6 +84,9 @@ namespace Byte {
             case RenderState::CULL_FRONT:
                 glCullFace(GL_FRONT);
                 break;
+			case RenderState::BLEND_ADD:
+                glBlendFunc(GL_ONE, GL_ONE);
+                break;
             }
         }
 

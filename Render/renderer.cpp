@@ -79,8 +79,7 @@ namespace Byte {
 		_data.device.release(texture);
 	}
 
-	void Renderer::submit(Shader&& shader)
-	{
+	void Renderer::submit(Shader&& shader) {
 		_data.shaders.emplace(shader.assetID(), std::move(shader));
 	}
 

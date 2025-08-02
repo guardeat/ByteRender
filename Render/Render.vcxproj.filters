@@ -69,6 +69,12 @@
     <ClInclude Include="shader\lighting.frag">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="shader\point_light.vert">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="shader\point_light.frag">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="renderer.cpp">

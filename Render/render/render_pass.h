@@ -135,6 +135,10 @@ namespace Byte {
 			data.device.bind(geometryShader);
 
 			for(auto[id, renderer, transform] : context.view<EntityID, MeshRenderer, Transform>()) {
+				if (renderer.mesh() == 0 || renderer.material() == 0) {
+					continue;
+				}
+
 				Mesh& mesh{ context.mesh(renderer.mesh()) };
 				Material& material{ context.material(renderer.material()) };
 
@@ -151,6 +155,10 @@ namespace Byte {
 			data.device.bind(instancedGeometryShader);
 
 			for (auto& [_, group] : context.instanceGroups()) {
+				if(group.mesh() == 0 || group.material() == 0 || group.count() == 0) {
+					continue;
+				}
+
 				Mesh& mesh{ context.mesh(group.mesh()) };
 				Material& material{ context.material(group.material()) };
 
@@ -219,7 +227,9 @@ namespace Byte {
 		AssetID _geometryBuffer{};
 		AssetID _colorBuffer{};
 		AssetID _lightingShader{};
+		AssetID _pointLightShader{};
 		AssetID _quad{};
+		AssetID _pointLightGroup{};
 
 	public:
 		void render(RenderData& data, RenderContext& context) override {
@@ -234,7 +244,8 @@ namespace Byte {
 
 			Mat4 view{ cameraTransform.view() };
 			Mat4 inverseView{ view.inverse() };
-			Mat4 inverseProjection{ camera.perspective(aspect).inverse() };
+			Mat4 projection{ camera.perspective(aspect) };
+			Mat4 inverseProjection{ projection.inverse() };
 
 			Mesh& quad{ data.meshes.at(_quad) };
 
@@ -257,10 +268,46 @@ namespace Byte {
 			data.device.uniform(lightingShader, "uViewPos", cameraTransform.position());
 
 			data.device.draw(quad.indexCount());
+
+			data.device.state(RenderState::DISABLE_DEPTH);
+			data.device.state(RenderState::ENABLE_BLEND);
+			data.device.state(RenderState::BLEND_ADD);
+			data.device.state(RenderState::ENABLE_CULLING);
+			data.device.state(RenderState::CULL_FRONT);
+
+			InstanceGroup& pointLightGroup{ context.instanceGroup(_pointLightGroup) };
+			Mesh& pointLightMesh{ context.mesh(pointLightGroup.mesh()) };
+
+			Shader& pointLightShader{ data.shaders.at(_pointLightShader) };
+			Vec2 viewPortSize{ static_cast<float>(data.width), static_cast<float>(data.height) };
+
+			data.device.bind(pointLightShader);
+			data.device.bind(pointLightGroup);
+
+			data.device.uniform(pointLightShader, "uProjection", camera.perspective(aspect));
+			data.device.uniform(pointLightShader, "uView", view);
+			data.device.uniform(pointLightShader, "uProjection", projection);
+			data.device.uniform(pointLightShader, "uInverseView", inverseView);
+			data.device.uniform(pointLightShader, "uInverseProjection", inverseProjection);
+			data.device.uniform(pointLightShader, "uViewPos", cameraTransform.position());
+			data.device.uniform(pointLightShader, "uViewPortSize", viewPortSize);
+
+			data.device.uniform(pointLightShader, "uNormal", geometryBuffer.texture("normal"), TextureUnit::UNIT_0);
+			data.device.uniform(pointLightShader, "uAlbedo", geometryBuffer.texture("albedo"), TextureUnit::UNIT_1);
+			data.device.uniform(pointLightShader, "uMaterial", geometryBuffer.texture("material"), TextureUnit::UNIT_2);
+			data.device.uniform(pointLightShader, "uDepth", geometryBuffer.texture("depth"), TextureUnit::UNIT_3);
+
+			data.device.draw(pointLightMesh.indexCount(), pointLightGroup.count(), DrawType::TRIANGLES);
+
+			data.device.state(RenderState::ENABLE_DEPTH);
+			data.device.state(RenderState::DISABLE_BLEND);
+			data.device.state(RenderState::CULL_BACK);
+			data.device.state(RenderState::DISABLE_CULLING);
 		}
 
 		void initialize(RenderData& data) override {
 			_geometryBuffer = data.parameter<AssetID>("geometry_buffer_id");
+			_colorBuffer = data.parameter<AssetID>("color_buffer_id");
 			_quad = data.parameter<AssetID>("quad_mesh_id");
 
 			Shader lightingShader{ "../Render/shader/quad.vert", "../Render/shader/lighting.frag" };
@@ -268,7 +315,12 @@ namespace Byte {
 			data.parameter("lighting_shader_id", lightingShader.assetID());
 			data.shaders.emplace(lightingShader.assetID(), std::move(lightingShader));
 
-			_colorBuffer = data.parameter<AssetID>("color_buffer_id");
+			Shader pointLightShader{ "../Render/shader/point_light.vert", "../Render/shader/point_light.frag" };
+			_pointLightShader = pointLightShader.assetID();
+			data.parameter("point_light_shader_id", pointLightShader.assetID());
+			data.shaders.emplace(pointLightShader.assetID(), std::move(pointLightShader));
+
+			_pointLightGroup = data.parameter<AssetID>("point_light_group_id");
 		}
 	};
 

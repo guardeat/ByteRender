@@ -10,6 +10,11 @@
 
 using namespace Byte;
 
+extern "C" {
+	__declspec(dllexport) unsigned long NvOptimusEnablement = 0x00000001;
+	__declspec(dllexport) int AmdPowerXpressRequestHighPerformance = 1;
+}
+
 int main() {
 	glfwInit();
 
@@ -22,7 +27,7 @@ int main() {
 	float fpsTimer{ 0.0f };
 
 	Repository repository;
-	Mesh mesh{ Primitive::sphere(18) };
+	Mesh mesh{ Primitive::sphere(10) };
 	Material material{};
 	material.color(Vec4{ 0.4f,0.8f,0.1f, 1.0f });
 	Shader shader{ "../Render/shader/default.vert","../Render/shader/forward.frag" };
@@ -30,8 +35,15 @@ int main() {
 	material.shader("default", shader.assetID());
 
 	World world;
-	MeshRenderer meshRenderer{ mesh.assetID(),material.assetID() };
-	//world.create<MeshRenderer, Transform>(std::move(meshRenderer), Transform{});
+	Mesh cubeMesh{ Primitive::cube() };
+	MeshRenderer meshRenderer{ cubeMesh.assetID(),material.assetID() };
+
+	EntityID cubeEntity{ world.create<MeshRenderer, Transform>(std::move(meshRenderer), Transform{}) };
+
+	world.get<Transform>(cubeEntity).position(Vec3{ 0.0f, -1.0f, 0.0f });
+
+	repository.mesh(cubeMesh.assetID(), std::move(cubeMesh));
+	world.get<Transform>(cubeEntity).scale(Vec3{ 100.0f, 1.0f, 100.05f });
 
 	InstanceGroup instanceGroup{ mesh.assetID(), material.assetID() };
 
@@ -47,8 +59,35 @@ int main() {
 		}
 	}
 
+	Mesh pointLightMesh{ Primitive::sphere(10) };
+	InstanceGroup pointLightGroup{ pointLightMesh.assetID(), 0, Layout{3,3,3,3} };
+
+	for (size_t i{}; i < 10; ++i) {
+		for (size_t j{}; j < 10; ++j) {
+			for (size_t k{}; k < 10; ++k) {
+				EntityID entity{ world.create<PointLight, Transform>(PointLight{}, Transform{}) };
+				auto& transform{ world.get<Transform>(entity) };
+				transform.position(Vec3{ static_cast<float>(i), static_cast<float>(j), static_cast<float>(k) } * 10);
+				PointLight& light{ world.get<PointLight>(entity) };
+				light.color = Vec3{ 1.0f, 0.0f, 0.0f };
+				transform.scale(transform.scale() * light.radius());
+				Vector<float> data{
+					transform.position().x, transform.position().y, transform.position().z,
+					transform.scale().x, transform.scale().y, transform.scale().z,
+					light.color.x, light.color.y, light.color.z,
+					light.constant, light.linear, light.quadratic
+				};
+				pointLightGroup.submit(entity, std::move(data));
+			}
+		}
+	}
+
+	renderer.parameter("point_light_group_id", pointLightGroup.assetID());
+
+	repository.instanceGroup(pointLightGroup.assetID(), std::move(pointLightGroup));
 	repository.instanceGroup(instanceGroup.assetID(), std::move(instanceGroup));
 
+	repository.mesh(pointLightMesh.assetID(), std::move(pointLightMesh));
 	repository.mesh(mesh.assetID(), std::move(mesh));
 	repository.material(material.assetID(), std::move(material));
 	
@@ -67,6 +106,10 @@ int main() {
 	CameraController controller;
 
 	renderer.initialize(window);
+
+	std::cout << "Renderer: " << glGetString(GL_RENDERER) << "\n";
+	std::cout << "Vendor: " << glGetString(GL_VENDOR) << "\n";
+	std::cout << "Version: " << glGetString(GL_VERSION) << "\n";
 
 	while (!glfwWindowShouldClose(&window.handle())) {
 		auto currentTime{ std::chrono::high_resolution_clock::now() };

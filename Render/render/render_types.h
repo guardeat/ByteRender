@@ -149,7 +149,8 @@ namespace Byte {
 		ENABLE_CULLING,
 		DISABLE_CULLING,
 		CULL_BACK,
-		CULL_FRONT
+		CULL_FRONT,
+		BLEND_ADD,
 	};
 
 }
