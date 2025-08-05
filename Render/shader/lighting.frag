@@ -9,6 +9,15 @@ uniform sampler2D uAlbedo;
 uniform sampler2D uMaterial;
 uniform sampler2D uDepth;
 
+uniform sampler2D uDepthMaps[4];
+uniform float uCascadeFars[4];
+uniform mat4 uLightSpaces[4];
+uniform int uCascadeCount;
+
+uniform mat4 uView;
+uniform mat4 uInverseView;
+uniform mat4 uInverseProjection;
+
 uniform vec3 uViewPos;
 
 uniform struct {
@@ -17,11 +26,63 @@ uniform struct {
     float intensity;
 } uDLight;
 
-uniform mat4 uView;
-uniform mat4 uInverseView;
-uniform mat4 uInverseProjection;
-
 const float PI = 3.14159265359;
+
+float sampleShadow(int layer, vec3 fragWorldPos, vec3 normal)
+{
+    vec4 fragLightSpace = uLightSpaces[layer] * vec4(fragWorldPos, 1.0);
+    vec3 projCoords = fragLightSpace.xyz / fragLightSpace.w;
+    projCoords = projCoords * 0.5 + 0.5;
+
+    float currentDepth = projCoords.z;
+    vec2 texelSize = 1.0 / textureSize(uDepthMaps[layer], 0);
+    int pcfRadius = 1;
+    float shadowValue = 0.0;
+
+    for(int x = -pcfRadius; x <= pcfRadius; ++x)
+    {
+        for(int y = -pcfRadius; y <= pcfRadius; ++y)
+        {
+            vec2 offset = vec2(x, y) * texelSize;
+            float closestDepth = texture(uDepthMaps[layer], projCoords.xy + offset).r;
+            float bias = max(0.001 * (1.0 - dot(normal, uDLight.direction)), 0.001);
+            shadowValue += currentDepth - bias > closestDepth ? 1.0 : 0.0;
+        }
+    }
+
+    int samples = (pcfRadius * 2 + 1) * (pcfRadius * 2 + 1);
+    return shadowValue / float(samples);
+}
+
+
+float calculateShadow(vec3 fragWorldPos, vec3 normal)
+{
+    vec4 fragPosViewSpace = uView * vec4(fragWorldPos, 1.0);
+    float depthValue = abs(fragPosViewSpace.z);
+
+    int layer = 0;
+    for (int i = uCascadeCount - 1; i > 0; --i)
+    {
+        if (depthValue < uCascadeFars[i])
+        {
+            layer = i;
+            break;
+        }
+    }
+
+    float blend = 0.0;
+    if (layer > 0)
+    {
+        float farPlane = uCascadeFars[layer];
+        float nearPlane = uCascadeFars[layer - 1];
+        blend = clamp((depthValue - nearPlane) / (farPlane - nearPlane), 0.0, 1.0);
+    }
+
+    float shadowCurrent = sampleShadow(layer, fragWorldPos, normal);
+    float shadowPrev = (layer > 0) ? sampleShadow(layer - 1, fragWorldPos, normal) : shadowCurrent;
+
+    return mix(shadowPrev, shadowCurrent, blend);
+}
 
 vec3 worldPosFromDepth(float depth) {
     float z = depth * 2.0 - 1.0;
@@ -77,6 +138,7 @@ void main()
     else {
         vec3 fragPos = worldPosFromDepth(texture(uDepth, vTexCoord).r);
         vec3 normal = normalize(texture(uNormal, vTexCoord).rgb);
+        float shadow = calculateShadow(fragPos, normal);
 
         vec3 F0 = vec3(0.04);
         F0 = mix(F0, albedo, metallic);
@@ -99,7 +161,7 @@ void main()
         float denominator = 4.0 * max(dot(normal, viewDir), 0.0) * NdotL + 0.001;
         vec3 specular = numerator / denominator;
 
-        vec3 Lo = (kD * albedo / PI + specular) * NdotL * uDLight.color;
+        vec3 Lo = (kD * albedo / PI + specular) * NdotL * uDLight.color * (1.0 - shadow);
 
         vec3 ambient = materialAO * albedo * uDLight.intensity * 0.3;
 

@@ -245,11 +245,11 @@ namespace Byte {
 			OpenGL::uniform(id, uniform, static_cast<int>(unit));
 		}
 
-		void updateBuffer(InstanceGroup& group) {
+		void updateBuffer(InstanceGroup& group, float capacityMultiplier = 2.0f) {
 			GPUBufferGroup& bufferGroup{ _meshes.at(group.mesh()) };
 			size_t size{ group.data().size() };
 			if (size > bufferGroup.capacity) {
-				size_t newSize{ group.data().size() * 2 };
+				size_t newSize{ static_cast<size_t>(group.data().size() * capacityMultiplier) };
 				bufferGroup.capacity = newSize;
 				OpenGL::bufferData(bufferGroup.renderBuffers[0], group.data(), newSize, false);
 			}

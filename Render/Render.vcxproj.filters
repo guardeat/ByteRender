@@ -94,5 +94,8 @@
     <None Include="shader\deferred.frag" />
     <None Include="shader\instanced.vert" />
     <None Include="shader\quad.vert" />
+    <None Include="shader\depth.frag" />
+    <None Include="shader\depth.vert" />
+    <None Include="shader\instanced_depth.vert" />
   </ItemGroup>
 </Project>
