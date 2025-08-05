@@ -92,6 +92,7 @@ int main() {
 	CameraController controller{};
 
 	// === Renderer Setup ===
+	renderer.parameter("default_shader_path", Path{ "../Render/shader/" });
 	renderer.initialize(window);
 
 	std::cout << "Renderer: " << glGetString(GL_RENDERER) << "\n";

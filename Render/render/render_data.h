@@ -18,7 +18,7 @@ namespace Byte {
 		Map<AssetID, Framebuffer> framebuffers;
 		Map<AssetID, Mesh> meshes;
 
-		Map<Tag, Variant<bool, int, uint64_t, float, Vec3, Quaternion,Mat4>> parameters;
+		Map<Tag, Variant<bool, int, uint64_t, float, Vec3, Quaternion, Mat4, Path>> parameters;
 
 		RenderDevice device;
 

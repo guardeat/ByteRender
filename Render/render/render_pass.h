@@ -84,7 +84,8 @@ namespace Byte {
 		}
 
 		void initialize(RenderData& data) {
-			Shader skyboxShader{ "../Render/shader/skybox.vert","../Render/shader/skybox.frag" };
+			Path shaderPath{ data.parameter<Path>("default_shader_path") };
+			Shader skyboxShader{ shaderPath/"skybox.vert",shaderPath/"skybox.frag" };
 			skyboxShader.uniforms().insert("uScatter");
 			_skyboxShader = skyboxShader.assetID();
 			data.shaders.emplace(skyboxShader.assetID(), std::move(skyboxShader));
@@ -175,8 +176,9 @@ namespace Byte {
 		}
 
 		void initialize(RenderData& data) override {
-			Shader shadowShader{ "../Render/shader/depth.vert", "../Render/shader/depth.frag" };
-			Shader instancedShadowShader{ "../Render/shader/instanced_depth.vert", "../Render/shader/depth.frag" };
+			Path shaderPath{ data.parameter<Path>("default_shader_path") };
+			Shader shadowShader{ shaderPath/"depth.vert", shaderPath/"depth.frag" };
+			Shader instancedShadowShader{ shaderPath/"instanced_depth.vert", shaderPath/"depth.frag" };
 
 			_shadowShader = shadowShader.assetID();
 			_instancedShadowShader = instancedShadowShader.assetID();
@@ -367,9 +369,11 @@ namespace Byte {
 			data.parameter("geometry_buffer_id", geometryBuffer.assetID());
 			data.framebuffers.emplace(geometryBuffer.assetID(), std::move(geometryBuffer));
 
-			Shader geometryShader{ "../Render/shader/default.vert", "../Render/shader/deferred.frag" };
+			Path shaderPath{ data.parameter<Path>("default_shader_path") };
+
+			Shader geometryShader{ shaderPath/"default.vert", shaderPath/"deferred.frag" };
 			geometryShader.useMaterial(true);
-			Shader instancedGeometryShader{ "../Render/shader/instanced.vert", "../Render/shader/deferred.frag" };
+			Shader instancedGeometryShader{ shaderPath/"instanced.vert", shaderPath/"deferred.frag" };
 			instancedGeometryShader.useMaterial(true);
 
 			_geometryShader = geometryShader.assetID();
@@ -405,12 +409,14 @@ namespace Byte {
 			_colorBuffer = data.parameter<AssetID>("color_buffer_id");
 			_quad = data.parameter<AssetID>("quad_mesh_id");
 
-			Shader lightingShader{ "../Render/shader/quad.vert", "../Render/shader/lighting.frag" };
+			Path shaderPath{ data.parameter<Path>("default_shader_path") };
+
+			Shader lightingShader{ shaderPath/"quad.vert", shaderPath/"lighting.frag" };
 			_lightingShader = lightingShader.assetID();
 			data.parameter("lighting_shader_id", lightingShader.assetID());
 			data.shaders.emplace(lightingShader.assetID(), std::move(lightingShader));
 
-			Shader pointLightShader{ "../Render/shader/point_light.vert", "../Render/shader/point_light.frag" };
+			Shader pointLightShader{ shaderPath/"point_light.vert", shaderPath/"point_light.frag" };
 			_pointLightShader = pointLightShader.assetID();
 			data.parameter("point_light_shader_id", pointLightShader.assetID());
 			data.shaders.emplace(pointLightShader.assetID(), std::move(pointLightShader));
@@ -550,7 +556,9 @@ namespace Byte {
 			_colorBuffer = data.parameter<AssetID>("color_buffer_id");
 			_quad = data.parameter<AssetID>("quad_mesh_id");
 
-			Shader finalShader{ "../Render/shader/final.vert","../Render/shader/final.frag" };
+			Path shaderPath{ data.parameter<Path>("default_shader_path") };
+
+			Shader finalShader{ shaderPath/"final.vert",shaderPath/"final.frag" };
 			_finalShader = finalShader.assetID();
 			data.shaders.emplace(finalShader.assetID(), std::move(finalShader));
 
