@@ -54,7 +54,6 @@ float sampleShadow(int layer, vec3 fragWorldPos, vec3 normal)
     return shadowValue / float(samples);
 }
 
-
 float calculateShadow(vec3 fragWorldPos, vec3 normal)
 {
     vec4 fragPosViewSpace = uView * vec4(fragWorldPos, 1.0);
