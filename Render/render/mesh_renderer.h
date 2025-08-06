@@ -12,6 +12,7 @@ namespace Byte {
 		bool _render{ true };
 		bool _dynamic{ false };
 		bool _frustumCulling{ true };
+		bool _shadow{ true };
 
 	public:
 		MeshRenderer() = default;
@@ -57,6 +58,14 @@ namespace Byte {
 
 		void frustumCulling(bool value) {
 			_frustumCulling = value;
+		}
+
+		bool shadow() const {
+			return _shadow;
+		}
+
+		void shadow(bool value) {
+			_shadow = value;
 		}
 	};
 

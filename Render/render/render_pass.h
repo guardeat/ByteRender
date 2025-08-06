@@ -152,7 +152,7 @@ namespace Byte {
 				data.device.bind(shadowShader);
 				data.device.uniform(shadowShader, "uLightSpace", lightSpace);
 				for(auto[renderer, transform] : context.view<MeshRenderer, Transform>()) {
-					if (renderer.mesh() == 0 || renderer.material() == 0) {
+					if (renderer.mesh() == 0 || renderer.material() == 0 || !renderer.shadow()) {
 						continue;
 					}
 					Mesh& mesh{ context.mesh(renderer.mesh()) };
@@ -168,7 +168,7 @@ namespace Byte {
 				data.device.uniform(instancedShadowShader, "uLightSpace", lightSpace);
 
 				for (auto& [_, group] : context.instanceGroups()) {
-					if(group.mesh() == 0 || group.count() == 0) {
+					if(group.mesh() == 0 || group.count() == 0 || !group.shadow()) {
 						continue;
 					}
 					Mesh& mesh{ context.mesh(group.mesh()) };
@@ -304,8 +304,8 @@ namespace Byte {
 			Shader geometryShader{ data.shaders.at(_geometryShader) };
 			data.device.bind(geometryShader);
 
-			for(auto[id, renderer, transform] : context.view<EntityID, MeshRenderer, Transform>()) {
-				if (renderer.mesh() == 0 || renderer.material() == 0) {
+			for(auto[renderer, transform] : context.view<MeshRenderer, Transform>()) {
+				if (renderer.mesh() == 0 || renderer.material() == 0 || !renderer.render()) {
 					continue;
 				}
 
@@ -325,7 +325,7 @@ namespace Byte {
 			data.device.bind(instancedGeometryShader);
 
 			for (auto& [_, group] : context.instanceGroups()) {
-				if(group.mesh() == 0 || group.material() == 0 || group.count() == 0) {
+				if(group.mesh() == 0 || group.material() == 0 || group.count() == 0 || !group.render()) {
 					continue;
 				}
 
@@ -679,7 +679,7 @@ namespace Byte {
 			data.parameter("bloom_down_shader_id", _bloomDownShader);
 			data.parameter("bloom_up_shader_id", _bloomUpShader);
 			data.parameter("render_bloom", true);
-			data.parameter("bloom_strength", 0.2f);
+			data.parameter("bloom_strength", 0.3f);
 		}
 	};
 

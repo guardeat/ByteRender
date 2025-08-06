@@ -16,8 +16,10 @@ namespace Byte {
 		Vector<float> _data;
 		Layout _layout;
 
+		bool _render{ true };
 		bool _update{ false };
 		bool _dynamic{ false };
+		bool _shadow{ true };
 
 	public:
 		InstanceGroup(AssetID mesh, AssetID material, Layout&& layout = Layout{ 3,3,4 })
@@ -36,12 +38,28 @@ namespace Byte {
 			return _layout;
 		}
 
+		bool render() const {
+			return _render;
+		}
+
+		void render(bool value) {
+			_render = value;
+		}
+
 		bool dynamic() const {
 			return _dynamic;
 		}
 
 		void dynamic(bool value) {
 			_dynamic = value;
+		}
+
+		bool shadow() const {
+			return _shadow;
+		}
+
+		void shadow(bool value) {
+			_shadow = value;
 		}
 
 		const Vector<RenderID>& keys() const {
@@ -63,12 +81,6 @@ namespace Byte {
 		void clear() {
 			_keys.clear();
 			_data.clear();
-			_update = true;
-		}
-
-		void add(RenderID key, const float* instanceData, size_t count) {
-			_keys.push_back(key);
-			_data.insert(_data.end(), instanceData, instanceData + count);
 			_update = true;
 		}
 
