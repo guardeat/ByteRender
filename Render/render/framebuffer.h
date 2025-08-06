@@ -52,6 +52,10 @@ namespace Byte {
 			return _attachments;
 		}
 
+		void attachments(Vector<AttachmentType>&& newAttachments) {
+			_attachments = std::move(newAttachments);
+		}
+
 		void width(size_t newWidth) {
 			_width = newWidth;
 		}

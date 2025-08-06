@@ -58,6 +58,22 @@ namespace Byte {
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         }
 
+        static void viewport(size_t width, size_t height) {
+            glViewport(0, 0, static_cast<GLsizei>(width), static_cast<GLsizei>(height));
+		}
+
+        static void blendWeights(float source, float destination) {
+            float total = source + destination;
+            if (total == 0.0f) {
+                total = 1.0f;
+            }
+
+            float sNorm{ source / total };
+            float dNorm{ destination / total };
+
+            glBlendColor(sNorm, sNorm, sNorm, dNorm);
+		}
+
         static void state(RenderState state) {
             switch (state) {
             case RenderState::ENABLE_DEPTH:
@@ -87,187 +103,196 @@ namespace Byte {
 			case RenderState::BLEND_ADD:
                 glBlendFunc(GL_ONE, GL_ONE);
                 break;
+			case RenderState::BLEND_WEIGHTED:
+                glBlendFunc(GL_CONSTANT_COLOR, GL_ONE_MINUS_CONSTANT_COLOR);
+				break;
             }
         }
 
         static GLenum convert(AttachmentType type) {
             switch (type) {
-            case AttachmentType::COLOR_0:
-                return GL_COLOR_ATTACHMENT0;
-            case AttachmentType::COLOR_1:
-                return GL_COLOR_ATTACHMENT1;
-            case AttachmentType::COLOR_2:
-                return GL_COLOR_ATTACHMENT2;
-            case AttachmentType::COLOR_3:
-                return GL_COLOR_ATTACHMENT3;
-            case AttachmentType::DEPTH:
-                return GL_DEPTH_ATTACHMENT;
-            default:
-                throw std::invalid_argument("Invalid AttachmentType");
+                case AttachmentType::COLOR_0:
+                    return GL_COLOR_ATTACHMENT0;
+                case AttachmentType::COLOR_1:
+                    return GL_COLOR_ATTACHMENT1;
+                case AttachmentType::COLOR_2:
+                    return GL_COLOR_ATTACHMENT2;
+                case AttachmentType::COLOR_3:
+                    return GL_COLOR_ATTACHMENT3;
+                case AttachmentType::COLOR_4:
+				    return GL_COLOR_ATTACHMENT4;
+                case AttachmentType::COLOR_5:
+				   return GL_COLOR_ATTACHMENT5;
+                case AttachmentType::COLOR_6:
+					return GL_COLOR_ATTACHMENT6;
+                case AttachmentType::DEPTH:
+                    return GL_DEPTH_ATTACHMENT;
+                default:
+                    throw std::invalid_argument("Invalid AttachmentType");
             }
         }
 
         static GLenum convert(DataType type) {
             switch (type) {
-            case DataType::BYTE:
-                return GL_BYTE;
-            case DataType::UNSIGNED_BYTE:
-                return GL_UNSIGNED_BYTE;
-            case DataType::SHORT:
-                return GL_SHORT;
-            case DataType::UNSIGNED_SHORT:
-                return GL_UNSIGNED_SHORT;
-            case DataType::INT:
-                return GL_INT;
-            case DataType::UNSIGNED_INT:
-                return GL_UNSIGNED_INT;
-            case DataType::FLOAT:
-                return GL_FLOAT;
-            default:
-                throw std::invalid_argument("Invalid DataType");
+                case DataType::BYTE:
+                    return GL_BYTE;
+                case DataType::UNSIGNED_BYTE:
+                    return GL_UNSIGNED_BYTE;
+                case DataType::SHORT:
+                    return GL_SHORT;
+                case DataType::UNSIGNED_SHORT:
+                    return GL_UNSIGNED_SHORT;
+                case DataType::INT:
+                    return GL_INT;
+                case DataType::UNSIGNED_INT:
+                    return GL_UNSIGNED_INT;
+                case DataType::FLOAT:
+                    return GL_FLOAT;
+                default:
+                    throw std::invalid_argument("Invalid DataType");
             }
         }
 
         static GLenum convert(ColorFormat format) {
             switch (format) {
-            case ColorFormat::DEPTH:
-                return GL_DEPTH_COMPONENT;
-            case ColorFormat::RED:
-                return GL_RED;
-            case ColorFormat::GREEN:
-                return GL_GREEN;
-            case ColorFormat::BLUE:
-                return GL_BLUE;
-            case ColorFormat::ALPHA:
-                return GL_ALPHA;
-            case ColorFormat::RGB:
-                return GL_RGB;
-            case ColorFormat::RGBA:
-                return GL_RGBA;
-            case ColorFormat::RGBA32F:
-                return GL_RGBA32F;
-            case ColorFormat::RGB32F:
-                return GL_RGB32F;
-            case ColorFormat::RGBA16F:
-                return GL_RGBA16F;
-            case ColorFormat::RGB16F:
-                return GL_RGB16F;
-            case ColorFormat::R11F_G11F_B10F:
-                return GL_R11F_G11F_B10F;
-            case ColorFormat::R16F:
-                return GL_R16F;
-            case ColorFormat::R32F:
-                return GL_R32F;
-            case ColorFormat::R16:
-                return GL_R16;
-            case ColorFormat::RGB16:
-                return GL_RGB16;
-            case ColorFormat::RGBA16:
-                return GL_RGBA16;
-            default:
-                throw std::invalid_argument("Invalid ColorFormat");
+                case ColorFormat::DEPTH:
+                    return GL_DEPTH_COMPONENT;
+                case ColorFormat::RED:
+                    return GL_RED;
+                case ColorFormat::GREEN:
+                    return GL_GREEN;
+                case ColorFormat::BLUE:
+                    return GL_BLUE;
+                case ColorFormat::ALPHA:
+                    return GL_ALPHA;
+                case ColorFormat::RGB:
+                    return GL_RGB;
+                case ColorFormat::RGBA:
+                    return GL_RGBA;
+                case ColorFormat::RGBA32F:
+                    return GL_RGBA32F;
+                case ColorFormat::RGB32F:
+                    return GL_RGB32F;
+                case ColorFormat::RGBA16F:
+                    return GL_RGBA16F;
+                case ColorFormat::RGB16F:
+                    return GL_RGB16F;
+                case ColorFormat::R11F_G11F_B10F:
+                    return GL_R11F_G11F_B10F;
+                case ColorFormat::R16F:
+                    return GL_R16F;
+                case ColorFormat::R32F:
+                    return GL_R32F;
+                case ColorFormat::R16:
+                    return GL_R16;
+                case ColorFormat::RGB16:
+                    return GL_RGB16;
+                case ColorFormat::RGBA16:
+                    return GL_RGBA16;
+                default:
+                    throw std::invalid_argument("Invalid ColorFormat");
             }
         }
 
         static GLenum convert(TextureUnit unit) {
             switch (unit) {
-            case TextureUnit::UNIT_0:
-                return GL_TEXTURE0;
-            case TextureUnit::UNIT_1:
-                return GL_TEXTURE1;
-            case TextureUnit::UNIT_2:
-                return GL_TEXTURE2;
-            case TextureUnit::UNIT_3:
-                return GL_TEXTURE3;
-            case TextureUnit::UNIT_4:
-                return GL_TEXTURE4;
-            case TextureUnit::UNIT_5:
-                return GL_TEXTURE5;
-            case TextureUnit::UNIT_6:
-                return GL_TEXTURE6;
-            case TextureUnit::UNIT_7:
-                return GL_TEXTURE7;
-            default:
-                return GL_TEXTURE0;
+                case TextureUnit::UNIT_0:
+                    return GL_TEXTURE0;
+                case TextureUnit::UNIT_1:
+                    return GL_TEXTURE1;
+                case TextureUnit::UNIT_2:
+                    return GL_TEXTURE2;
+                case TextureUnit::UNIT_3:
+                    return GL_TEXTURE3;
+                case TextureUnit::UNIT_4:
+                    return GL_TEXTURE4;
+                case TextureUnit::UNIT_5:
+                    return GL_TEXTURE5;
+                case TextureUnit::UNIT_6:
+                    return GL_TEXTURE6;
+                case TextureUnit::UNIT_7:
+                    return GL_TEXTURE7;
+                default:
+                    return GL_TEXTURE0;
             }
         }
 
         static GLenum convert(TextureFilter filter) {
             switch (filter) {
-            case TextureFilter::NEAREST:
-                return GL_NEAREST;
-            case TextureFilter::LINEAR:
-                return GL_LINEAR;
-            case TextureFilter::NEAREST_MIPMAP_NEAREST:
-                return GL_NEAREST_MIPMAP_NEAREST;
-            case TextureFilter::LINEAR_MIPMAP_NEAREST:
-                return GL_LINEAR_MIPMAP_NEAREST;
-            case TextureFilter::NEAREST_MIPMAP_LINEAR:
-                return GL_NEAREST_MIPMAP_LINEAR;
-            case TextureFilter::LINEAR_MIPMAP_LINEAR:
-                return GL_LINEAR_MIPMAP_LINEAR;
-            default:
-                throw std::invalid_argument("Invalid TextureFilter");
+                case TextureFilter::NEAREST:
+                    return GL_NEAREST;
+                case TextureFilter::LINEAR:
+                    return GL_LINEAR;
+                case TextureFilter::NEAREST_MIPMAP_NEAREST:
+                    return GL_NEAREST_MIPMAP_NEAREST;
+                case TextureFilter::LINEAR_MIPMAP_NEAREST:
+                    return GL_LINEAR_MIPMAP_NEAREST;
+                case TextureFilter::NEAREST_MIPMAP_LINEAR:
+                    return GL_NEAREST_MIPMAP_LINEAR;
+                case TextureFilter::LINEAR_MIPMAP_LINEAR:
+                    return GL_LINEAR_MIPMAP_LINEAR;
+                default:
+                    throw std::invalid_argument("Invalid TextureFilter");
             }
         }
 
         static GLenum convert(TextureWrap wrap) {
             switch (wrap) {
-            case TextureWrap::REPEAT:
-                return GL_REPEAT;
-            case TextureWrap::MIRRORED_REPEAT:
-                return GL_MIRRORED_REPEAT;
-            case TextureWrap::CLAMP_TO_EDGE:
-                return GL_CLAMP_TO_EDGE;
-            case TextureWrap::CLAMP_TO_BORDER:
-                return GL_CLAMP_TO_BORDER;
-            default:
-                throw std::invalid_argument("Invalid TextureWrap");
+                case TextureWrap::REPEAT:
+                    return GL_REPEAT;
+                case TextureWrap::MIRRORED_REPEAT:
+                    return GL_MIRRORED_REPEAT;
+                case TextureWrap::CLAMP_TO_EDGE:
+                    return GL_CLAMP_TO_EDGE;
+                case TextureWrap::CLAMP_TO_BORDER:
+                    return GL_CLAMP_TO_BORDER;
+                default:
+                    throw std::invalid_argument("Invalid TextureWrap");
             }
         }
 
         static GLenum convert(BufferMode mode) {
             switch (mode) {
-            case BufferMode::STATIC:
-                return GL_STATIC_DRAW;
-            case BufferMode::DYNAMIC:
-                return GL_DYNAMIC_DRAW;
-            default:
-                throw std::invalid_argument("Invalid BufferMode");
+                case BufferMode::STATIC:
+                    return GL_STATIC_DRAW;
+                case BufferMode::DYNAMIC:
+                    return GL_DYNAMIC_DRAW;
+                default:
+                    throw std::invalid_argument("Invalid BufferMode");
             }
         }
 
         static GLenum convert(DrawType type) {
             switch (type) {
-            case DrawType::POINTS:
-                return GL_POINTS;
-            case DrawType::LINES:
-                return GL_LINES;
-            case DrawType::LINE_LOOP:
-                return GL_LINE_LOOP;
-            case DrawType::LINE_STRIP:
-                return GL_LINE_STRIP;
-            case DrawType::TRIANGLES:
-                return GL_TRIANGLES;
-            case DrawType::TRIANGLE_STRIP:
-                return GL_TRIANGLE_STRIP;
-            case DrawType::TRIANGLE_FAN:
-                return GL_TRIANGLE_FAN;
-            default:
-                throw std::invalid_argument("Invalid DrawType");
+                case DrawType::POINTS:
+                    return GL_POINTS;
+                case DrawType::LINES:
+                    return GL_LINES;
+                case DrawType::LINE_LOOP:
+                    return GL_LINE_LOOP;
+                case DrawType::LINE_STRIP:
+                    return GL_LINE_STRIP;
+                case DrawType::TRIANGLES:
+                    return GL_TRIANGLES;
+                case DrawType::TRIANGLE_STRIP:
+                    return GL_TRIANGLE_STRIP;
+                case DrawType::TRIANGLE_FAN:
+                    return GL_TRIANGLE_FAN;
+                default:
+                    throw std::invalid_argument("Invalid DrawType");
             }
         }
 
         static GLenum convert(ShaderType type) {
             switch (type) {
-            case ShaderType::VERTEX:
-                return GL_VERTEX_SHADER;
-            case ShaderType::FRAGMENT:
-                return GL_FRAGMENT_SHADER;
-            case ShaderType::GEOMETRY:
-                return GL_GEOMETRY_SHADER;
-            default:
-                throw std::invalid_argument("Invalid BufferMode");
+                case ShaderType::VERTEX:
+                    return GL_VERTEX_SHADER;
+                case ShaderType::FRAGMENT:
+                    return GL_FRAGMENT_SHADER;
+                case ShaderType::GEOMETRY:
+                    return GL_GEOMETRY_SHADER;
+                default:
+                    throw std::invalid_argument("Invalid BufferMode");
             }
         }
 
@@ -678,7 +703,7 @@ namespace Byte {
                 });
 
             if (!hasDepth) {
-                unsigned int rboDepth;
+                uint32_t rboDepth;
                 glGenRenderbuffers(1, &rboDepth);
                 glBindRenderbuffer(GL_RENDERBUFFER, rboDepth);
                 glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, glWidth, glHeight);

@@ -39,13 +39,14 @@ float sampleShadow(int layer, vec3 fragWorldPos, vec3 normal)
     int pcfRadius = 1;
     float shadowValue = 0.0;
 
+    float bias = max(0.0001 * (1.0 - dot(normal, uDLight.direction)), 0.002);
+
     for(int x = -pcfRadius; x <= pcfRadius; ++x)
     {
         for(int y = -pcfRadius; y <= pcfRadius; ++y)
         {
             vec2 offset = vec2(x, y) * texelSize;
             float closestDepth = texture(uDepthMaps[layer], projCoords.xy + offset).r;
-            float bias = max(0.001 * (1.0 - dot(normal, uDLight.direction)), 0.001);
             shadowValue += currentDepth - bias > closestDepth ? 1.0 : 0.0;
         }
     }

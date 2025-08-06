@@ -90,6 +90,9 @@ namespace Byte {
 		COLOR_1,
 		COLOR_2,
 		COLOR_3,
+		COLOR_4,
+		COLOR_5,
+		COLOR_6,
 		DEPTH
 	};
 
@@ -151,6 +154,7 @@ namespace Byte {
 		CULL_BACK,
 		CULL_FRONT,
 		BLEND_ADD,
+		BLEND_WEIGHTED,
 	};
 
 }

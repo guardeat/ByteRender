@@ -97,5 +97,8 @@
     <None Include="shader\depth.frag" />
     <None Include="shader\depth.vert" />
     <None Include="shader\instanced_depth.vert" />
+    <None Include="shader\bloom_downsample.frag" />
+    <None Include="shader\bloom_upsample.frag" />
+    <None Include="shader\blur.frag" />
   </ItemGroup>
 </Project>

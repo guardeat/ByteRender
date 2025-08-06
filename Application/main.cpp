@@ -22,7 +22,7 @@ int main() {
 	glfwInit();
 
 	Window window{ 1280, 720 };
-	Renderer renderer{ Renderer::build<SkyboxPass, ShadowPass, GeometryPass, LightingPass, DrawPass>() };
+	Renderer renderer{ Renderer::build<SkyboxPass, ShadowPass, GeometryPass, LightingPass, BloomPass, DrawPass>() };
 
 	Repository repository{};
 	World world{};
@@ -110,6 +110,8 @@ int main() {
 
 		auto [_, camTransform] = context.camera();
 		controller.update(window, camTransform, deltaTime);
+
+		world.get<Transform>(dirLight).rotate(Vec3{ deltaTime, 0.0f, 0.0f });
 
 		renderer.render(context);
 		renderer.update(window);

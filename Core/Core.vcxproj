@@ -148,7 +148,6 @@
     <ClInclude Include="core\window.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="core.cpp" />
     <ClCompile Include="layout.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

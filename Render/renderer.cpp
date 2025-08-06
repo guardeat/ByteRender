@@ -105,6 +105,14 @@ namespace Byte {
 			_data.device.release(shader);
 		}
 
+		for(auto& [_, buffer] : _data.framebuffers) {
+			_data.device.release(buffer);
+		}
+
+		for (auto& [_, mesh] : _data.meshes) {
+			_data.device.release(mesh);
+		}
+
 		_data.device.clear();
 	}
 

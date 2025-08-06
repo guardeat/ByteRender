@@ -127,6 +127,14 @@ namespace Byte {
 			OpenGL::bind(width, height);
 		}
 
+		void viewport(size_t width, size_t height) {
+			OpenGL::viewport(width, height);
+		}
+
+		void blendWeights(float source, float destination) {
+			OpenGL::blendWeights(source, destination);
+		}
+
 		void clearBuffer() {
 			OpenGL::clear();
 		}
@@ -138,8 +146,9 @@ namespace Byte {
 				Vector<GPUResourceID> ids;
 				for (auto& [_, texture] : buffer.textures()) {
 					ids.push_back(_textures.at(texture.assetID()).id);
-					texture.width(width);
-					texture.height(height);
+
+					texture.width(static_cast<size_t>(static_cast<float>(width) * buffer.resizeFactor()));
+					texture.height(static_cast<size_t>(static_cast<float>(height) * buffer.resizeFactor()));
 					_textures.erase(texture.assetID());
 				}
 

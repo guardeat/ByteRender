@@ -157,6 +157,9 @@
     <ClCompile Include="renderer.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="shader\bloom_downsample.frag" />
+    <None Include="shader\bloom_upsample.frag" />
+    <None Include="shader\blur.frag" />
     <None Include="shader\default.vert" />
     <None Include="shader\deferred.frag" />
     <None Include="shader\depth.frag" />
