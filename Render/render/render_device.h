@@ -37,10 +37,6 @@ namespace Byte {
 		}
 
 		void load(InstanceGroup& instanced, Mesh& mesh) {
-			if (!loaded(mesh)) {
-				load(mesh);
-			}
-			
 			GPUBufferGroup group{ OpenGL::build(instanced, mesh) };
 			group.capacity = instanced.count();
 			_instanceGroups.emplace(instanced.assetID(), std::move(group));
@@ -277,8 +273,8 @@ namespace Byte {
 			OpenGL::draw(size, instanceCount, drawType);
 		}
 
-		void state(RenderState state) {
-			OpenGL::state(state);
+		void renderState(RenderState state) {
+			OpenGL::renderState(state);
 		}
 
 		void clear() {

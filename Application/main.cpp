@@ -61,13 +61,13 @@ int main() {
 	EntityID pointLightEntity{ world.create<PointLight, Transform>(PointLight{}, Transform{}) };
 	Transform& pointLightTransform{ world.get<Transform>(pointLightEntity) };
 	PointLight& pointLight{ world.get<PointLight>(pointLightEntity) };
-	pointLight.color = Vec3{ 100.0f, 100.0f, 100.0f };
+	pointLight.color = Vec3{ 10.0f, 10.0f, 10.0f };
 	pointLightTransform.position({ 20.0f, 1.0f, 20.0f });
 	pointLightTransform.scale(pointLightTransform.scale() * pointLight.radius());
 	Vector <float> pointLightData {
 		20.0f, 1.0f, 20.0f, 
 		pointLightTransform.scale().x, pointLightTransform.scale().y, pointLightTransform.scale().z,
-		100.0f, 100.0f, 100.0f,
+		10.0f, 10.0f, 10.0f,
 		1.0f, 0.09f, 0.032f
 	};
 

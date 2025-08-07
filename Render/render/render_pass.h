@@ -78,9 +78,9 @@ namespace Byte {
 			data.device.uniform(skyboxShader, "uDLight.intensity", dLight.intensity);
 			data.device.uniform(skyboxShader, "uInverseViewProjection", inverseViewProjection);
 
-			data.device.state(RenderState::DISABLE_DEPTH);
+			data.device.renderState(RenderState::DISABLE_DEPTH);
 			data.device.draw(quad.indexCount());
-			data.device.state(RenderState::ENABLE_DEPTH);
+			data.device.renderState(RenderState::ENABLE_DEPTH);
 		}
 
 		void initialize(RenderData& data) {
@@ -497,11 +497,11 @@ namespace Byte {
 		}
 
 		void drawPointLights(RenderData& data, RenderContext& context) {
-			data.device.state(RenderState::DISABLE_DEPTH);
-			data.device.state(RenderState::ENABLE_BLEND);
-			data.device.state(RenderState::BLEND_ADD);
-			data.device.state(RenderState::ENABLE_CULLING);
-			data.device.state(RenderState::CULL_FRONT);
+			data.device.renderState(RenderState::DISABLE_DEPTH);
+			data.device.renderState(RenderState::ENABLE_BLEND);
+			data.device.renderState(RenderState::BLEND_ADD);
+			data.device.renderState(RenderState::ENABLE_CULLING);
+			data.device.renderState(RenderState::CULL_FRONT);
 
 			InstanceGroup& pointLightGroup{ context.instanceGroup(_pointLightGroup) };
 			Mesh& pointLightMesh{ context.mesh(pointLightGroup.mesh()) };
@@ -529,10 +529,10 @@ namespace Byte {
 
 			data.device.draw(pointLightMesh.indexCount(), pointLightGroup.count(), DrawType::TRIANGLES);
 
-			data.device.state(RenderState::ENABLE_DEPTH);
-			data.device.state(RenderState::DISABLE_BLEND);
-			data.device.state(RenderState::CULL_BACK);
-			data.device.state(RenderState::DISABLE_CULLING);
+			data.device.renderState(RenderState::ENABLE_DEPTH);
+			data.device.renderState(RenderState::DISABLE_BLEND);
+			data.device.renderState(RenderState::CULL_BACK);
+			data.device.renderState(RenderState::DISABLE_CULLING);
 		}
 	};
 
@@ -593,8 +593,8 @@ namespace Byte {
 				data.device.uniform(downShader,"uKarisAverage",false);
 			}
 
-			data.device.state(RenderState::DISABLE_DEPTH);
-			data.device.state(RenderState::ENABLE_BLEND);
+			data.device.renderState(RenderState::DISABLE_DEPTH);
+			data.device.renderState(RenderState::ENABLE_BLEND);
 
 			Shader& upShader{ data.shaders.at(_bloomUpShader) };
 			data.device.bind(upShader);
@@ -617,7 +617,7 @@ namespace Byte {
 			float strength{ data.parameter<float>("bloom_strength") };
 
 			data.device.blendWeights(strength,1 - strength);
-			data.device.state(RenderState::BLEND_WEIGHTED);
+			data.device.renderState(RenderState::BLEND_WEIGHTED);
 
 			data.device.bind(colorBuffer);
 			Texture& srcTexture{ bloomBuffer.texture("bloom") };
@@ -625,9 +625,9 @@ namespace Byte {
 
 			data.device.draw(quad.indexCount());
 
-			data.device.state(RenderState::DISABLE_BLEND);
-			data.device.state(RenderState::ENABLE_DEPTH);
-			data.device.state(RenderState::BLEND_ADD);
+			data.device.renderState(RenderState::DISABLE_BLEND);
+			data.device.renderState(RenderState::ENABLE_DEPTH);
+			data.device.renderState(RenderState::BLEND_ADD);
 		}
 
 		void initialize(RenderData& data) override {

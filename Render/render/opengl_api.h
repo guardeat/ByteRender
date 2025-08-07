@@ -74,7 +74,7 @@ namespace Byte {
             glBlendColor(sNorm, sNorm, sNorm, dNorm);
 		}
 
-        static void state(RenderState state) {
+        static void renderState(RenderState state) {
             switch (state) {
             case RenderState::ENABLE_DEPTH:
                 glEnable(GL_DEPTH_TEST);
