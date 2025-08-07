@@ -165,8 +165,8 @@
     <None Include="shader\depth.frag" />
     <None Include="shader\depth.vert" />
     <None Include="shader\final.frag" />
-    <None Include="shader\final.vert" />
     <None Include="shader\forward.frag" />
+    <None Include="shader\fxaa.frag" />
     <None Include="shader\instanced.vert" />
     <None Include="shader\instanced_depth.vert" />
     <None Include="shader\quad.vert" />
