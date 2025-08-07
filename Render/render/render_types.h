@@ -67,6 +67,7 @@ namespace Byte {
 
 	enum class ColorFormat : uint8_t {
 		DEPTH,
+		DEPTH32F,
 		RED,
 		GREEN,
 		BLUE,

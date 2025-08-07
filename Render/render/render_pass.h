@@ -206,7 +206,7 @@ namespace Byte {
 
 				Texture depthTexture{};
 				depthTexture.attachment(AttachmentType::DEPTH);
-				depthTexture.internalFormat(ColorFormat::DEPTH);
+				depthTexture.internalFormat(ColorFormat::DEPTH32F);
 				depthTexture.format(ColorFormat::DEPTH);
 				depthTexture.dataType(DataType::FLOAT);
 

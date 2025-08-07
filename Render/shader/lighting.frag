@@ -39,7 +39,7 @@ float sampleShadow(int layer, vec3 fragWorldPos, vec3 normal)
     int pcfRadius = 1;
     float shadowValue = 0.0;
 
-    float bias = max(0.0001 * (1.0 - dot(normal, uDLight.direction)), 0.002);
+    float bias = max(0.0001 * (1.0 - dot(normal, uDLight.direction)), 0.0005);
 
     for(int x = -pcfRadius; x <= pcfRadius; ++x)
     {

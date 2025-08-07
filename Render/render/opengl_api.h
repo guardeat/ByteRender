@@ -157,6 +157,8 @@ namespace Byte {
             switch (format) {
                 case ColorFormat::DEPTH:
                     return GL_DEPTH_COMPONENT;
+                case ColorFormat::DEPTH32F:
+					return GL_DEPTH_COMPONENT32F;
                 case ColorFormat::RED:
                     return GL_RED;
                 case ColorFormat::GREEN:
