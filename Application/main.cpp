@@ -4,11 +4,7 @@
 #include "core/window.h"
 #include "application/camera_controller.h"
 
-#include "render/renderer.h"
-#include "render/material.h"
-#include "render/camera.h"
-#include "render/light.h"
-#include "render/instance_renderer.h"
+#include "render/render.h"
 
 using namespace Byte;
 

@@ -310,12 +310,12 @@ namespace Byte {
             }
         }
 
-        static void bind(GPUBufferGroup id = 0) {
+        static void bind(GBufferGroup id = 0) {
             glBindVertexArray(id);
         }
 
         template<typename Type>
-        static GPUBuffer build(
+        static GBuffer build(
             const Vector<Type>& data,
             Layout layout,
             BufferMode mode,
@@ -353,15 +353,15 @@ namespace Byte {
             return bufferID;
         }
 
-        static GPUBufferGroup build(Mesh& mesh) {
-            GPUBufferGroup bufferGroup{};
+        static GBufferGroup build(Mesh& mesh) {
+            GBufferGroup bufferGroup{};
             GLuint id;
             glGenVertexArrays(1, &id);
             glBindVertexArray(id);
 
-            bufferGroup.id = static_cast<GPUBuffer>(id);
+            bufferGroup.id = static_cast<GBuffer>(id);
 
-            GPUBuffer vertexBuffer{ build<float>(
+            GBuffer vertexBuffer{ build<float>(
                 mesh.vertices(),
                 mesh.layout(),
                 mesh.dynamic() ? BufferMode::DYNAMIC : BufferMode::STATIC,
@@ -370,7 +370,7 @@ namespace Byte {
 
             bufferGroup.renderBuffers.push_back(vertexBuffer);
 
-            GPUBuffer indexBuffer{ build<uint32_t>(
+            GBuffer indexBuffer{ build<uint32_t>(
                 mesh.indices(),
                 Layout{},
                 mesh.dynamic() ? BufferMode::DYNAMIC : BufferMode::STATIC,
@@ -384,15 +384,15 @@ namespace Byte {
             return  bufferGroup;
         }
 
-        static GPUBufferGroup build(InstanceGroup& group, Mesh& mesh) {
-            GPUBufferGroup bufferGroup{};
+        static GBufferGroup build(InstanceGroup& group, Mesh& mesh) {
+            GBufferGroup bufferGroup{};
 
             GLuint vao{};
             glGenVertexArrays(1, &vao);
             glBindVertexArray(vao);
-            bufferGroup.id = static_cast<GPUBuffer>(vao);
+            bufferGroup.id = static_cast<GBuffer>(vao);
 
-            GPUBuffer vertexBuffer{ build<float>(
+            GBuffer vertexBuffer{ build<float>(
                 mesh.vertices(),
                 mesh.layout(),
                 mesh.dynamic() ? BufferMode::DYNAMIC : BufferMode::STATIC,
@@ -401,7 +401,7 @@ namespace Byte {
 
             bufferGroup.renderBuffers.push_back(vertexBuffer);
 
-            GPUBuffer indexBuffer{ build<uint32_t>(
+            GBuffer indexBuffer{ build<uint32_t>(
                 mesh.indices(),
                 Layout{},
                 mesh.dynamic() ? BufferMode::DYNAMIC : BufferMode::STATIC,
@@ -411,7 +411,7 @@ namespace Byte {
             bufferGroup.indexBuffer = indexBuffer;
 
             GLuint attribIndex{ static_cast<GLuint>(mesh.layout().size()) };
-            GPUBuffer instanceBuffer{ build<float>(
+            GBuffer instanceBuffer{ build<float>(
                     group.data(),
                     group.layout(),
                     group.dynamic() ? BufferMode::DYNAMIC : BufferMode::STATIC,
@@ -427,7 +427,7 @@ namespace Byte {
             return bufferGroup;
         }
 
-        static void release(GPUBufferGroup bufferGroup) {
+        static void release(GBufferGroup bufferGroup) {
             if (bufferGroup.indexBuffer != 0) {
                 glDeleteBuffers(1, &bufferGroup.indexBuffer.id);
             }
@@ -444,88 +444,88 @@ namespace Byte {
         }
 
         template<typename T>
-        static void bufferData(GPUBuffer buffer, const Vector<T>& data, size_t size, bool dynamic = false) {
+        static void bufferData(GBuffer buffer, const Vector<T>& data, size_t size, bool dynamic = false) {
             glBindBuffer(GL_ARRAY_BUFFER, buffer.id);
             glBufferData(GL_ARRAY_BUFFER, size * sizeof(T), data.data(), dynamic ? GL_DYNAMIC_DRAW : GL_STATIC_DRAW);
         }
 
         template<typename T>
-        static void subBufferData(GPUBuffer buffer, const Vector<T>& data, size_t offset = 0) {
+        static void subBufferData(GBuffer buffer, const Vector<T>& data, size_t offset = 0) {
             glBindBuffer(GL_ARRAY_BUFFER, buffer.id);
             glBufferSubData(GL_ARRAY_BUFFER, offset, data.size() * sizeof(T), data.data());
         }
 
-        static void bind(GPUShader id = 0) {
+        static void bind(GShader id = 0) {
             glUseProgram(id);
         }
 
         template<typename Type>
-        static void uniform(GPUShader id, const std::string& name, const Type& value) {
+        static void uniform(GShader id, const std::string& name, const Type& value) {
             throw std::exception("No such uniform type");
         }
 
         template<>
-        static void uniform<bool>(GPUShader id, const std::string& name, const bool& value) {
+        static void uniform<bool>(GShader id, const std::string& name, const bool& value) {
             auto loc{ glGetUniformLocation(id, name.c_str()) };
             glUniform1i(loc, (int)value);
         }
 
         template<>
-        static void uniform<int>(GPUShader id, const std::string& name, const int& value) {
+        static void uniform<int>(GShader id, const std::string& name, const int& value) {
             auto loc{ glGetUniformLocation(id, name.c_str()) };
             glUniform1i(loc, value);
         }
 
         template<>
-        static void uniform<size_t>(GPUShader id, const std::string& name, const size_t& value) {
+        static void uniform<size_t>(GShader id, const std::string& name, const size_t& value) {
             auto loc{ glGetUniformLocation(id, name.c_str()) };
             glUniform1i(loc, static_cast<GLint>(value));
         }
 
         template<>
-        static void uniform<float>(GPUShader id, const std::string& name, const float& value) {
+        static void uniform<float>(GShader id, const std::string& name, const float& value) {
             auto loc{ glGetUniformLocation(id, name.c_str()) };
             glUniform1f(loc, value);
         }
 
         template<>
-        static void uniform<Vec2>(GPUShader id, const std::string& name, const Vec2& value) {
+        static void uniform<Vec2>(GShader id, const std::string& name, const Vec2& value) {
             auto loc{ glGetUniformLocation(id, name.c_str()) };
             glUniform2f(loc, value.x, value.y);
         }
 
         template<>
-        static void uniform<Vec3>(GPUShader id, const std::string& name, const Vec3& value) {
+        static void uniform<Vec3>(GShader id, const std::string& name, const Vec3& value) {
             auto loc{ glGetUniformLocation(id, name.c_str()) };
             glUniform3f(loc, value.x, value.y, value.z);
         }
 
         template<>
-        static void uniform<Vec4>(GPUShader id, const std::string& name, const Vec4& value) {
+        static void uniform<Vec4>(GShader id, const std::string& name, const Vec4& value) {
             auto loc{ glGetUniformLocation(id, name.c_str()) };
             glUniform4f(loc, value.x, value.y, value.z, value.w);
         }
 
         template<>
-        static void uniform<Quaternion>(GPUShader id, const std::string& name, const Quaternion& value) {
+        static void uniform<Quaternion>(GShader id, const std::string& name, const Quaternion& value) {
             auto loc{ glGetUniformLocation(id, name.c_str()) };
             glUniform4f(loc, value.x, value.y, value.z, value.w);
         }
 
         template<>
-        static void uniform<Mat2>(GPUShader id, const std::string& name, const Mat2& value) {
+        static void uniform<Mat2>(GShader id, const std::string& name, const Mat2& value) {
             auto loc{ glGetUniformLocation(id, name.c_str()) };
             glUniformMatrix2fv(loc, 1, GL_FALSE, value.data);
         }
 
         template<>
-        static void uniform<Mat3>(GPUShader id, const std::string& name, const Mat3& value) {
+        static void uniform<Mat3>(GShader id, const std::string& name, const Mat3& value) {
             auto loc{ glGetUniformLocation(id, name.c_str()) };
             glUniformMatrix3fv(loc, 1, GL_FALSE, value.data);
         }
 
         template<>
-        static void uniform<Mat4>(GPUShader id, const std::string& name, const Mat4& value) {
+        static void uniform<Mat4>(GShader id, const std::string& name, const Mat4& value) {
             auto loc{ glGetUniformLocation(id, name.c_str()) };
             glUniformMatrix4fv(loc, 1, GL_FALSE, value.data);
         }
@@ -566,11 +566,11 @@ namespace Byte {
             }
         }
 
-        static void release(GPUShader id) {
+        static void release(GShader id) {
             glDeleteProgram(id);
         }
 
-        static GPUShader build(
+        static GShader build(
             uint32_t vertex,
             uint32_t fragment,
             uint32_t geometry = 0) {
@@ -607,17 +607,17 @@ namespace Byte {
 
         }
 
-        static void bind(GPUTexture id, TextureUnit unit = TextureUnit::UNIT_0) {
+        static void bind(GTexture id, TextureUnit unit = TextureUnit::UNIT_0) {
             glActiveTexture(convert(unit));
             glBindTexture(GL_TEXTURE_2D, id);
         }
 
-        static void release(GPUTexture id) {
+        static void release(GTexture id) {
             glDeleteTextures(1, &id.id);
         }
 
-        static GPUTexture build(Texture& texture) {
-            GPUTexture textureID;
+        static GTexture build(Texture& texture) {
+            GTexture textureID;
 
             GLint glWidth{ static_cast<GLint>(texture.width()) };
             GLint glHeight{ static_cast<GLint>(texture.height()) };
@@ -649,7 +649,7 @@ namespace Byte {
             return textureID;
         }
 
-        static void bind(const Framebuffer& buffer, GPUFramebuffer id) {
+        static void bind(const Framebuffer& buffer, GFramebuffer id) {
             glBindFramebuffer(GL_FRAMEBUFFER, id);
 
             if (!buffer.attachments().empty()) {
@@ -668,9 +668,9 @@ namespace Byte {
             glViewport(0, 0, static_cast<GLsizei>(width), static_cast<GLsizei>(height));
         }
 
-        static Pair<GPUFramebuffer, Map<AssetID, GPUTexture>> build(Framebuffer& buffer) {
-            GPUFramebuffer id{};
-            Map<AssetID, GPUTexture> textureIDs{};
+        static Pair<GFramebuffer, Map<AssetID, GTexture>> build(Framebuffer& buffer) {
+            GFramebuffer id{};
+            Map<AssetID, GTexture> textureIDs{};
             glGenFramebuffers(1, &id.id);
             glBindFramebuffer(GL_FRAMEBUFFER, id);
 
@@ -686,7 +686,7 @@ namespace Byte {
                 att.width(width);
                 att.height(height);
 
-                GPUTexture attID{ build(att) };
+                GTexture attID{ build(att) };
                 textureIDs.emplace(att.assetID(), attID);
                 glFramebufferTexture2D(
                     GL_FRAMEBUFFER, convert(att.attachment()), GL_TEXTURE_2D, attID, 0);
@@ -713,7 +713,7 @@ namespace Byte {
             }
 
             if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
-                Vector<GPUResourceID> toDelete{};
+                Vector<GResourceID> toDelete{};
                 for (auto [_, deleteID] : textureIDs) {
                     toDelete.push_back(deleteID.id);
                 }
@@ -726,7 +726,7 @@ namespace Byte {
             return std::make_pair(id, std::move(textureIDs));
         }
 
-        static void release(GPUFramebuffer id, const Vector<GPUResourceID>& textureIDs) {
+        static void release(GFramebuffer id, const Vector<GResourceID>& textureIDs) {
             if (!textureIDs.empty()) {
                 glDeleteTextures(static_cast<GLsizei>(textureIDs.size()), textureIDs.data());
             }

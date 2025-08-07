@@ -14,11 +14,11 @@ namespace Byte {
 
 	class RenderDevice {
 	private:
-		Map<AssetID, GPUBufferGroup> _meshes;
-		Map<AssetID, GPUBufferGroup> _instanceGroups;
-		Map<AssetID, GPUTexture> _textures;
-		Map<AssetID, GPUShader> _shaders;
-		Map<AssetID, GPUFramebuffer> _framebuffers;
+		Map<AssetID, GBufferGroup> _meshes;
+		Map<AssetID, GBufferGroup> _instanceGroups;
+		Map<AssetID, GTexture> _textures;
+		Map<AssetID, GShader> _shaders;
+		Map<AssetID, GFramebuffer> _framebuffers;
 
 	public:
 		RenderDevice() = default;
@@ -32,12 +32,12 @@ namespace Byte {
 		}
 
 		void load(Mesh& mesh) {
-			GPUBufferGroup bufferGroup{ OpenGL::build(mesh) };
+			GBufferGroup bufferGroup{ OpenGL::build(mesh) };
 			_meshes.emplace(mesh.assetID(), std::move(bufferGroup));
 		}
 
 		void load(InstanceGroup& instanced, Mesh& mesh) {
-			GPUBufferGroup group{ OpenGL::build(instanced, mesh) };
+			GBufferGroup group{ OpenGL::build(instanced, mesh) };
 			group.capacity = instanced.count();
 			_instanceGroups.emplace(instanced.assetID(), std::move(group));
 
@@ -57,7 +57,7 @@ namespace Byte {
 		}
 
 		void load(Texture& texture) {
-			GPUTexture id{ OpenGL::build(texture) };
+			GTexture id{ OpenGL::build(texture) };
 			_textures.emplace(texture.assetID(), id);
 		}
 
@@ -96,22 +96,22 @@ namespace Byte {
 		}
 
 		void bind(const Mesh& mesh) {
-			GPUBufferGroup& bufferGroup{ _meshes.at(mesh.assetID()) };
+			GBufferGroup& bufferGroup{ _meshes.at(mesh.assetID()) };
 			OpenGL::bind(bufferGroup);
 		}
 
 		void bind(const Shader& shader) {
-			GPUShader id{ _shaders.at(shader.assetID()) };
+			GShader id{ _shaders.at(shader.assetID()) };
 			OpenGL::bind(id);
 		}
 
 		void bind(const InstanceGroup& group) {
-			GPUBufferGroup bufferGroup{ _instanceGroups.at(group.assetID()) };
+			GBufferGroup bufferGroup{ _instanceGroups.at(group.assetID()) };
 			OpenGL::bind(bufferGroup);
 		}
 
 		void bind(const Texture& texture, TextureUnit unit = TextureUnit::UNIT_0) {
-			GPUTexture id{ _textures.at(texture.assetID()) };
+			GTexture id{ _textures.at(texture.assetID()) };
 			OpenGL::bind(id, unit);
 		}
 
@@ -139,7 +139,7 @@ namespace Byte {
 			if (buffer.resize()) {
 				AssetID assetID{ buffer.assetID() };
 
-				Vector<GPUResourceID> ids;
+				Vector<GResourceID> ids;
 				for (auto& [_, texture] : buffer.textures()) {
 					ids.push_back(_textures.at(texture.assetID()).id);
 
@@ -194,7 +194,7 @@ namespace Byte {
 		void release(Framebuffer& buffer) {
 			auto it{ _framebuffers.find(buffer.assetID()) };
 			if (it != _framebuffers.end()) {
-				Vector<GPUResourceID> ids;
+				Vector<GResourceID> ids;
 				for (auto& [_, texture] : buffer.textures()) {
 					ids.push_back(_textures.at(texture.assetID()).id);
 				}
@@ -206,12 +206,12 @@ namespace Byte {
 
 		template<typename Type>
 		void uniform(const Shader& shader, const Tag& tag, const Type& value) {
-			GPUShader id{ _shaders.at(shader.assetID()) };
+			GShader id{ _shaders.at(shader.assetID()) };
 			OpenGL::uniform(id, tag, value);
 		}
 
 		void uniform(const Shader& shader, Material& material) {
-			GPUShader id{ _shaders.at(shader.assetID()) };
+			GShader id{ _shaders.at(shader.assetID()) };
 
 			if (shader.useMaterial()) {
 				OpenGL::uniform(id, "uAlbedo", material.color());
@@ -233,7 +233,7 @@ namespace Byte {
 		}
 
 		void uniform(const Shader& shader, const Transform& transform) {
-			GPUShader id{ _shaders.at(shader.assetID()) };
+			GShader id{ _shaders.at(shader.assetID()) };
 			OpenGL::uniform(id, "uPosition", transform.position());
 			OpenGL::uniform(id, "uScale", transform.scale());
 			OpenGL::uniform(id, "uRotation", transform.rotation());
@@ -246,12 +246,12 @@ namespace Byte {
 			TextureUnit unit = TextureUnit::UNIT_0) {
 			bind(texture, unit);
 
-			GPUShader id{ _shaders.at(shader.assetID()) };
+			GShader id{ _shaders.at(shader.assetID()) };
 			OpenGL::uniform(id, uniform, static_cast<int>(unit));
 		}
 
 		void updateBuffer(InstanceGroup& group, float capacityMultiplier = 2.0f) {
-			GPUBufferGroup& bufferGroup{ _meshes.at(group.mesh()) };
+			GBufferGroup& bufferGroup{ _meshes.at(group.mesh()) };
 			size_t size{ group.data().size() };
 			if (size > bufferGroup.capacity) {
 				size_t newSize{ static_cast<size_t>(group.data().size() * capacityMultiplier) };
@@ -299,7 +299,7 @@ namespace Byte {
 			_textures.clear();
 
 			for (auto& [tag, buffer] : _framebuffers) {
-				OpenGL::release(buffer, Vector<GPUResourceID>{});
+				OpenGL::release(buffer, Vector<GResourceID>{});
 			}
 			_framebuffers.clear();
 		}
