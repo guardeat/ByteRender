@@ -17,7 +17,7 @@ namespace Byte {
 		Layout _layout;
 
 		bool _render{ true };
-		bool _update{ false };
+		bool _changed{ false };
 		bool _dynamic{ false };
 		bool _shadow{ true };
 
@@ -81,7 +81,7 @@ namespace Byte {
 		void clear() {
 			_keys.clear();
 			_data.clear();
-			_update = true;
+			_changed = true;
 		}
 
 		void remove(RenderID key) {
@@ -91,7 +91,7 @@ namespace Byte {
 				_keys.erase(it);
 				size_t stride{ _layout.stride() / sizeof(float) };
 				_data.erase(_data.begin() + static_cast<size_t>(index) * stride, _data.begin() + (static_cast<size_t>(index) + 1) * stride);
-				_update = true;
+				_changed = true;
 			}
 		}
 
@@ -100,7 +100,7 @@ namespace Byte {
 			
 			_data.insert(_data.end(), std::make_move_iterator(add.begin()), std::make_move_iterator(add.end()));
 
-			_update = true;
+			_changed = true;
 		}
 
 		void submit(RenderID id, const Transform& transform) {
@@ -119,15 +119,38 @@ namespace Byte {
 			_data.push_back(transform.rotation().z);
 			_data.push_back(transform.rotation().w);
 
-			_update = true;
+			_changed = true;
 		}
 
-		void update() {
-			_update = false;
+		void update(RenderID id, const Transform& transform) {
+			Vector<float> data{
+				transform.position().x, transform.position().y, transform.position().z,
+				transform.scale().x, transform.scale().y, transform.scale().z,
+				transform.rotation().x, transform.rotation().y, transform.rotation().z, transform.rotation().w
+			};
+
+			update(id, std::move(data));
 		}
 
-		bool updated() const {
-			return _update;
+		void update(RenderID id, Vector<float>&& add) {
+			auto it{ std::find(_keys.begin(), _keys.end(), id) };
+			if (it != _keys.end()) {
+				std::ptrdiff_t index{ std::distance(_keys.begin(), it) };
+				size_t stride{ _layout.stride() / sizeof(float) };
+				size_t offset{ static_cast<size_t>(index) * stride };
+				for (size_t i{ 0 }; i < add.size(); ++i) {
+					_data[offset + i] = add[i];
+				}
+				_changed = true;
+			}
+		}
+
+		void sync() {
+			_changed = false;
+		}
+
+		bool changed() const {
+			return _changed;
 		}
 
 		size_t count() const {

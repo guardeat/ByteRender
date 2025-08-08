@@ -3,7 +3,6 @@
 
 #include "core/window.h"
 #include "application/camera_controller.h"
-
 #include "render/render.h"
 
 using namespace Byte;

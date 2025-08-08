@@ -165,7 +165,7 @@ void main()
 
         vec3 ambient = materialAO * albedo * uDLight.intensity * 0.3;
 
-        vec3 finalColor = ambient + Lo + emission * albedo;
+        vec3 finalColor = ambient + Lo * uDLight.intensity + emission * albedo;
         oColor = finalColor;
     }
 }

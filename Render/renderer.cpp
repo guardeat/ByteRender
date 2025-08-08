@@ -56,7 +56,7 @@ namespace Byte {
 				_data.device.load(instanceGroup,context.repository().mesh(instanceGroup.mesh()));
 			}
 
-			else if (instanceGroup.updated()) {
+			else if (instanceGroup.changed()) {
 				_data.device.updateBuffer(instanceGroup);
 			}
 		}

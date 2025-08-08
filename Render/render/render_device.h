@@ -41,7 +41,7 @@ namespace Byte {
 			group.capacity = instanced.count();
 			_instanceGroups.emplace(instanced.assetID(), std::move(group));
 
-			instanced.update();
+			instanced.sync();
 		}
 
 		void load(Shader& shader) {
@@ -262,7 +262,7 @@ namespace Byte {
 				OpenGL::subBufferData(bufferGroup.renderBuffers[0], group.data());
 			}
 
-			group.update();
+			group.sync();
 		}
 
 		void draw(size_t size, DrawType drawType = DrawType::TRIANGLES) {

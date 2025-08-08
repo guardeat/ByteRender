@@ -115,7 +115,7 @@ namespace Byte {
 
 			Framebuffer bloomFramebuffer{ data.width, data.height };
 
-			constexpr size_t MIPMAP_LEVELS{ 4 };
+			constexpr size_t MIPMAP_LEVELS{ 3 };
 
 			data.parameter("bloom_mipmap_levels", MIPMAP_LEVELS);
 
