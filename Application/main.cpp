@@ -122,7 +122,7 @@ int main() {
 		auto [_, camTransform] = context.camera();
 		controller.update(window, camTransform, deltaTime);
 
-		world.get<Transform>(dirLight).rotate(Vec3{ deltaTime, 0.0f, 0.0f });
+		world.get<Transform>(dirLight).rotate(Vec3{ deltaTime * 5.0f, 0.0f, 0.0f });
 
 		renderer.render(context);
 		renderer.update(window);
