@@ -20,7 +20,7 @@ void main() {
 
     vec3 baseColor = backColor;
     
-    float intensity = pow(max(dot(viewDir, lightDir), 0.0), 64.0) * uDLight.intensity;
+    float intensity = pow(max(dot(viewDir, lightDir), 0.0), 128.0) * uDLight.intensity;
 
     vec3 outerColor = uDLight.color * (vec3(1.0) - uScatter);
     vec3 sunColor = outerColor / 0.7f;

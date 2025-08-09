@@ -32,6 +32,19 @@ float linearizeDepth(float depth, float near, float far) {
     return (2.0 * near * far) / (far + near - z * (far - near));
 }
 
+float bayerDither(vec2 pos)
+{
+    int x = int(mod(pos.x, 4.0));
+    int y = int(mod(pos.y, 4.0));
+    const int dither[16] = int[16](
+        0,  8,  2, 10,
+        12, 4, 14,  6,
+        3, 11,  1,  9,
+        15, 7, 13,  5
+    );
+    return float(dither[y * 4 + x]) / 16.0;
+}
+
 void main() {
     vec2 texel = 1.0 / uScreenSize;
 
@@ -79,6 +92,8 @@ void main() {
     float depthSample = texture(uDepth, vTexCoord).r;
 
     if (depthSample == 1.0) {
+        float noise = bayerDither(gl_FragCoord.xy);
+        finalAAColor += (noise - 0.5) / 255.0;
         oFragColor = vec4(finalAAColor, 1.0);
         return;
     }
@@ -88,6 +103,9 @@ void main() {
     float fogFactor = clamp((uFogFar - depth) / (uFogFar - uFogNear), 0.0, 1.0);
 
     vec3 finalColor = mix(uFogColor, finalAAColor, fogFactor);
+
+    float noise = bayerDither(gl_FragCoord.xy);
+    finalColor += (noise - 0.5) / 255.0;
 
     oFragColor = vec4(finalColor, 1.0);
 }

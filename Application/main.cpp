@@ -7,7 +7,6 @@
 
 using namespace Byte;
 
-// Prefer discrete GPU on laptops
 extern "C" {
 	__declspec(dllexport) unsigned long NvOptimusEnablement = 0x00000001;
 	__declspec(dllexport) int AmdPowerXpressRequestHighPerformance = 1;
@@ -122,7 +121,7 @@ int main() {
 		auto [_, camTransform] = context.camera();
 		controller.update(window, camTransform, deltaTime);
 
-		world.get<Transform>(dirLight).rotate(Vec3{ deltaTime * 5.0f, 0.0f, 0.0f });
+		world.get<Transform>(dirLight).rotate(Vec3{ deltaTime, 0.0f, 0.0f });
 
 		renderer.render(context);
 		renderer.update(window);
