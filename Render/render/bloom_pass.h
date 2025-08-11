@@ -77,7 +77,7 @@ namespace Byte {
 
 			Shader& upShader{ data.shaders.at(_bloomUpShader) };
 			data.device.bind(upShader);
-			data.device.uniform(upShader, "uFilterRadius", 0.01f);
+			data.device.uniform(upShader, "uFilterRadius", 0.005f);
 
 			for (size_t i{ mipCount - 1 }; i > 0; --i) {
 				Framebuffer& sourceBuffer{ data.framebuffers.at(_bloomBuffers.at(i)) };
