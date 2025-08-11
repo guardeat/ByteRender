@@ -15,6 +15,9 @@ namespace Byte {
 		float _emission{ 0.0f };
 		float _ambientOcclusion{ 0.5f };
 
+		AssetID _albedoTexture{ 0 };
+		AssetID _materialTexture{ 0 };
+
 		Vec4 _color{ 1.0f, 1.0f, 1.0f, 1.0f };
 
 		TransparencyMode _transparency{ TransparencyMode::OPAQUE };
@@ -56,6 +59,22 @@ namespace Byte {
 
 		void ambientOcclusion(float value) {
 			_ambientOcclusion = value;
+		}
+
+		AssetID albedoTexture() const {
+			return _albedoTexture;
+		}
+
+		void albedoTexture(AssetID texture) {
+			_albedoTexture = texture;
+		}
+
+		AssetID materialTexture() const {
+			return _materialTexture;
+		}
+
+		void materialTexture(AssetID texture) {
+			_materialTexture = texture;
 		}
 
 		const Vec4& color() const {

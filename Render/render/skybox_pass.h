@@ -46,7 +46,7 @@ namespace Byte {
 			data.device.bind(skyboxShader);
 			data.device.bind(quad);
 
-			data.device.uniform(skyboxShader, skyboxMaterial);
+			data.device.uniform(skyboxShader, skyboxMaterial, context.repository());
 			data.device.uniform(skyboxShader, "uDLight.direction", dLightTransform.front());
 			data.device.uniform(skyboxShader, "uDLight.color", dLight.color);
 			data.device.uniform(skyboxShader, "uDLight.intensity", dLight.intensity);

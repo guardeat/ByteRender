@@ -210,17 +210,38 @@ namespace Byte {
 			OpenGL::uniform(id, tag, value);
 		}
 
-		void uniform(const Shader& shader, Material& material) {
+		void uniform(const Shader& shader, const Material& material, const Repository& repository) {
 			GShader id{ _shaders.at(shader.assetID()) };
 
 			if (shader.useDefaultMaterial()) {
-				OpenGL::uniform(id, "uAlbedo", material.color());
+				int32_t materialMode{};
+				constexpr size_t ALBEDO_BIT{ 0 };
+				constexpr size_t MATERIAL_BIT{ 1 };
 
-				OpenGL::uniform(id, "uMetallic", material.metallic());
-				OpenGL::uniform(id, "uRoughness", material.roughness());
+				if( material.albedoTexture() != 0) {
+					materialMode |= (1 << ALBEDO_BIT);
+					const Texture& texture{ repository.texture(material.albedoTexture()) };
+					uniform(shader, "uAlbedoTexture", texture, TextureUnit::UNIT_0);
+				}
+				else {
+					OpenGL::uniform(id, "uAlbedo", material.color());
+				}
 
-				OpenGL::uniform(id, "uEmission", material.emission());
-				OpenGL::uniform(id, "uAO", material.ambientOcclusion());
+				if( material.materialTexture() != 0) {
+					materialMode |= (1 << MATERIAL_BIT);
+					const Texture& texture{ repository.texture(material.materialTexture()) };
+					TextureUnit textureUnit{ static_cast<TextureUnit>(materialMode) };
+					uniform(shader, "uMaterialTexture", texture, textureUnit);
+				}
+				else {
+					OpenGL::uniform(id, "uMetallic", material.metallic());
+					OpenGL::uniform(id, "uRoughness", material.roughness());
+
+					OpenGL::uniform(id, "uEmission", material.emission());
+					OpenGL::uniform(id, "uAO", material.ambientOcclusion());
+				}
+
+				OpenGL::uniform(id, "uMaterialMode", materialMode);
 			}
 
 			for (const auto& [tag, input] : material.parameters()) {
