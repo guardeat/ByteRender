@@ -16,7 +16,7 @@ namespace Byte {
 
 		Set<Tag> _uniforms;
 
-		bool _useMaterial{ false };
+		bool _useDefaultMaterial{ false };
 
 	public:
 		Shader(Path&& vertex, Path&& fragment, Path&& geometry = "")
@@ -43,12 +43,12 @@ namespace Byte {
 			return _uniforms;
 		}
 
-		void useMaterial(bool value) {
-			_useMaterial = value;
+		void useDefaultMaterial(bool value) {
+			_useDefaultMaterial = value;
 		}
 
-		bool useMaterial() const {
-			return _useMaterial;
+		bool useDefaultMaterial() const {
+			return _useDefaultMaterial;
 		}
 	};
 

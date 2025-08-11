@@ -26,7 +26,7 @@ int main() {
 	float fpsTimer{ 0.0f };
 
 	// === Sphere Setup ===
-	Mesh sphereMesh{ Primitive::sphere(10) };
+	Mesh sphereMesh{ Primitive::sphere(20) };
 	Material sphereMaterial{};
 	sphereMaterial.color({ 0.9f, 0.1f, 0.2f, 1.0f });
 	sphereMaterial.emission(0.5f);

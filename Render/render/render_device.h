@@ -213,7 +213,7 @@ namespace Byte {
 		void uniform(const Shader& shader, Material& material) {
 			GShader id{ _shaders.at(shader.assetID()) };
 
-			if (shader.useMaterial()) {
+			if (shader.useDefaultMaterial()) {
 				OpenGL::uniform(id, "uAlbedo", material.color());
 
 				OpenGL::uniform(id, "uMetallic", material.metallic());

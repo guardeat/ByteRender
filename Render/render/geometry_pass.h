@@ -115,9 +115,9 @@ namespace Byte {
 			Path shaderPath{ data.parameter<Path>("default_shader_path") };
 
 			Shader geometryShader{ shaderPath / "default.vert", shaderPath / "deferred.frag" };
-			geometryShader.useMaterial(true);
+			geometryShader.useDefaultMaterial(true);
 			Shader instancedGeometryShader{ shaderPath / "instanced.vert", shaderPath / "deferred.frag" };
-			instancedGeometryShader.useMaterial(true);
+			instancedGeometryShader.useDefaultMaterial(true);
 
 			_geometryShader = geometryShader.assetID();
 			_instancedGeometryShader = instancedGeometryShader.assetID();
