@@ -23,12 +23,10 @@ namespace Byte {
 			_window.initialize(width, height, title);
 
 			_renderer = Renderer::build<SkyboxPass, ShadowPass, GeometryPass, LightingPass, BloomPass, DrawPass>();
-			_renderer.initialize(_window);
-
+			buildTestScene(_scene, _renderer);
 			_renderer.parameter("point_light_group_id", _scene.pointLightGroup());
 			_renderer.parameter("default_shader_path", Path{ "../Render/shader/" });
-
-			buildTestScene(_scene, _renderer);
+			_renderer.initialize(_window);
 		}
 
 		void run() {
@@ -42,6 +40,7 @@ namespace Byte {
 				_renderer.render(context);
 				_renderer.update(_window);
 
+				_scene.update(dt);
 				_temp.update(_window, context.camera().second, dt);
 
 				debugLog(dt);
@@ -74,6 +73,8 @@ namespace Byte {
 			}
 		}
 
+		scene.repository().instanceGroup(sphereGroup.assetID(), std::move(sphereGroup));
+
 		Mesh groundMesh{ Primitive::cube() };
 		Material groundMaterial{};
 		groundMaterial.color({ 0.2f, 0.9f, 0.3f, 1.0f });
@@ -90,6 +91,8 @@ namespace Byte {
 		skybox.parameter("uScatter", Vec3{ 0.1f, 0.2f, 0.9f });
 		renderer.parameter("skybox_material", skybox.assetID());
 		scene.repository().material(skybox.assetID(), std::move(skybox));
+
+		scene.world().create<PointLight, Transform>(PointLight{}, Transform{});
 	}
 
 	void debugLog(float dt) {
@@ -106,6 +109,7 @@ namespace Byte {
 		}
 
 		fpsTimer += dt;
+		frameCount++;
 
 		if (fpsTimer >= 1.0f) {
 			std::cout << "\033[2J\033[1;1H";

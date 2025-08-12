@@ -15,10 +15,10 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="scene\scene.h">
+    <ClInclude Include="scene\marker.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="scene\marker.h">
+    <ClInclude Include="scene\scene.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
