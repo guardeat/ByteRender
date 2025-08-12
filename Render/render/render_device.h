@@ -4,6 +4,7 @@
 #include "core/mesh.h"
 #include "core/window.h"
 #include "core/transform.h"
+#include "core/repository.h"
 #include "opengl_api.h"
 #include "render_types.h"
 #include "instance_group.h"
@@ -91,10 +92,6 @@ namespace Byte {
 			return _framebuffers.contains(buffer.assetID());
 		}
 
-		void update(Window& window) {
-			OpenGL::update(window);
-		}
-
 		void bind(const Mesh& mesh) {
 			GBufferGroup& bufferGroup{ _meshes.at(mesh.assetID()) };
 			OpenGL::bind(bufferGroup);
@@ -121,42 +118,6 @@ namespace Byte {
 
 		void bindDefault(size_t width, size_t height) {
 			OpenGL::bind(width, height);
-		}
-
-		void viewport(size_t width, size_t height) {
-			OpenGL::viewport(width, height);
-		}
-
-		void blendWeights(float source, float destination) {
-			OpenGL::blendWeights(source, destination);
-		}
-
-		void clearBuffer() {
-			OpenGL::clear();
-		}
-
-		void resize(Framebuffer& buffer, size_t width, size_t height) {
-			if (buffer.resize()) {
-				AssetID assetID{ buffer.assetID() };
-
-				Vector<GResourceID> ids;
-				for (auto& [_, texture] : buffer.textures()) {
-					ids.push_back(_textures.at(texture.assetID()).id);
-
-					texture.width(static_cast<size_t>(static_cast<float>(width) * buffer.resizeFactor()));
-					texture.height(static_cast<size_t>(static_cast<float>(height) * buffer.resizeFactor()));
-					_textures.erase(texture.assetID());
-				}
-
-				OpenGL::release(_framebuffers.at(assetID), ids);
-				_framebuffers.erase(assetID);
-
-				buffer.attachments().clear();
-				buffer.width(static_cast<size_t>(static_cast<float>(width) * buffer.resizeFactor()));
-				buffer.height(static_cast<size_t>(static_cast<float>(height) * buffer.resizeFactor()));
-				
-				load(buffer);
-			}
 		}
 
 		void release(Mesh& mesh) {
@@ -201,6 +162,46 @@ namespace Byte {
 
 				OpenGL::release(it->second, ids);
 				_framebuffers.erase(it);
+			}
+		}
+
+		void update(Window& window) {
+			OpenGL::update(window);
+		}
+
+		void viewport(size_t width, size_t height) {
+			OpenGL::viewport(width, height);
+		}
+
+		void blendWeights(float source, float destination) {
+			OpenGL::blendWeights(source, destination);
+		}
+
+		void clearBuffer() {
+			OpenGL::clear();
+		}
+
+		void resize(Framebuffer& buffer, size_t width, size_t height) {
+			if (buffer.resize()) {
+				AssetID assetID{ buffer.assetID() };
+
+				Vector<GResourceID> ids;
+				for (auto& [_, texture] : buffer.textures()) {
+					ids.push_back(_textures.at(texture.assetID()).id);
+
+					texture.width(static_cast<size_t>(static_cast<float>(width) * buffer.resizeFactor()));
+					texture.height(static_cast<size_t>(static_cast<float>(height) * buffer.resizeFactor()));
+					_textures.erase(texture.assetID());
+				}
+
+				OpenGL::release(_framebuffers.at(assetID), ids);
+				_framebuffers.erase(assetID);
+
+				buffer.attachments().clear();
+				buffer.width(static_cast<size_t>(static_cast<float>(width) * buffer.resizeFactor()));
+				buffer.height(static_cast<size_t>(static_cast<float>(height) * buffer.resizeFactor()));
+
+				load(buffer);
 			}
 		}
 

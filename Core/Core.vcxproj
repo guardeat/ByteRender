@@ -143,6 +143,7 @@
     <ClInclude Include="core\math\vec.h" />
     <ClInclude Include="core\mesh.h" />
     <ClInclude Include="core\repository.h" />
+    <ClInclude Include="core\timer.h" />
     <ClInclude Include="core\transform.h" />
     <ClInclude Include="core\uid_generator.h" />
     <ClInclude Include="core\window.h" />
