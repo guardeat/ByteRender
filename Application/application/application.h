@@ -21,6 +21,8 @@ namespace Byte {
 	public:
 		void initialize(size_t width, size_t height, const std::string& title = "") {
 			_window.initialize(width, height, title);
+
+			_renderer = Renderer::build<SkyboxPass, ShadowPass, GeometryPass, LightingPass, BloomPass, DrawPass>();
 			_renderer.initialize(_window);
 
 			_renderer.parameter("point_light_group_id", _scene.pointLightGroup());
