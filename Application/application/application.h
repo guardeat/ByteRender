@@ -41,6 +41,7 @@ namespace Byte {
 				_renderer.update(_window);
 
 				_scene.update(dt);
+
 				_temp.update(_window, context.camera().second, dt);
 
 				debugLog(dt);
@@ -92,7 +93,10 @@ namespace Byte {
 		renderer.parameter("skybox_material", skybox.assetID());
 		scene.repository().material(skybox.assetID(), std::move(skybox));
 
-		scene.world().create<PointLight, Transform>(PointLight{}, Transform{});
+		EntityID pL{ scene.world().create<PointLight, Transform>(PointLight{}, Transform{}) };
+
+		scene.world().get<PointLight>(pL).color = Vec3{ 90.0f, 10.0f, 20.0f };
+		scene.world().get<Transform>(pL).position(Vec3{ 0.0f, 5.0f, 0.0f });
 	}
 
 	void debugLog(float dt) {

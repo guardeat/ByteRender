@@ -21,11 +21,11 @@ namespace Byte {
 			_mainLight = _world.create<DirectionalLight, Transform>(DirectionalLight{}, Transform{});
 			_world.get<Transform>(_mainLight).rotate(Vec3{ -45.0f, 0.0f, 0.0f });
 
-			Mesh emptyMesh{ Primitive::sphere(10) };
-			AssetID emptyMeshID{ emptyMesh.assetID() };
-			_repository.mesh(emptyMesh.assetID(), std::move(emptyMesh));
+			Mesh pointLightMesh{ Primitive::sphere(10) };
+			AssetID pointLightMeshID{ pointLightMesh.assetID() };
+			_repository.mesh(pointLightMesh.assetID(), std::move(pointLightMesh));
 
-			InstanceGroup pointLightGroup{ emptyMeshID, 0, Layout{ 3, 3, 3, 3 } };
+			InstanceGroup pointLightGroup{ pointLightMeshID, 0, Layout{ 3, 3, 3, 3 } };
 			pointLightGroup.shadow(false);
 			_pointLightGroup = pointLightGroup.assetID();
 			_repository.instanceGroup(pointLightGroup.assetID(), std::move(pointLightGroup));
@@ -66,6 +66,8 @@ namespace Byte {
 			auto view{ _world.components<EntityID, PointLight, Transform>().exclude<InstanceRenderer>() };
 			Vector<EntityID> ids;
 			for (auto [id, pointLight, transform] : view) {
+				transform.scale(transform.scale() * pointLight.radius());
+
 				group.submit(id, Vector<float>{
 					transform.position().x, transform.position().y, transform.position().z,
 					transform.scale().x, transform.scale().y, transform.scale().z,
