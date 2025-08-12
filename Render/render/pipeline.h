@@ -26,6 +26,8 @@ namespace Byte {
 			for (const auto& pass : pipeline._passes) {
 				_passes.push_back(pass->clone());
 			}
+
+			return *this;
 		}
 
 		Pipeline& operator=(Pipeline&& pipeline) = default;
