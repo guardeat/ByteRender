@@ -34,11 +34,11 @@ namespace Byte {
 
 			Framebuffer& geometryBuffer{ data.framebuffers.at(_geometryBuffer) };
 
-			data.device.bind(geometryBuffer);
+			data.device.memory().bind(geometryBuffer);
 			data.device.clearBuffer();
 
 			Shader geometryShader{ data.shaders.at(_geometryShader) };
-			data.device.bind(geometryShader);
+			data.device.memory().bind(geometryShader);
 
 			for (auto [renderer, transform] : context.view<MeshRenderer, Transform>()) {
 				if (renderer.mesh() == 0 || renderer.material() == 0 || !renderer.render()) {
@@ -48,7 +48,7 @@ namespace Byte {
 				Mesh& mesh{ context.mesh(renderer.mesh()) };
 				Material& material{ context.material(renderer.material()) };
 
-				data.device.bind(mesh);
+				data.device.memory().bind(mesh);
 				data.device.uniform(geometryShader, transform);
 				data.device.uniform(geometryShader, "uProjection", projection);
 				data.device.uniform(geometryShader, "uView", view);
@@ -58,7 +58,7 @@ namespace Byte {
 			}
 
 			Shader instancedGeometryShader{ data.shaders.at(_instancedGeometryShader) };
-			data.device.bind(instancedGeometryShader);
+			data.device.memory().bind(instancedGeometryShader);
 
 			for (auto& [_, group] : context.instanceGroups()) {
 				if (group.mesh() == 0 || group.material() == 0 || group.count() == 0 || !group.render()) {
@@ -68,7 +68,7 @@ namespace Byte {
 				Mesh& mesh{ context.mesh(group.mesh()) };
 				Material& material{ context.material(group.material()) };
 
-				data.device.bind(group);
+				data.device.memory().bind(group);
 				data.device.uniform(instancedGeometryShader, "uProjection", projection);
 				data.device.uniform(instancedGeometryShader, "uView", view);
 				data.device.uniform(instancedGeometryShader, material, context.repository());

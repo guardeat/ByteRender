@@ -10,43 +10,42 @@ namespace Byte {
 
 	using RenderID = EntityID;
 
-	using GResourceID = uint32_t;
+	using GPUResourceID = uint32_t;
 
-	struct GResource {
-		GResourceID id{};
+	template<typename _Type>
+	struct _GPUResource {
+		GPUResourceID id{};
 
-		GResource(GResourceID id = 0)
-			:id{ id } {
+		_GPUResource(GPUResourceID id = 0)
+			: id(id) {
 		}
 
-		operator GResourceID() const {
+		operator GPUResourceID() const {
 			return id;
 		}
 	};
 
-	struct GBuffer : public GResource {
-		using GResource::GResource;
+	template<typename _Type>
+	struct GPUResource : public _GPUResource<_Type> {
+		using _GPUResource<_Type>::_GPUResource;
 	};
 
-	struct GBufferGroup : public GResource {
-		using GResource::GResource;
+	template<>
+	struct GPUResource<Mesh> : public _GPUResource<Mesh> {
+		using _GPUResource<Mesh>::_GPUResource;
 
-		Vector<GBuffer> renderBuffers;
-		GBuffer indexBuffer{};
-
-		size_t capacity{};
+		Vector<GPUResourceID> renderBuffers;
+		GPUResourceID indexBuffer{};
 	};
 
-	struct GShader : public GResource {
-		using GResource::GResource;
-	};
+	template<>
+	struct GPUResource<InstanceGroup> : public _GPUResource<InstanceGroup> {
+		using _GPUResource<InstanceGroup>::_GPUResource;
 
-	struct GTexture : public GResource {
-		using GResource::GResource;
-	};
+		Vector<GPUResourceID> renderBuffers;
+		GPUResourceID indexBuffer{};
 
-	struct GFramebuffer : public GResource {
-		using GResource::GResource;
+		size_t capacity{ 0 };
 	};
 
 	enum class TransparencyMode : uint8_t {

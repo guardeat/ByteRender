@@ -33,7 +33,7 @@ namespace Byte {
 
 			if (data.parameter<bool>("render_fxaa")) {
 				shader = &data.shaders.at(_fxaaShader);
-				data.device.bind(*shader);
+				data.device.memory().bind(*shader);
 
 				float width{ static_cast<float>(data.width) };
 				float height{ static_cast<float>(data.height) };
@@ -41,14 +41,14 @@ namespace Byte {
 			}
 			else {
 				shader = &data.shaders.at(_finalShader);
-				data.device.bind(*shader);
+				data.device.memory().bind(*shader);
 			}
 
 			auto [camera, _] = context.camera();
 
-			data.device.bindDefault(data.width, data.height);
+			data.device.memory().bind(data.width, data.height);
 
-			data.device.bind(quad);
+			data.device.memory().bind(quad);
 
 			data.device.uniform(*shader, "uColor", colorBuffer.texture("color"));
 			data.device.uniform(*shader, "uDepth", geometryBuffer.texture("depth"), TextureUnit::UNIT_1);

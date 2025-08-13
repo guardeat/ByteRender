@@ -22,61 +22,61 @@ namespace Byte {
 
 	void Renderer::load(RenderContext& context) {
 		for (auto& [_, shader] : _data.shaders) {
-			if (!_data.device.loaded(shader)) {
-				_data.device.load(shader);
+			if (!_data.device.memory().loaded(shader)) {
+				_data.device.memory().load(shader);
 			}
 		}
 
 		for (auto& [_, buffer] : _data.framebuffers) {
-			if (!_data.device.loaded(buffer)) {
-				_data.device.load(buffer);
+			if (!_data.device.memory().loaded(buffer)) {
+				_data.device.memory().load(buffer);
 			}
 		}
 
 		for (auto& [_, mesh] : _data.meshes) {
-			if(!_data.device.loaded(mesh)) {
-				_data.device.load(mesh);
+			if(!_data.device.memory().loaded(mesh)) {
+				_data.device.memory().load(mesh);
 			}
 		}
 
 		for (auto& [_, mesh] : context.repository().meshes()) {
-			if (!_data.device.loaded(mesh)) {
-				_data.device.load(mesh);
+			if (!_data.device.memory().loaded(mesh)) {
+				_data.device.memory().load(mesh);
 			}
 		}
 
 		for (auto& [id, texture] : context.repository().textures()) {
-			if (!_data.device.loaded(texture)) {
-				_data.device.load(texture);
+			if (!_data.device.memory().loaded(texture)) {
+				_data.device.memory().load(texture);
 			}
 		}
 
 		for (auto& [id, instanceGroup] : context.repository().instanceGroups()) {
-			if (!_data.device.loaded(instanceGroup)) {
-				_data.device.load(instanceGroup,context.repository().mesh(instanceGroup.mesh()));
+			if (!_data.device.memory().loaded(instanceGroup)) {
+				_data.device.memory().load(instanceGroup,context.repository().mesh(instanceGroup.mesh()));
 			}
 
 			else if (instanceGroup.changed()) {
-				_data.device.updateBuffer(instanceGroup);
+				_data.device.memory().update(instanceGroup);
 			}
 		}
 	}
 
 	void Renderer::release(Mesh& mesh) {
-		_data.device.release(mesh);
+		_data.device.memory().release(mesh);
 	}
 
 	void Renderer::release(InstanceGroup& group) {
-		_data.device.release(group);
+		_data.device.memory().release(group);
 	}
 
 	void Renderer::release(Shader& shader) {
-		_data.device.release(shader);
+		_data.device.memory().release(shader);
 		_data.shaders.erase(shader.assetID());
 	}
 
 	void Renderer::release(Texture& texture) {
-		_data.device.release(texture);
+		_data.device.memory().release(texture);
 	}
 
 	void Renderer::submit(Shader&& shader) {
@@ -102,15 +102,15 @@ namespace Byte {
 
 	void Renderer::clearMemory() {
 		for (auto& [_, shader] : _data.shaders) {
-			_data.device.release(shader);
+			_data.device.memory().release(shader);
 		}
 
 		for(auto& [_, buffer] : _data.framebuffers) {
-			_data.device.release(buffer);
+			_data.device.memory().release(buffer);
 		}
 
 		for (auto& [_, mesh] : _data.meshes) {
-			_data.device.release(mesh);
+			_data.device.memory().release(mesh);
 		}
 
 		_data.device.clear();

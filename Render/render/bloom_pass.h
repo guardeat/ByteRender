@@ -34,7 +34,7 @@ namespace Byte {
 			Framebuffer& colorBuffer{ data.framebuffers.at(_colorBuffer) };
 			Framebuffer& bloomBuffer{ data.framebuffers.at(*_bloomBuffers.begin()) };
 
-			data.device.bind(bloomBuffer);
+			data.device.memory().bind(bloomBuffer);
 			data.device.clearBuffer();
 
 			Mesh& quad{ data.meshes.at(_quad) };
@@ -44,13 +44,13 @@ namespace Byte {
 			float width{ static_cast<float>(colorBuffer.width()) };
 			float height{ static_cast<float>(colorBuffer.height()) };
 
-			data.device.bind(downShader);
+			data.device.memory().bind(downShader);
 			data.device.uniform(downShader, "uInverseGamma", 1.0f / gamma);
 			data.device.uniform(downShader, "uKarisAverage", true);
 			data.device.uniform(downShader, "uSrcResolution", Vec2{ width,height });
 			data.device.uniform(downShader, "uSrcTexture", colorBuffer.texture("color"));
 
-			data.device.bind(quad);
+			data.device.memory().bind(quad);
 			data.device.draw(quad.indexCount());
 
 			for (size_t i{ 1 }; i < mipCount; ++i) {
@@ -61,7 +61,7 @@ namespace Byte {
 
 				Framebuffer& bloomBuffer{ data.framebuffers.at(_bloomBuffers.at(i)) };
 
-				data.device.bind(bloomBuffer);
+				data.device.memory().bind(bloomBuffer);
 				data.device.clearBuffer();
 
 				data.device.uniform(downShader, "uSrcTexture", srcTexture);
@@ -72,11 +72,11 @@ namespace Byte {
 				data.device.uniform(downShader, "uKarisAverage", false);
 			}
 
-			data.device.renderState(RenderState::DISABLE_DEPTH);
-			data.device.renderState(RenderState::ENABLE_BLEND);
+			data.device.state(RenderState::DISABLE_DEPTH);
+			data.device.state(RenderState::ENABLE_BLEND);
 
 			Shader& upShader{ data.shaders.at(_bloomUpShader) };
-			data.device.bind(upShader);
+			data.device.memory().bind(upShader);
 			data.device.uniform(upShader, "uFilterRadius", 0.005f);
 
 			for (size_t i{ mipCount - 1 }; i > 0; --i) {
@@ -85,7 +85,7 @@ namespace Byte {
 
 				Framebuffer& bloomBuffer{ data.framebuffers.at(_bloomBuffers.at(i - 1)) };
 
-				data.device.bind(bloomBuffer);
+				data.device.memory().bind(bloomBuffer);
 				data.device.clearBuffer();
 
 				data.device.uniform(upShader, "uSrcTexture", srcTexture);
@@ -96,17 +96,17 @@ namespace Byte {
 			float strength{ data.parameter<float>("bloom_strength") };
 
 			data.device.blendWeights(strength, 1 - strength);
-			data.device.renderState(RenderState::BLEND_WEIGHTED);
+			data.device.state(RenderState::BLEND_WEIGHTED);
 
-			data.device.bind(colorBuffer);
+			data.device.memory().bind(colorBuffer);
 			Texture& srcTexture{ bloomBuffer.texture("bloom") };
 			data.device.uniform(upShader, "uSrcTexture", srcTexture);
 
 			data.device.draw(quad.indexCount());
 
-			data.device.renderState(RenderState::DISABLE_BLEND);
-			data.device.renderState(RenderState::ENABLE_DEPTH);
-			data.device.renderState(RenderState::BLEND_ADD);
+			data.device.state(RenderState::DISABLE_BLEND);
+			data.device.state(RenderState::ENABLE_DEPTH);
+			data.device.state(RenderState::BLEND_ADD);
 		}
 
 		void initialize(RenderData& data) override {

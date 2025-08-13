@@ -12,6 +12,7 @@
 #include "framebuffer.h"
 #include "texture.h"
 #include "instance_group.h"
+#include "shader.h"
 
 namespace Byte {
 
@@ -74,7 +75,7 @@ namespace Byte {
             glBlendColor(sNorm, sNorm, sNorm, dNorm);
 		}
 
-        static void renderState(RenderState state) {
+        static void state(RenderState state) {
             switch (state) {
             case RenderState::ENABLE_DEPTH:
                 glEnable(GL_DEPTH_TEST);
@@ -310,12 +311,16 @@ namespace Byte {
             }
         }
 
-        static void bind(GBufferGroup id = 0) {
+        static void bind(GPUResource<Mesh> id = 0) {
+            glBindVertexArray(id);
+        }
+
+        static void bind(GPUResource<InstanceGroup> id = 0) {
             glBindVertexArray(id);
         }
 
         template<typename Type>
-        static GBuffer build(
+        static GPUResourceID build(
             const Vector<Type>& data,
             Layout layout,
             BufferMode mode,
@@ -359,15 +364,15 @@ namespace Byte {
             return bufferID;
         }
 
-        static GBufferGroup build(Mesh& mesh) {
-            GBufferGroup bufferGroup{};
+        static GPUResource<Mesh> build(Mesh& mesh) {
+            GPUResource<Mesh> bufferGroup{};
             GLuint id;
             glGenVertexArrays(1, &id);
             glBindVertexArray(id);
 
-            bufferGroup.id = static_cast<GBuffer>(id);
+            bufferGroup.id = static_cast<GPUResourceID>(id);
 
-            GBuffer vertexBuffer{ build<float>(
+            GPUResourceID vertexBuffer{ build<float>(
                 mesh.vertices(),
                 mesh.layout(),
                 mesh.dynamic() ? BufferMode::DYNAMIC : BufferMode::STATIC,
@@ -376,7 +381,7 @@ namespace Byte {
 
             bufferGroup.renderBuffers.push_back(vertexBuffer);
 
-            GBuffer indexBuffer{ build<uint32_t>(
+            GPUResourceID indexBuffer{ build<uint32_t>(
                 mesh.indices(),
                 Layout{},
                 mesh.dynamic() ? BufferMode::DYNAMIC : BufferMode::STATIC,
@@ -390,15 +395,15 @@ namespace Byte {
             return  bufferGroup;
         }
 
-        static GBufferGroup build(InstanceGroup& group, Mesh& mesh) {
-            GBufferGroup bufferGroup{};
+        static GPUResource<InstanceGroup> build(InstanceGroup& group, Mesh& mesh) {
+            GPUResource<InstanceGroup> bufferGroup{};
 
             GLuint vao{};
             glGenVertexArrays(1, &vao);
             glBindVertexArray(vao);
-            bufferGroup.id = static_cast<GBuffer>(vao);
+            bufferGroup.id = static_cast<GPUResourceID>(vao);
 
-            GBuffer vertexBuffer{ build<float>(
+            GPUResourceID vertexBuffer{ build<float>(
                 mesh.vertices(),
                 mesh.layout(),
                 mesh.dynamic() ? BufferMode::DYNAMIC : BufferMode::STATIC,
@@ -407,7 +412,7 @@ namespace Byte {
 
             bufferGroup.renderBuffers.push_back(vertexBuffer);
 
-            GBuffer indexBuffer{ build<uint32_t>(
+            GPUResourceID indexBuffer{ build<uint32_t>(
                 mesh.indices(),
                 Layout{},
                 mesh.dynamic() ? BufferMode::DYNAMIC : BufferMode::STATIC,
@@ -417,7 +422,7 @@ namespace Byte {
             bufferGroup.indexBuffer = indexBuffer;
 
             GLuint attribIndex{ static_cast<GLuint>(mesh.layout().size()) };
-            GBuffer instanceBuffer{ build<float>(
+            GPUResourceID instanceBuffer{ build<float>(
                     group.data(),
                     group.layout(),
                     group.dynamic() ? BufferMode::DYNAMIC : BufferMode::STATIC,
@@ -433,14 +438,30 @@ namespace Byte {
             return bufferGroup;
         }
 
-        static void release(GBufferGroup bufferGroup) {
+        static void release(GPUResource<InstanceGroup> bufferGroup) {
             if (bufferGroup.indexBuffer != 0) {
-                glDeleteBuffers(1, &bufferGroup.indexBuffer.id);
+                glDeleteBuffers(1, &bufferGroup.indexBuffer);
             }
 
             for (auto& buffer : bufferGroup.renderBuffers) {
                 if (buffer != 0) {
-                    glDeleteBuffers(1, &buffer.id);
+                    glDeleteBuffers(1, &buffer);
+                }
+            }
+
+            if (bufferGroup.id != 0) {
+                glDeleteVertexArrays(1, &bufferGroup.id);
+            }
+        }
+
+        static void release(GPUResource<Mesh> bufferGroup) {
+            if (bufferGroup.indexBuffer != 0) {
+                glDeleteBuffers(1, &bufferGroup.indexBuffer);
+            }
+
+            for (auto& buffer : bufferGroup.renderBuffers) {
+                if (buffer != 0) {
+                    glDeleteBuffers(1, &buffer);
                 }
             }
 
@@ -450,88 +471,88 @@ namespace Byte {
         }
 
         template<typename T>
-        static void bufferData(GBuffer buffer, const Vector<T>& data, size_t size, bool dynamic = false) {
-            glBindBuffer(GL_ARRAY_BUFFER, buffer.id);
+        static void bufferData(GPUResourceID buffer, const Vector<T>& data, size_t size, bool dynamic = false) {
+            glBindBuffer(GL_ARRAY_BUFFER, buffer);
             glBufferData(GL_ARRAY_BUFFER, size * sizeof(T), data.data(), dynamic ? GL_DYNAMIC_DRAW : GL_STATIC_DRAW);
         }
 
         template<typename T>
-        static void subBufferData(GBuffer buffer, const Vector<T>& data, size_t offset = 0) {
-            glBindBuffer(GL_ARRAY_BUFFER, buffer.id);
+        static void subBufferData(GPUResourceID buffer, const Vector<T>& data, size_t offset = 0) {
+            glBindBuffer(GL_ARRAY_BUFFER, buffer);
             glBufferSubData(GL_ARRAY_BUFFER, offset, data.size() * sizeof(T), data.data());
         }
 
-        static void bind(GShader id = 0) {
-            glUseProgram(id);
+        static void bind(GPUResource<Shader> id = 0) {
+            glUseProgram(id.id);
         }
 
         template<typename Type>
-        static void uniform(GShader id, const std::string& name, const Type& value) {
+        static void uniform(GPUResource<Shader> id, const std::string& name, const Type& value) {
             throw std::exception("No such uniform type");
         }
 
         template<>
-        static void uniform<bool>(GShader id, const std::string& name, const bool& value) {
+        static void uniform<bool>(GPUResource<Shader> id, const std::string& name, const bool& value) {
             auto loc{ glGetUniformLocation(id, name.c_str()) };
             glUniform1i(loc, (int)value);
         }
 
         template<>
-        static void uniform<int>(GShader id, const std::string& name, const int& value) {
+        static void uniform<int>(GPUResource<Shader> id, const std::string& name, const int& value) {
             auto loc{ glGetUniformLocation(id, name.c_str()) };
             glUniform1i(loc, value);
         }
 
         template<>
-        static void uniform<size_t>(GShader id, const std::string& name, const size_t& value) {
+        static void uniform<size_t>(GPUResource<Shader> id, const std::string& name, const size_t& value) {
             auto loc{ glGetUniformLocation(id, name.c_str()) };
             glUniform1i(loc, static_cast<GLint>(value));
         }
 
         template<>
-        static void uniform<float>(GShader id, const std::string& name, const float& value) {
+        static void uniform<float>(GPUResource<Shader> id, const std::string& name, const float& value) {
             auto loc{ glGetUniformLocation(id, name.c_str()) };
             glUniform1f(loc, value);
         }
 
         template<>
-        static void uniform<Vec2>(GShader id, const std::string& name, const Vec2& value) {
+        static void uniform<Vec2>(GPUResource<Shader> id, const std::string& name, const Vec2& value) {
             auto loc{ glGetUniformLocation(id, name.c_str()) };
             glUniform2f(loc, value.x, value.y);
         }
 
         template<>
-        static void uniform<Vec3>(GShader id, const std::string& name, const Vec3& value) {
+        static void uniform<Vec3>(GPUResource<Shader> id, const std::string& name, const Vec3& value) {
             auto loc{ glGetUniformLocation(id, name.c_str()) };
             glUniform3f(loc, value.x, value.y, value.z);
         }
 
         template<>
-        static void uniform<Vec4>(GShader id, const std::string& name, const Vec4& value) {
+        static void uniform<Vec4>(GPUResource<Shader> id, const std::string& name, const Vec4& value) {
             auto loc{ glGetUniformLocation(id, name.c_str()) };
             glUniform4f(loc, value.x, value.y, value.z, value.w);
         }
 
         template<>
-        static void uniform<Quaternion>(GShader id, const std::string& name, const Quaternion& value) {
+        static void uniform<Quaternion>(GPUResource<Shader> id, const std::string& name, const Quaternion& value) {
             auto loc{ glGetUniformLocation(id, name.c_str()) };
             glUniform4f(loc, value.x, value.y, value.z, value.w);
         }
 
         template<>
-        static void uniform<Mat2>(GShader id, const std::string& name, const Mat2& value) {
+        static void uniform<Mat2>(GPUResource<Shader> id, const std::string& name, const Mat2& value) {
             auto loc{ glGetUniformLocation(id, name.c_str()) };
             glUniformMatrix2fv(loc, 1, GL_FALSE, value.data);
         }
 
         template<>
-        static void uniform<Mat3>(GShader id, const std::string& name, const Mat3& value) {
+        static void uniform<Mat3>(GPUResource<Shader> id, const std::string& name, const Mat3& value) {
             auto loc{ glGetUniformLocation(id, name.c_str()) };
             glUniformMatrix3fv(loc, 1, GL_FALSE, value.data);
         }
 
         template<>
-        static void uniform<Mat4>(GShader id, const std::string& name, const Mat4& value) {
+        static void uniform<Mat4>(GPUResource<Shader> id, const std::string& name, const Mat4& value) {
             auto loc{ glGetUniformLocation(id, name.c_str()) };
             glUniformMatrix4fv(loc, 1, GL_FALSE, value.data);
         }
@@ -572,14 +593,19 @@ namespace Byte {
             }
         }
 
-        static void release(GShader id) {
+        static void release(GPUResource<Shader> id) {
             glDeleteProgram(id);
         }
 
-        static GShader build(
-            uint32_t vertex,
-            uint32_t fragment,
-            uint32_t geometry = 0) {
+        static GPUResource<Shader> build(Shader& shader) {
+            uint32_t vertex{ OpenGL::compileShader(shader.vertex(),ShaderType::VERTEX) };
+            uint32_t fragment{ OpenGL::compileShader(shader.fragment(),ShaderType::FRAGMENT) };
+            uint32_t geometry{};
+
+            if (!shader.geometry().empty()) {
+                geometry = OpenGL::compileShader(shader.geometry(), ShaderType::GEOMETRY);
+            }
+
             uint32_t id{ glCreateProgram() };
 
             glAttachShader(id, vertex);
@@ -613,17 +639,17 @@ namespace Byte {
 
         }
 
-        static void bind(GTexture id, TextureUnit unit = TextureUnit::UNIT_0) {
+        static void bind(GPUResource<Texture> id, TextureUnit unit) {
             glActiveTexture(convert(unit));
             glBindTexture(GL_TEXTURE_2D, id);
         }
 
-        static void release(GTexture id) {
+        static void release(GPUResource<Texture> id) {
             glDeleteTextures(1, &id.id);
         }
 
-        static GTexture build(Texture& texture) {
-            GTexture textureID;
+        static GPUResource<Texture> build(Texture& texture) {
+            GPUResource<Texture> textureID;
 
             GLint glWidth{ static_cast<GLint>(texture.width()) };
             GLint glHeight{ static_cast<GLint>(texture.height()) };
@@ -655,7 +681,7 @@ namespace Byte {
             return textureID;
         }
 
-        static void bind(const Framebuffer& buffer, GFramebuffer id) {
+        static void bind(const Framebuffer& buffer, GPUResource<Framebuffer> id) {
             glBindFramebuffer(GL_FRAMEBUFFER, id);
 
             if (!buffer.attachments().empty()) {
@@ -674,9 +700,9 @@ namespace Byte {
             glViewport(0, 0, static_cast<GLsizei>(width), static_cast<GLsizei>(height));
         }
 
-        static Pair<GFramebuffer, Map<AssetID, GTexture>> build(Framebuffer& buffer) {
-            GFramebuffer id{};
-            Map<AssetID, GTexture> textureIDs{};
+        static Pair<GPUResource<Framebuffer>, Map<AssetID, GPUResource<Texture>>> build(Framebuffer& buffer) {
+            GPUResource<Framebuffer> id{};
+            Map<AssetID, GPUResource<Texture>> textureIDs{};
             glGenFramebuffers(1, &id.id);
             glBindFramebuffer(GL_FRAMEBUFFER, id);
 
@@ -692,7 +718,7 @@ namespace Byte {
                 att.width(width);
                 att.height(height);
 
-                GTexture attID{ build(att) };
+                GPUResource<Texture> attID{ build(att) };
                 textureIDs.emplace(att.assetID(), attID);
                 glFramebufferTexture2D(
                     GL_FRAMEBUFFER, convert(att.attachment()), GL_TEXTURE_2D, attID, 0);
@@ -719,7 +745,7 @@ namespace Byte {
             }
 
             if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
-                Vector<GResourceID> toDelete{};
+                Vector<GPUResourceID> toDelete{};
                 for (auto [_, deleteID] : textureIDs) {
                     toDelete.push_back(deleteID.id);
                 }
@@ -732,14 +758,18 @@ namespace Byte {
             return std::make_pair(id, std::move(textureIDs));
         }
 
-        static void release(GFramebuffer id, const Vector<GResourceID>& textureIDs) {
+        static void release(GPUResource<Framebuffer> id) {
+            if (id) {
+                glDeleteFramebuffers(1, &id.id);
+            }
+        }
+
+        static void release(GPUResource<Framebuffer> id, const Vector<GPUResourceID>& textureIDs) {
             if (!textureIDs.empty()) {
                 glDeleteTextures(static_cast<GLsizei>(textureIDs.size()), textureIDs.data());
             }
 
-            if (id) {
-                glDeleteFramebuffers(1, &id.id);
-            }
+            release(id);
         }
 
     };

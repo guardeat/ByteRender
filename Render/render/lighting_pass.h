@@ -58,13 +58,13 @@ namespace Byte {
 			Framebuffer& geometryBuffer{ data.framebuffers.at(_geometryBuffer) };
 			Framebuffer& colorBuffer{ data.framebuffers.at(_colorBuffer) };
 
-			data.device.bind(colorBuffer);
+			data.device.memory().bind(colorBuffer);
 
 			Mesh& quad{ data.meshes.at(_quad) };
 			Shader& lightingShader{ data.shaders.at(_lightingShader) };
 
-			data.device.bind(quad);
-			data.device.bind(lightingShader);
+			data.device.memory().bind(quad);
+			data.device.memory().bind(lightingShader);
 
 			data.device.uniform(lightingShader, "uNormal", geometryBuffer.texture("normal"));
 			data.device.uniform(lightingShader, "uAlbedo", geometryBuffer.texture("albedo"), TextureUnit::UNIT_1);
@@ -113,17 +113,17 @@ namespace Byte {
 		void drawDirectionalLight(RenderData& data) {
 			Mesh& quad{ data.meshes.at(_quad) };
 			Shader& lightingShader{ data.shaders.at(_lightingShader) };
-			data.device.bind(quad);
-			data.device.bind(lightingShader);
+			data.device.memory().bind(quad);
+			data.device.memory().bind(lightingShader);
 			data.device.draw(quad.indexCount());
 		}
 
 		void drawPointLights(RenderData& data, RenderContext& context) {
-			data.device.renderState(RenderState::DISABLE_DEPTH);
-			data.device.renderState(RenderState::ENABLE_BLEND);
-			data.device.renderState(RenderState::BLEND_ADD);
-			data.device.renderState(RenderState::ENABLE_CULLING);
-			data.device.renderState(RenderState::CULL_FRONT);
+			data.device.state(RenderState::DISABLE_DEPTH);
+			data.device.state(RenderState::ENABLE_BLEND);
+			data.device.state(RenderState::BLEND_ADD);
+			data.device.state(RenderState::ENABLE_CULLING);
+			data.device.state(RenderState::CULL_FRONT);
 
 			InstanceGroup& pointLightGroup{ context.instanceGroup(_pointLightGroup) };
 			Mesh& pointLightMesh{ context.mesh(pointLightGroup.mesh()) };
@@ -133,8 +133,8 @@ namespace Byte {
 			float aspect{ static_cast<float>(data.width) / static_cast<float>(data.height) };
 			Vec2 viewPortSize{ static_cast<float>(data.width), static_cast<float>(data.height) };
 
-			data.device.bind(pointLightShader);
-			data.device.bind(pointLightGroup);
+			data.device.memory().bind(pointLightShader);
+			data.device.memory().bind(pointLightGroup);
 
 			data.device.uniform(pointLightShader, "uProjection", camera.perspective(aspect));
 			data.device.uniform(pointLightShader, "uView", cameraTransform.view());
@@ -151,10 +151,10 @@ namespace Byte {
 
 			data.device.draw(pointLightMesh.indexCount(), pointLightGroup.count(), DrawType::TRIANGLES);
 
-			data.device.renderState(RenderState::ENABLE_DEPTH);
-			data.device.renderState(RenderState::DISABLE_BLEND);
-			data.device.renderState(RenderState::CULL_BACK);
-			data.device.renderState(RenderState::DISABLE_CULLING);
+			data.device.state(RenderState::ENABLE_DEPTH);
+			data.device.state(RenderState::DISABLE_BLEND);
+			data.device.state(RenderState::CULL_BACK);
+			data.device.state(RenderState::DISABLE_CULLING);
 		}
 	};
 

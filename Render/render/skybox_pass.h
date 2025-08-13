@@ -40,11 +40,11 @@ namespace Byte {
 			Mat4 inverseViewProjection{ (projection * view).inverse() };
 
 			Framebuffer& colorBuffer{ data.framebuffers.at(_colorBuffer) };
-			data.device.bind(colorBuffer);
+			data.device.memory().bind(colorBuffer);
 			data.device.clearBuffer();
 
-			data.device.bind(skyboxShader);
-			data.device.bind(quad);
+			data.device.memory().bind(skyboxShader);
+			data.device.memory().bind(quad);
 
 			data.device.uniform(skyboxShader, skyboxMaterial, context.repository());
 			data.device.uniform(skyboxShader, "uDLight.direction", dLightTransform.front());
@@ -52,9 +52,9 @@ namespace Byte {
 			data.device.uniform(skyboxShader, "uDLight.intensity", dLight.intensity);
 			data.device.uniform(skyboxShader, "uInverseViewProjection", inverseViewProjection);
 
-			data.device.renderState(RenderState::DISABLE_DEPTH);
+			data.device.state(RenderState::DISABLE_DEPTH);
 			data.device.draw(quad.indexCount());
-			data.device.renderState(RenderState::ENABLE_DEPTH);
+			data.device.state(RenderState::ENABLE_DEPTH);
 		}
 
 		void initialize(RenderData& data) {

@@ -96,6 +96,9 @@
     <ClInclude Include="render\draw_pass.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="render\device_common.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="renderer.cpp">

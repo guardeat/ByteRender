@@ -133,6 +133,7 @@
   <ItemGroup>
     <ClInclude Include="render\bloom_pass.h" />
     <ClInclude Include="render\camera.h" />
+    <ClInclude Include="render\device_common.h" />
     <ClInclude Include="render\draw_pass.h" />
     <ClInclude Include="render\geometry_pass.h" />
     <ClInclude Include="render\instance_renderer.h" />
