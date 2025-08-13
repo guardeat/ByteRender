@@ -272,15 +272,15 @@ namespace Byte {
 		}
 
 		void updateBuffer(InstanceGroup& group, float capacityMultiplier = 2.0f) {
-			GBufferGroup& bufferGroup{ _meshes.at(group.mesh()) };
+			GBufferGroup& bufferGroup{ _instanceGroups.at(group.assetID()) };
 			size_t size{ group.data().size() };
 			if (size > bufferGroup.capacity) {
 				size_t newSize{ static_cast<size_t>(group.data().size() * capacityMultiplier) };
 				bufferGroup.capacity = newSize;
-				OpenGL::bufferData(bufferGroup.renderBuffers[0], group.data(), newSize, false);
+				OpenGL::bufferData(bufferGroup.renderBuffers[1], group.data(), newSize, false);
 			}
 			else {
-				OpenGL::subBufferData(bufferGroup.renderBuffers[0], group.data());
+				OpenGL::subBufferData(bufferGroup.renderBuffers[1], group.data());
 			}
 
 			group.sync();

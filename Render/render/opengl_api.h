@@ -329,7 +329,13 @@ namespace Byte {
             GLint target{ (type == GL_UNSIGNED_INT) ? GL_ELEMENT_ARRAY_BUFFER : GL_ARRAY_BUFFER };
 
             glBindBuffer(target, bufferID);
-            glBufferData(target, data.size() * sizeof(Type), data.data(), convert(mode));
+
+            if (data.empty()) {
+                glBufferData(target, 1, nullptr, convert(mode));
+			}
+            else {
+                glBufferData(target, data.size() * sizeof(Type), data.data(), convert(mode));
+            }
 
             size_t stride{ layout.stride() * sizeof(Type) };
 
