@@ -41,7 +41,7 @@ namespace Byte {
 
 		RenderDevice& operator=(const RenderDevice& left) = delete;
 
-		RenderDevice& operator=(RenderDevice&& right) {
+		RenderDevice& operator=(RenderDevice&& right) noexcept {
 			_memory.clear();
 			_memory = std::move(right._memory);
 
