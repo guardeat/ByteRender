@@ -20,6 +20,16 @@ namespace Byte {
 		Map<AssetID, GPUVariant> _data;
 
 	public:
+		GPUMemoryDevice() = default;
+
+		GPUMemoryDevice(const GPUMemoryDevice& left) = delete;
+
+		GPUMemoryDevice(GPUMemoryDevice&& right) noexcept = default;
+
+		GPUMemoryDevice& operator=(const GPUMemoryDevice& left) = delete;
+
+		GPUMemoryDevice& operator=(GPUMemoryDevice&& right) noexcept = default;
+
 		~GPUMemoryDevice() {
 			clear();
 		}
@@ -30,9 +40,16 @@ namespace Byte {
 			if (it != _data.end()) {
 				return std::get<GPUResource<AssetType>>(it->second);
 			}
-			else {
-				throw std::runtime_error("Asset not found in gpu memory");
+			throw std::runtime_error("Asset not found in gpu memory");
+		}
+
+		template<typename AssetType>
+		const GPUResource<AssetType>& get(const AssetType& asset) const {
+			auto it{ _data.find(asset.assetID()) };
+			if (it != _data.end()) {
+				return std::get<GPUResource<AssetType>>(it->second);
 			}
+			throw std::runtime_error("Asset not found in gpu memory");
 		}
 
 		template<typename AssetType>
@@ -92,8 +109,8 @@ namespace Byte {
 		}
 
 		template<typename AssetType>
-		void bind(const AssetType& asset) {
-			GPUResource<AssetType>& resourceID{ get(asset) };
+		void bind(const AssetType& asset) const {
+			const GPUResource<AssetType>& resourceID{ get(asset) };
 
 			if constexpr (std::is_same_v<AssetType, Framebuffer>) {
 				RenderAPI::bind(asset, resourceID);
@@ -108,12 +125,12 @@ namespace Byte {
 			}
 		}
 
-		void bind(const Texture& texture, TextureUnit unit) {
+		void bind(const Texture& texture, TextureUnit unit) const {
 			GPUResource<Texture> resourceID{ get(texture) };
 			RenderAPI::bind(resourceID, unit);
 		}
 
-		void bind(size_t width, size_t height) {
+		void bind(size_t width, size_t height) const {
 			RenderAPI::bind(width, height);
 		}
 
@@ -152,23 +169,27 @@ namespace Byte {
 
 	template<typename RenderAPI, typename GPUMemoryDeviceType>
 	class GPUUniformDevice {
+	private:
+		const GPUMemoryDeviceType* _memory{nullptr};
+
 	public:
+		GPUUniformDevice(GPUMemoryDeviceType& device)
+			:_memory{ &device } {
+
+		}
+
+		void memory(GPUMemoryDeviceType& device) {
+			_memory = &device;
+		}
+
 		template<typename Type>
-		void uniform(
-			GPUMemoryDeviceType& memory, 
-			const Shader& shader, 
-			const Tag& tag,
-			const Type& value) {
-			GPUResource<Shader> id{ memory.get(shader) };
+		void set(const Shader& shader, const Tag& tag,const Type& value) const {
+			GPUResource<Shader> id{ _memory->get(shader) };
 			RenderAPI::uniform(id, tag, value);
 		}
 
-		void uniform(
-			GPUMemoryDeviceType& memory, 
-			const Shader& shader, 
-			const Material& material, 
-			const Repository& repository) {
-			GPUResource<Shader> id{ memory.get(shader) };
+		void set(const Shader& shader, const Material& material, const Repository& repository) const {
+			GPUResource<Shader> id{ _memory->get(shader) };
 
 			if (shader.useDefaultMaterial()) {
 				int32_t materialMode{};
@@ -178,7 +199,7 @@ namespace Byte {
 				if( material.albedoTexture() != 0) {
 					materialMode |= (1 << ALBEDO_BIT);
 					const Texture& texture{ repository.texture(material.albedoTexture()) };
-					uniform(memory, shader, "uAlbedoTexture", texture, TextureUnit::UNIT_0);
+					set(shader, "uAlbedoTexture", texture, TextureUnit::UNIT_0);
 				}
 				else {
 					RenderAPI::uniform(id, "uAlbedo", material.color());
@@ -188,7 +209,7 @@ namespace Byte {
 					materialMode |= (1 << MATERIAL_BIT);
 					const Texture& texture{ repository.texture(material.materialTexture()) };
 					TextureUnit textureUnit{ static_cast<TextureUnit>(materialMode) };
-					uniform(memory,shader, "uMaterialTexture", texture, textureUnit);
+					set(shader, "uMaterialTexture", texture, textureUnit);
 				}
 				else {
 					RenderAPI::uniform(id, "uMetallic", material.metallic());
@@ -210,22 +231,21 @@ namespace Byte {
 			}
 		}
 
-		void uniform(GPUMemoryDeviceType& memory, const Shader& shader, const Transform& transform) {
-			GPUResource<Shader> id{ memory.get(shader) };
+		void set(const Shader& shader, const Transform& transform) const {
+			GPUResource<Shader> id{ _memory->get(shader) };
 			OpenGL::uniform(id, "uPosition", transform.position());
 			OpenGL::uniform(id, "uScale", transform.scale());
 			OpenGL::uniform(id, "uRotation", transform.rotation());
 		}
 
-		void uniform(
-			GPUMemoryDeviceType& memory,
+		void set(
 			const Shader& shader, 
 			const Tag& uniform,
 			const Texture& texture, 
-			TextureUnit unit = TextureUnit::UNIT_0) {
-			memory.bind(texture, unit);
+			TextureUnit unit = TextureUnit::UNIT_0) const {
+			_memory->bind(texture, unit);
 
-			GPUResource<Shader> id{ memory.get(shader) };
+			GPUResource<Shader> id{ _memory->get(shader) };
 			OpenGL::uniform(id, uniform, static_cast<int>(unit));
 		}
 		

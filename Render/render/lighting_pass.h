@@ -66,10 +66,10 @@ namespace Byte {
 			data.device.memory().bind(quad);
 			data.device.memory().bind(lightingShader);
 
-			data.device.uniform(lightingShader, "uNormal", geometryBuffer.texture("normal"));
-			data.device.uniform(lightingShader, "uAlbedo", geometryBuffer.texture("albedo"), TextureUnit::UNIT_1);
-			data.device.uniform(lightingShader, "uMaterial", geometryBuffer.texture("material"), TextureUnit::UNIT_2);
-			data.device.uniform(lightingShader, "uDepth", geometryBuffer.texture("depth"), TextureUnit::UNIT_3);
+			data.device.uniform().set(lightingShader, "uNormal", geometryBuffer.texture("normal"));
+			data.device.uniform().set(lightingShader, "uAlbedo", geometryBuffer.texture("albedo"), TextureUnit::UNIT_1);
+			data.device.uniform().set(lightingShader, "uMaterial", geometryBuffer.texture("material"), TextureUnit::UNIT_2);
+			data.device.uniform().set(lightingShader, "uDepth", geometryBuffer.texture("depth"), TextureUnit::UNIT_3);
 		}
 
 		void setDirectionalLightUniforms(RenderData& data, RenderContext& context) {
@@ -84,17 +84,17 @@ namespace Byte {
 
 			Shader& lightingShader{ data.shaders.at(_lightingShader) };
 
-			data.device.uniform(lightingShader, "uDLight.direction", dLightTransform.front());
-			data.device.uniform(lightingShader, "uDLight.color", directionalLight.color);
-			data.device.uniform(lightingShader, "uDLight.intensity", directionalLight.intensity);
-
-			data.device.uniform(lightingShader, "uView", view);
-			data.device.uniform(lightingShader, "uInverseView", inverseView);
-			data.device.uniform(lightingShader, "uInverseProjection", inverseProjection);
-			data.device.uniform(lightingShader, "uViewPos", cameraTransform.position());
+			data.device.uniform().set(lightingShader, "uDLight.direction", dLightTransform.front());
+			data.device.uniform().set(lightingShader, "uDLight.color", directionalLight.color);
+			data.device.uniform().set(lightingShader, "uDLight.intensity", directionalLight.intensity);
+			
+			data.device.uniform().set(lightingShader, "uView", view);
+			data.device.uniform().set(lightingShader, "uInverseView", inverseView);
+			data.device.uniform().set(lightingShader, "uInverseProjection", inverseProjection);
+			data.device.uniform().set(lightingShader, "uViewPos", cameraTransform.position());
 
 			size_t cascadeCount{ data.parameter<uint64_t>("cascade_count") };
-			data.device.uniform(lightingShader, "uCascadeCount", cascadeCount);
+			data.device.uniform().set(lightingShader, "uCascadeCount", cascadeCount);
 
 			for (size_t idx{}; idx < cascadeCount; ++idx) {
 				Mat4 lightSpace{ data.parameter<Mat4>("light_space_matrix_" + std::to_string(idx)) };
@@ -104,9 +104,9 @@ namespace Byte {
 				Texture& depthTexture{ data.framebuffers.at(shadowBufferID).texture("depth") };
 				TextureUnit unit{ static_cast<TextureUnit>(static_cast<size_t>(TextureUnit::UNIT_4) + idx) };
 
-				data.device.uniform(lightingShader, "uLightSpaces[" + std::to_string(idx) + "]", lightSpace);
-				data.device.uniform(lightingShader, "uCascadeFars[" + std::to_string(idx) + "]", cascadeFar);
-				data.device.uniform(lightingShader, "uDepthMaps[" + std::to_string(idx) + "]", depthTexture, unit);
+				data.device.uniform().set(lightingShader, "uLightSpaces[" + std::to_string(idx) + "]", lightSpace);
+				data.device.uniform().set(lightingShader, "uCascadeFars[" + std::to_string(idx) + "]", cascadeFar);
+				data.device.uniform().set(lightingShader, "uDepthMaps[" + std::to_string(idx) + "]", depthTexture, unit);
 			}
 		}
 
@@ -136,18 +136,18 @@ namespace Byte {
 			data.device.memory().bind(pointLightShader);
 			data.device.memory().bind(pointLightGroup);
 
-			data.device.uniform(pointLightShader, "uProjection", camera.perspective(aspect));
-			data.device.uniform(pointLightShader, "uView", cameraTransform.view());
-			data.device.uniform(pointLightShader, "uInverseView", cameraTransform.view().inverse());
-			data.device.uniform(pointLightShader, "uInverseProjection", camera.perspective(aspect).inverse());
-			data.device.uniform(pointLightShader, "uViewPos", cameraTransform.position());
-			data.device.uniform(pointLightShader, "uViewPortSize", viewPortSize);
+			data.device.uniform().set(pointLightShader, "uProjection", camera.perspective(aspect));
+			data.device.uniform().set(pointLightShader, "uView", cameraTransform.view());
+			data.device.uniform().set(pointLightShader, "uInverseView", cameraTransform.view().inverse());
+			data.device.uniform().set(pointLightShader, "uInverseProjection", camera.perspective(aspect).inverse());
+			data.device.uniform().set(pointLightShader, "uViewPos", cameraTransform.position());
+			data.device.uniform().set(pointLightShader, "uViewPortSize", viewPortSize);
 
 			Framebuffer& geometryBuffer{ data.framebuffers.at(_geometryBuffer) };
-			data.device.uniform(pointLightShader, "uNormal", geometryBuffer.texture("normal"), TextureUnit::UNIT_0);
-			data.device.uniform(pointLightShader, "uAlbedo", geometryBuffer.texture("albedo"), TextureUnit::UNIT_1);
-			data.device.uniform(pointLightShader, "uMaterial", geometryBuffer.texture("material"), TextureUnit::UNIT_2);
-			data.device.uniform(pointLightShader, "uDepth", geometryBuffer.texture("depth"), TextureUnit::UNIT_3);
+			data.device.uniform().set(pointLightShader, "uNormal", geometryBuffer.texture("normal"), TextureUnit::UNIT_0);
+			data.device.uniform().set(pointLightShader, "uAlbedo", geometryBuffer.texture("albedo"), TextureUnit::UNIT_1);
+			data.device.uniform().set(pointLightShader, "uMaterial", geometryBuffer.texture("material"), TextureUnit::UNIT_2);
+			data.device.uniform().set(pointLightShader, "uDepth", geometryBuffer.texture("depth"), TextureUnit::UNIT_3);
 
 			data.device.draw(pointLightMesh.indexCount(), pointLightGroup.count(), DrawType::TRIANGLES);
 

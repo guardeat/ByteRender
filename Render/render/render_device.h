@@ -29,7 +29,24 @@ namespace Byte {
 		GPUUniformDevice _uniform;
 
 	public:
-		RenderDevice() = default;
+		RenderDevice()
+			:_uniform{ _memory } {
+		}
+
+		RenderDevice(const RenderDevice& left) = delete;
+
+		RenderDevice(RenderDevice&& right) noexcept
+			:_memory{ std::move(right._memory) }, _uniform{right._memory} {
+		}
+
+		RenderDevice& operator=(const RenderDevice& left) = delete;
+
+		RenderDevice& operator=(RenderDevice&& right) {
+			_memory.clear();
+			_memory = std::move(right._memory);
+
+			_uniform.memory(_memory);
+		}
 
 		~RenderDevice() {
 			clear();
@@ -47,25 +64,12 @@ namespace Byte {
 			return _memory;
 		}
 
-		template<typename Type>
-		void uniform(const Shader& shader, const Tag& tag, const Type& value) {
-			_uniform.uniform(_memory, shader, tag, value);
+		GPUUniformDevice& uniform() {
+			return _uniform;
 		}
 
-		void uniform(const Shader& shader, const Material& material, const Repository& repository) {
-			_uniform.uniform(_memory, shader, material, repository);
-		}
-
-		void uniform(const Shader& shader, const Transform& transform) {
-			_uniform.uniform(_memory, shader, transform);
-		}
-
-		void uniform(
-			const Shader& shader,
-			const Tag& uniform,
-			const Texture& texture,
-			TextureUnit unit = TextureUnit::UNIT_0) {
-			_uniform.uniform(_memory, shader, uniform, texture, unit);
+		const GPUUniformDevice& uniform() const {
+			return _uniform;
 		}
 
 		void update(Window& window) {

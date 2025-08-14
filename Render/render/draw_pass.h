@@ -37,7 +37,7 @@ namespace Byte {
 
 				float width{ static_cast<float>(data.width) };
 				float height{ static_cast<float>(data.height) };
-				data.device.uniform(*shader, "uScreenSize", Vec2{ width,height });
+				data.device.uniform().set(*shader, "uScreenSize", Vec2{ width,height });
 			}
 			else {
 				shader = &data.shaders.at(_finalShader);
@@ -50,14 +50,14 @@ namespace Byte {
 
 			data.device.memory().bind(quad);
 
-			data.device.uniform(*shader, "uColor", colorBuffer.texture("color"));
-			data.device.uniform(*shader, "uDepth", geometryBuffer.texture("depth"), TextureUnit::UNIT_1);
-			data.device.uniform(*shader, "uGamma", data.parameter<float>("gamma"));
-			data.device.uniform(*shader, "uFar", camera.farPlane());
-			data.device.uniform(*shader, "uNear", camera.nearPlane());
-			data.device.uniform(*shader, "uFogColor", data.parameter<Vec3>("fog_color"));
-			data.device.uniform(*shader, "uFogNear", data.parameter<float>("fog_near"));
-			data.device.uniform(*shader, "uFogFar", data.parameter<float>("fog_far"));
+			data.device.uniform().set(*shader, "uColor", colorBuffer.texture("color"));
+			data.device.uniform().set(*shader, "uDepth", geometryBuffer.texture("depth"), TextureUnit::UNIT_1);
+			data.device.uniform().set(*shader, "uGamma", data.parameter<float>("gamma"));
+			data.device.uniform().set(*shader, "uFar", camera.farPlane());
+			data.device.uniform().set(*shader, "uNear", camera.nearPlane());
+			data.device.uniform().set(*shader, "uFogColor", data.parameter<Vec3>("fog_color"));
+			data.device.uniform().set(*shader, "uFogNear", data.parameter<float>("fog_near"));
+			data.device.uniform().set(*shader, "uFogFar", data.parameter<float>("fog_far"));
 
 			data.device.draw(quad.indexCount());
 		}

@@ -46,11 +46,11 @@ namespace Byte {
 			data.device.memory().bind(skyboxShader);
 			data.device.memory().bind(quad);
 
-			data.device.uniform(skyboxShader, skyboxMaterial, context.repository());
-			data.device.uniform(skyboxShader, "uDLight.direction", dLightTransform.front());
-			data.device.uniform(skyboxShader, "uDLight.color", dLight.color);
-			data.device.uniform(skyboxShader, "uDLight.intensity", dLight.intensity);
-			data.device.uniform(skyboxShader, "uInverseViewProjection", inverseViewProjection);
+			data.device.uniform().set(skyboxShader, skyboxMaterial, context.repository());
+			data.device.uniform().set(skyboxShader, "uDLight.direction", dLightTransform.front());
+			data.device.uniform().set(skyboxShader, "uDLight.color", dLight.color);
+			data.device.uniform().set(skyboxShader, "uDLight.intensity", dLight.intensity);
+			data.device.uniform().set(skyboxShader, "uInverseViewProjection", inverseViewProjection);
 
 			data.device.state(RenderState::DISABLE_DEPTH);
 			data.device.draw(quad.indexCount());

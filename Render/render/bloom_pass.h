@@ -45,10 +45,10 @@ namespace Byte {
 			float height{ static_cast<float>(colorBuffer.height()) };
 
 			data.device.memory().bind(downShader);
-			data.device.uniform(downShader, "uInverseGamma", 1.0f / gamma);
-			data.device.uniform(downShader, "uKarisAverage", true);
-			data.device.uniform(downShader, "uSrcResolution", Vec2{ width,height });
-			data.device.uniform(downShader, "uSrcTexture", colorBuffer.texture("color"));
+			data.device.uniform().set(downShader, "uInverseGamma", 1.0f / gamma);
+			data.device.uniform().set(downShader, "uKarisAverage", true);
+			data.device.uniform().set(downShader, "uSrcResolution", Vec2{ width,height });
+			data.device.uniform().set(downShader, "uSrcTexture", colorBuffer.texture("color"));
 
 			data.device.memory().bind(quad);
 			data.device.draw(quad.indexCount());
@@ -64,12 +64,12 @@ namespace Byte {
 				data.device.memory().bind(bloomBuffer);
 				data.device.clearBuffer();
 
-				data.device.uniform(downShader, "uSrcTexture", srcTexture);
-				data.device.uniform(downShader, "uSrcResolution", Vec2{ width, height });
+				data.device.uniform().set(downShader, "uSrcTexture", srcTexture);
+				data.device.uniform().set(downShader, "uSrcResolution", Vec2{ width, height });
 
 				data.device.draw(quad.indexCount());
 
-				data.device.uniform(downShader, "uKarisAverage", false);
+				data.device.uniform().set(downShader, "uKarisAverage", false);
 			}
 
 			data.device.state(RenderState::DISABLE_DEPTH);
@@ -77,7 +77,7 @@ namespace Byte {
 
 			Shader& upShader{ data.shaders.at(_bloomUpShader) };
 			data.device.memory().bind(upShader);
-			data.device.uniform(upShader, "uFilterRadius", 0.005f);
+			data.device.uniform().set(upShader, "uFilterRadius", 0.005f);
 
 			for (size_t i{ mipCount - 1 }; i > 0; --i) {
 				Framebuffer& sourceBuffer{ data.framebuffers.at(_bloomBuffers.at(i)) };
@@ -88,7 +88,7 @@ namespace Byte {
 				data.device.memory().bind(bloomBuffer);
 				data.device.clearBuffer();
 
-				data.device.uniform(upShader, "uSrcTexture", srcTexture);
+				data.device.uniform().set(upShader, "uSrcTexture", srcTexture);
 
 				data.device.draw(quad.indexCount());
 			}
@@ -100,7 +100,7 @@ namespace Byte {
 
 			data.device.memory().bind(colorBuffer);
 			Texture& srcTexture{ bloomBuffer.texture("bloom") };
-			data.device.uniform(upShader, "uSrcTexture", srcTexture);
+			data.device.uniform().set(upShader, "uSrcTexture", srcTexture);
 
 			data.device.draw(quad.indexCount());
 

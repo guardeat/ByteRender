@@ -56,7 +56,7 @@ namespace Byte {
 
 				Shader& shadowShader{ data.shaders.at(_shadowShader) };
 				data.device.memory().bind(shadowShader);
-				data.device.uniform(shadowShader, "uLightSpace", lightSpace);
+				data.device.uniform().set(shadowShader, "uLightSpace", lightSpace);
 				for (auto [renderer, transform] : context.view<MeshRenderer, Transform>()) {
 					if (renderer.mesh() == 0 || renderer.material() == 0 || !renderer.shadow()) {
 						continue;
@@ -64,14 +64,14 @@ namespace Byte {
 					Mesh& mesh{ context.mesh(renderer.mesh()) };
 					data.device.memory().bind(mesh);
 
-					data.device.uniform(shadowShader, transform);
+					data.device.uniform().set(shadowShader, transform);
 
 					data.device.draw(mesh.indexCount());
 				}
 
 				Shader& instancedShadowShader{ data.shaders.at(_instancedShadowShader) };
 				data.device.memory().bind(instancedShadowShader);
-				data.device.uniform(instancedShadowShader, "uLightSpace", lightSpace);
+				data.device.uniform().set(instancedShadowShader, "uLightSpace", lightSpace);
 
 				for (auto& [_, group] : context.instanceGroups()) {
 					if (group.mesh() == 0 || group.count() == 0 || !group.shadow()) {

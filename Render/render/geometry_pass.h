@@ -49,10 +49,10 @@ namespace Byte {
 				Material& material{ context.material(renderer.material()) };
 
 				data.device.memory().bind(mesh);
-				data.device.uniform(geometryShader, transform);
-				data.device.uniform(geometryShader, "uProjection", projection);
-				data.device.uniform(geometryShader, "uView", view);
-				data.device.uniform(geometryShader, material, context.repository());
+				data.device.uniform().set(geometryShader, transform);
+				data.device.uniform().set(geometryShader, "uProjection", projection);
+				data.device.uniform().set(geometryShader, "uView", view);
+				data.device.uniform().set(geometryShader, material, context.repository());
 
 				data.device.draw(mesh.indexCount());
 			}
@@ -69,9 +69,9 @@ namespace Byte {
 				Material& material{ context.material(group.material()) };
 
 				data.device.memory().bind(group);
-				data.device.uniform(instancedGeometryShader, "uProjection", projection);
-				data.device.uniform(instancedGeometryShader, "uView", view);
-				data.device.uniform(instancedGeometryShader, material, context.repository());
+				data.device.uniform().set(instancedGeometryShader, "uProjection", projection);
+				data.device.uniform().set(instancedGeometryShader, "uView", view);
+				data.device.uniform().set(instancedGeometryShader, material, context.repository());
 
 				data.device.draw(mesh.indexCount(), group.count());
 			}

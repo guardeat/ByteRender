@@ -17,6 +17,14 @@ namespace Byte {
 	public:
 		Renderer() = default;
 
+		Renderer(const Renderer& left) = delete;
+
+		Renderer(Renderer&& right) noexcept = default;
+
+		Renderer& operator=(Renderer& left) = delete;
+
+		Renderer& operator=(Renderer&&) noexcept = default;
+
 		~Renderer();
 
 		void initialize(Window& window);
