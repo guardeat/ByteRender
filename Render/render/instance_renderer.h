@@ -6,11 +6,15 @@ namespace Byte {
 
 	class InstanceRenderer {
 	private:
-		AssetID _instanceGroup;
+		AssetID _instanceGroup{};
 
 	public:
 		InstanceRenderer(AssetID instanceGroup)
 			: _instanceGroup{ instanceGroup } {
+		}
+
+		AssetID instanceGroup() const {
+			return _instanceGroup;
 		}
 	};
 
