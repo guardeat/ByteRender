@@ -15,37 +15,40 @@ namespace Byte {
 
 	class RenderDevice {
 	private:
-		using GPUMemoryDevice = GPUMemoryDevice<
-			OpenGL,
-			GPUResource<Mesh>,
-			GPUResource<InstanceGroup>,
-			GPUResource<Texture>,
-			GPUResource<Shader>,
-			GPUResource<Framebuffer>>;
+		using GPUMemoryDevice = GPUMemoryDevice<OpenGL, GPUResource>;
 
-		using GPUUniformDevice = GPUUniformDevice<OpenGL, GPUMemoryDevice>;
+		using GPUShaderDevice = GPUShaderDevice<OpenGL, GPUResource, GPUMemoryDevice>;
+
+		using GPUFramebufferDevice = GPUFramebufferDevice<OpenGL, GPUResource, GPUMemoryDevice>;
 
 		GPUMemoryDevice _memory;
-		GPUUniformDevice _uniform;
+		GPUShaderDevice _shader;
+		GPUFramebufferDevice _framebuffer;
 
 	public:
 		RenderDevice()
-			:_uniform{ _memory } {
+			:_shader{ _memory }, _framebuffer{ _memory } {
 		}
 
 		RenderDevice(const RenderDevice& left) = delete;
 
 		RenderDevice(RenderDevice&& right) noexcept
-			:_memory{ std::move(right._memory) }, _uniform{right._memory} {
+			:_memory{ std::move(right._memory) },
+			_shader{ std::move(right._shader) },
+			_framebuffer{ std::move(right._framebuffer) } {
+			_shader.memory(_memory);
+			_framebuffer.memory(_memory);
 		}
 
 		RenderDevice& operator=(const RenderDevice& left) = delete;
 
 		RenderDevice& operator=(RenderDevice&& right) noexcept {
-			_memory.clear();
 			_memory = std::move(right._memory);
+			_shader = std::move(right._shader);
+			_framebuffer = std::move(right._framebuffer);
 
-			_uniform.memory(_memory);
+			_shader.memory(_memory);
+			_framebuffer.memory(_memory);
 		}
 
 		~RenderDevice() {
@@ -64,60 +67,28 @@ namespace Byte {
 			return _memory;
 		}
 
-		GPUUniformDevice& uniform() {
-			return _uniform;
+		GPUShaderDevice& shader() {
+			return _shader;
 		}
 
-		const GPUUniformDevice& uniform() const {
-			return _uniform;
+		const GPUShaderDevice& shader() const {
+			return _shader;
+		}
+
+		GPUFramebufferDevice& framebuffer() {
+			return _framebuffer;
+		}
+
+		const GPUFramebufferDevice& framebuffer() const {
+			return _framebuffer;
 		}
 
 		void update(Window& window) {
 			OpenGL::update(window);
 		}
 
-		void viewport(size_t width, size_t height) {
-			OpenGL::viewport(width, height);
-		}
-
 		void blendWeights(float source, float destination) {
 			OpenGL::blendWeights(source, destination);
-		}
-
-		void clearBuffer() {
-			OpenGL::clear();
-		}
-
-		void resize(Framebuffer& buffer, size_t width, size_t height) {
-			if (buffer.resize()) {
-				AssetID assetID{ buffer.assetID() };
-
-				Vector<GPUResourceID> ids;
-				for (auto& [_, texture] : buffer.textures()) {
-					ids.push_back(_memory.get(texture).id);
-
-					texture.width(static_cast<size_t>(static_cast<float>(width) * buffer.resizeFactor()));
-					texture.height(static_cast<size_t>(static_cast<float>(height) * buffer.resizeFactor()));
-					_memory.data().erase(texture.assetID());
-				}
-
-				OpenGL::release(_memory.get(buffer), ids);
-				_memory.data().erase(assetID);
-
-				buffer.attachments().clear();
-				buffer.width(static_cast<size_t>(static_cast<float>(width) * buffer.resizeFactor()));
-				buffer.height(static_cast<size_t>(static_cast<float>(height) * buffer.resizeFactor()));
-
-				_memory.load(buffer);
-			}
-		}
-
-		void draw(size_t size, DrawType drawType = DrawType::TRIANGLES) {
-			OpenGL::draw(size, drawType);
-		}
-
-		void draw(size_t size, size_t instanceCount, DrawType drawType = DrawType::TRIANGLES) {
-			OpenGL::draw(size, instanceCount, drawType);
 		}
 
 		void state(RenderState state) {

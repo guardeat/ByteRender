@@ -22,14 +22,14 @@ namespace Byte {
 
 	void Renderer::load(RenderContext& context) {
 		for (auto& [_, shader] : _data.shaders) {
-			if (!_data.device.memory().loaded(shader)) {
-				_data.device.memory().load(shader);
+			if (!_data.device.shader().built(shader)) {
+				_data.device.shader().build(shader);
 			}
 		}
 
 		for (auto& [_, buffer] : _data.framebuffers) {
-			if (!_data.device.memory().loaded(buffer)) {
-				_data.device.memory().load(buffer);
+			if (!_data.device.framebuffer().built(buffer)) {
+				_data.device.framebuffer().build(buffer);
 			}
 		}
 
@@ -71,7 +71,7 @@ namespace Byte {
 	}
 
 	void Renderer::release(Shader& shader) {
-		_data.device.memory().release(shader);
+		_data.device.shader().release(shader);
 		_data.shaders.erase(shader.assetID());
 	}
 
@@ -96,17 +96,17 @@ namespace Byte {
 		_data.height = height;
 
 		for (auto& [id, buffer] : _data.framebuffers) {
-			_data.device.resize(buffer, width, height);
+			_data.device.framebuffer().resize(buffer, width, height);
 		}
 	}
 
 	void Renderer::clearMemory() {
 		for (auto& [_, shader] : _data.shaders) {
-			_data.device.memory().release(shader);
+			_data.device.shader().release(shader);
 		}
 
 		for(auto& [_, buffer] : _data.framebuffers) {
-			_data.device.memory().release(buffer);
+			_data.device.framebuffer().release(buffer);
 		}
 
 		for (auto& [_, mesh] : _data.meshes) {

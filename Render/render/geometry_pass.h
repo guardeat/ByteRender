@@ -34,11 +34,11 @@ namespace Byte {
 
 			Framebuffer& geometryBuffer{ data.framebuffers.at(_geometryBuffer) };
 
-			data.device.memory().bind(geometryBuffer);
-			data.device.clearBuffer();
+			data.device.framebuffer().bind(geometryBuffer);
+			data.device.framebuffer().clearBuffer();
 
 			Shader geometryShader{ data.shaders.at(_geometryShader) };
-			data.device.memory().bind(geometryShader);
+			data.device.shader().bind(geometryShader);
 
 			for (auto [renderer, transform] : context.view<MeshRenderer, Transform>()) {
 				if (renderer.mesh() == 0 || renderer.material() == 0 || !renderer.render()) {
@@ -49,16 +49,16 @@ namespace Byte {
 				Material& material{ context.material(renderer.material()) };
 
 				data.device.memory().bind(mesh);
-				data.device.uniform().set(geometryShader, transform);
-				data.device.uniform().set(geometryShader, "uProjection", projection);
-				data.device.uniform().set(geometryShader, "uView", view);
-				data.device.uniform().set(geometryShader, material, context.repository());
+				data.device.shader().set(geometryShader, transform);
+				data.device.shader().set(geometryShader, "uProjection", projection);
+				data.device.shader().set(geometryShader, "uView", view);
+				data.device.shader().set(geometryShader, material, context.repository());
 
-				data.device.draw(mesh.indexCount());
+				data.device.framebuffer().draw(mesh.indexCount());
 			}
 
 			Shader instancedGeometryShader{ data.shaders.at(_instancedGeometryShader) };
-			data.device.memory().bind(instancedGeometryShader);
+			data.device.shader().bind(instancedGeometryShader);
 
 			for (auto& [_, group] : context.instanceGroups()) {
 				if (group.mesh() == 0 || group.material() == 0 || group.count() == 0 || !group.render()) {
@@ -69,11 +69,11 @@ namespace Byte {
 				Material& material{ context.material(group.material()) };
 
 				data.device.memory().bind(group);
-				data.device.uniform().set(instancedGeometryShader, "uProjection", projection);
-				data.device.uniform().set(instancedGeometryShader, "uView", view);
-				data.device.uniform().set(instancedGeometryShader, material, context.repository());
+				data.device.shader().set(instancedGeometryShader, "uProjection", projection);
+				data.device.shader().set(instancedGeometryShader, "uView", view);
+				data.device.shader().set(instancedGeometryShader, material, context.repository());
 
-				data.device.draw(mesh.indexCount(), group.count());
+				data.device.framebuffer().draw(mesh.indexCount(), group.count());
 			}
 		}
 

@@ -33,15 +33,15 @@ namespace Byte {
 
 			if (data.parameter<bool>("render_fxaa")) {
 				shader = &data.shaders.at(_fxaaShader);
-				data.device.memory().bind(*shader);
+				data.device.shader().bind(*shader);
 
 				float width{ static_cast<float>(data.width) };
 				float height{ static_cast<float>(data.height) };
-				data.device.uniform().set(*shader, "uScreenSize", Vec2{ width,height });
+				data.device.shader().set(*shader, "uScreenSize", Vec2{ width,height });
 			}
 			else {
 				shader = &data.shaders.at(_finalShader);
-				data.device.memory().bind(*shader);
+				data.device.shader().bind(*shader);
 			}
 
 			auto [camera, _] = context.camera();
@@ -50,16 +50,19 @@ namespace Byte {
 
 			data.device.memory().bind(quad);
 
-			data.device.uniform().set(*shader, "uColor", colorBuffer.texture("color"));
-			data.device.uniform().set(*shader, "uDepth", geometryBuffer.texture("depth"), TextureUnit::UNIT_1);
-			data.device.uniform().set(*shader, "uGamma", data.parameter<float>("gamma"));
-			data.device.uniform().set(*shader, "uFar", camera.farPlane());
-			data.device.uniform().set(*shader, "uNear", camera.nearPlane());
-			data.device.uniform().set(*shader, "uFogColor", data.parameter<Vec3>("fog_color"));
-			data.device.uniform().set(*shader, "uFogNear", data.parameter<float>("fog_near"));
-			data.device.uniform().set(*shader, "uFogFar", data.parameter<float>("fog_far"));
+			data.device.memory().bind(colorBuffer.texture("color"), TextureUnit::UNIT_0);
+			data.device.shader().set(*shader, "uColor", TextureUnit::UNIT_0);
+			data.device.memory().bind(geometryBuffer.texture("depth"), TextureUnit::UNIT_1);
+			data.device.shader().set(*shader, "uDepth", TextureUnit::UNIT_1);
 
-			data.device.draw(quad.indexCount());
+			data.device.shader().set(*shader, "uGamma", data.parameter<float>("gamma"));
+			data.device.shader().set(*shader, "uFar", camera.farPlane());
+			data.device.shader().set(*shader, "uNear", camera.nearPlane());
+			data.device.shader().set(*shader, "uFogColor", data.parameter<Vec3>("fog_color"));
+			data.device.shader().set(*shader, "uFogNear", data.parameter<float>("fog_near"));
+			data.device.shader().set(*shader, "uFogFar", data.parameter<float>("fog_far"));
+
+			data.device.framebuffer().draw(quad.indexCount());
 		}
 
 		void initialize(RenderData& data) override {

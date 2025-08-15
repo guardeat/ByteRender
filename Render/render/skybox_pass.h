@@ -40,20 +40,20 @@ namespace Byte {
 			Mat4 inverseViewProjection{ (projection * view).inverse() };
 
 			Framebuffer& colorBuffer{ data.framebuffers.at(_colorBuffer) };
-			data.device.memory().bind(colorBuffer);
-			data.device.clearBuffer();
+			data.device.framebuffer().bind(colorBuffer);
+			data.device.framebuffer().clearBuffer();
 
-			data.device.memory().bind(skyboxShader);
+			data.device.shader().bind(skyboxShader);
 			data.device.memory().bind(quad);
 
-			data.device.uniform().set(skyboxShader, skyboxMaterial, context.repository());
-			data.device.uniform().set(skyboxShader, "uDLight.direction", dLightTransform.front());
-			data.device.uniform().set(skyboxShader, "uDLight.color", dLight.color);
-			data.device.uniform().set(skyboxShader, "uDLight.intensity", dLight.intensity);
-			data.device.uniform().set(skyboxShader, "uInverseViewProjection", inverseViewProjection);
+			data.device.shader().set(skyboxShader, skyboxMaterial, context.repository());
+			data.device.shader().set(skyboxShader, "uDLight.direction", dLightTransform.front());
+			data.device.shader().set(skyboxShader, "uDLight.color", dLight.color);
+			data.device.shader().set(skyboxShader, "uDLight.intensity", dLight.intensity);
+			data.device.shader().set(skyboxShader, "uInverseViewProjection", inverseViewProjection);
 
 			data.device.state(RenderState::DISABLE_DEPTH);
-			data.device.draw(quad.indexCount());
+			data.device.framebuffer().draw(quad.indexCount());
 			data.device.state(RenderState::ENABLE_DEPTH);
 		}
 

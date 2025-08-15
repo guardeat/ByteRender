@@ -51,12 +51,12 @@ namespace Byte {
 				Framebuffer& shadowBuffer{ data.framebuffers.at(_shadowBuffers[idx]) };
 				Mat4 lightSpace{ data.parameter<Mat4>("light_space_matrix_" + std::to_string(idx)) };
 
-				data.device.memory().bind(shadowBuffer);
-				data.device.clearBuffer();
+				data.device.framebuffer().bind(shadowBuffer);
+				data.device.framebuffer().clearBuffer();
 
 				Shader& shadowShader{ data.shaders.at(_shadowShader) };
-				data.device.memory().bind(shadowShader);
-				data.device.uniform().set(shadowShader, "uLightSpace", lightSpace);
+				data.device.shader().bind(shadowShader);
+				data.device.shader().set(shadowShader, "uLightSpace", lightSpace);
 				for (auto [renderer, transform] : context.view<MeshRenderer, Transform>()) {
 					if (renderer.mesh() == 0 || renderer.material() == 0 || !renderer.shadow()) {
 						continue;
@@ -64,14 +64,14 @@ namespace Byte {
 					Mesh& mesh{ context.mesh(renderer.mesh()) };
 					data.device.memory().bind(mesh);
 
-					data.device.uniform().set(shadowShader, transform);
+					data.device.shader().set(shadowShader, transform);
 
-					data.device.draw(mesh.indexCount());
+					data.device.framebuffer().draw(mesh.indexCount());
 				}
 
 				Shader& instancedShadowShader{ data.shaders.at(_instancedShadowShader) };
-				data.device.memory().bind(instancedShadowShader);
-				data.device.uniform().set(instancedShadowShader, "uLightSpace", lightSpace);
+				data.device.shader().bind(instancedShadowShader);
+				data.device.shader().set(instancedShadowShader, "uLightSpace", lightSpace);
 
 				for (auto& [_, group] : context.instanceGroups()) {
 					if (group.mesh() == 0 || group.count() == 0 || !group.shadow()) {
@@ -80,7 +80,7 @@ namespace Byte {
 					Mesh& mesh{ context.mesh(group.mesh()) };
 					data.device.memory().bind(group);
 
-					data.device.draw(mesh.indexCount(), group.count());
+					data.device.framebuffer().draw(mesh.indexCount(), group.count());
 				}
 			}
 		}

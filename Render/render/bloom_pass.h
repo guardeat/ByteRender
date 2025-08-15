@@ -34,8 +34,8 @@ namespace Byte {
 			Framebuffer& colorBuffer{ data.framebuffers.at(_colorBuffer) };
 			Framebuffer& bloomBuffer{ data.framebuffers.at(*_bloomBuffers.begin()) };
 
-			data.device.memory().bind(bloomBuffer);
-			data.device.clearBuffer();
+			data.device.framebuffer().bind(bloomBuffer);
+			data.device.framebuffer().clearBuffer();
 
 			Mesh& quad{ data.meshes.at(_quad) };
 			Shader& downShader{ data.shaders.at(_bloomDownShader) };
@@ -44,14 +44,15 @@ namespace Byte {
 			float width{ static_cast<float>(colorBuffer.width()) };
 			float height{ static_cast<float>(colorBuffer.height()) };
 
-			data.device.memory().bind(downShader);
-			data.device.uniform().set(downShader, "uInverseGamma", 1.0f / gamma);
-			data.device.uniform().set(downShader, "uKarisAverage", true);
-			data.device.uniform().set(downShader, "uSrcResolution", Vec2{ width,height });
-			data.device.uniform().set(downShader, "uSrcTexture", colorBuffer.texture("color"));
+			data.device.shader().bind(downShader);
+			data.device.shader().set(downShader, "uInverseGamma", 1.0f / gamma);
+			data.device.shader().set(downShader, "uKarisAverage", true);
+			data.device.shader().set(downShader, "uSrcResolution", Vec2{ width,height });
+			data.device.memory().bind(colorBuffer.texture("color"), TextureUnit::UNIT_0);
+			data.device.shader().set(downShader, "uSrcTexture", TextureUnit::UNIT_0);
 
 			data.device.memory().bind(quad);
-			data.device.draw(quad.indexCount());
+			data.device.framebuffer().draw(quad.indexCount());
 
 			for (size_t i{ 1 }; i < mipCount; ++i) {
 				Texture& srcTexture{ bloomBuffer.texture("bloom") };
@@ -61,23 +62,24 @@ namespace Byte {
 
 				Framebuffer& bloomBuffer{ data.framebuffers.at(_bloomBuffers.at(i)) };
 
-				data.device.memory().bind(bloomBuffer);
-				data.device.clearBuffer();
+				data.device.framebuffer().bind(bloomBuffer);
+				data.device.framebuffer().clearBuffer();
 
-				data.device.uniform().set(downShader, "uSrcTexture", srcTexture);
-				data.device.uniform().set(downShader, "uSrcResolution", Vec2{ width, height });
+				data.device.memory().bind(srcTexture, TextureUnit::UNIT_0);
+				data.device.shader().set(downShader, "uSrcTexture", TextureUnit::UNIT_0);
+				data.device.shader().set(downShader, "uSrcResolution", Vec2{ width, height });
 
-				data.device.draw(quad.indexCount());
+				data.device.framebuffer().draw(quad.indexCount());
 
-				data.device.uniform().set(downShader, "uKarisAverage", false);
+				data.device.shader().set(downShader, "uKarisAverage", false);
 			}
 
 			data.device.state(RenderState::DISABLE_DEPTH);
 			data.device.state(RenderState::ENABLE_BLEND);
 
 			Shader& upShader{ data.shaders.at(_bloomUpShader) };
-			data.device.memory().bind(upShader);
-			data.device.uniform().set(upShader, "uFilterRadius", 0.005f);
+			data.device.shader().bind(upShader);
+			data.device.shader().set(upShader, "uFilterRadius", 0.005f);
 
 			for (size_t i{ mipCount - 1 }; i > 0; --i) {
 				Framebuffer& sourceBuffer{ data.framebuffers.at(_bloomBuffers.at(i)) };
@@ -85,12 +87,13 @@ namespace Byte {
 
 				Framebuffer& bloomBuffer{ data.framebuffers.at(_bloomBuffers.at(i - 1)) };
 
-				data.device.memory().bind(bloomBuffer);
-				data.device.clearBuffer();
+				data.device.framebuffer().bind(bloomBuffer);
+				data.device.framebuffer().clearBuffer();
 
-				data.device.uniform().set(upShader, "uSrcTexture", srcTexture);
+				data.device.memory().bind(srcTexture, TextureUnit::UNIT_0);
+				data.device.shader().set(upShader, "uSrcTexture", TextureUnit::UNIT_0);
 
-				data.device.draw(quad.indexCount());
+				data.device.framebuffer().draw(quad.indexCount());
 			}
 
 			float strength{ data.parameter<float>("bloom_strength") };
@@ -98,11 +101,12 @@ namespace Byte {
 			data.device.blendWeights(strength, 1 - strength);
 			data.device.state(RenderState::BLEND_WEIGHTED);
 
-			data.device.memory().bind(colorBuffer);
+			data.device.framebuffer().bind(colorBuffer);
 			Texture& srcTexture{ bloomBuffer.texture("bloom") };
-			data.device.uniform().set(upShader, "uSrcTexture", srcTexture);
+			data.device.memory().bind(srcTexture, TextureUnit::UNIT_0);
+			data.device.shader().set(upShader, "uSrcTexture", TextureUnit::UNIT_0);
 
-			data.device.draw(quad.indexCount());
+			data.device.framebuffer().draw(quad.indexCount());
 
 			data.device.state(RenderState::DISABLE_BLEND);
 			data.device.state(RenderState::ENABLE_DEPTH);

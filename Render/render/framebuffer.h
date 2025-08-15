@@ -89,4 +89,11 @@ namespace Byte {
 		}
 	};
 
+	template<>
+	struct GPUResource<Framebuffer> : public _GPUResource<Framebuffer> {
+		using _GPUResource<Framebuffer>::_GPUResource;
+
+		Vector<AssetID> textures;
+	};
+
 }
