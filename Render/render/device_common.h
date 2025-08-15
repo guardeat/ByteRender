@@ -5,6 +5,7 @@
 
 #include "core/core_types.h"
 #include "core/asset.h"
+#include "core/repository.h"
 #include "render_types.h"
 #include "framebuffer.h"
 #include "texture.h"

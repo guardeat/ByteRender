@@ -10,6 +10,9 @@ extern "C" {
 	GLFWwindow* glfwCreateWindow(int width, int height, const char* title, GLFWmonitor* monitor, GLFWwindow* share);
 	void glfwDestroyWindow(GLFWwindow* window);
 	void glfwGetWindowSize(GLFWwindow* window, int* width, int* height);
+	void glfwPollEvents();
+	int glfwWindowShouldClose(GLFWwindow* window);
+	int glfwInit();
 }
 
 namespace Byte {
@@ -21,7 +24,18 @@ namespace Byte {
 		WindowHandler* _handler{ nullptr };
 
 	public:
+		Window() = default;
+
 		Window(size_t width, size_t height, const std::string& title = "") {
+			initialize(width, height, title);
+		}
+
+		~Window() {
+			terminate();
+		}
+
+		void initialize(size_t width, size_t height, const std::string& title = "") {
+			glfwInit();
 			_handler = glfwCreateWindow(
 				static_cast<int>(width),
 				static_cast<int>(height),
@@ -33,8 +47,11 @@ namespace Byte {
 			}
 		}
 
-		~Window() {
-			glfwDestroyWindow(_handler);
+		void terminate() {
+			if (_handler) {
+				glfwDestroyWindow(_handler);
+				_handler = nullptr;
+			}
 		}
 
 		WindowHandler& handle() {
@@ -43,6 +60,14 @@ namespace Byte {
 
 		const WindowHandler& handle() const {
 			return *_handler;
+		}
+
+		void pollEvents() {
+			glfwPollEvents();
+		}
+
+		bool shouldClose() const {
+			return static_cast<bool>(glfwWindowShouldClose(_handler));
 		}
 
 		size_t width() const {

@@ -30,6 +30,8 @@ namespace Byte {
 		using _GPUResource<_Type>::_GPUResource;
 	};
 
+	class Mesh;
+
 	template<>
 	struct GPUResource<Mesh> : public _GPUResource<Mesh> {
 		using _GPUResource<Mesh>::_GPUResource;
@@ -37,6 +39,8 @@ namespace Byte {
 		Vector<GPUResourceID> renderBuffers;
 		GPUResourceID indexBuffer{};
 	};
+
+	class InstanceGroup;
 
 	template<>
 	struct GPUResource<InstanceGroup> : public _GPUResource<InstanceGroup> {

@@ -49,6 +49,8 @@ namespace Byte {
 
 			_shader.memory(_memory);
 			_framebuffer.memory(_memory);
+
+			return *this;
 		}
 
 		~RenderDevice() {

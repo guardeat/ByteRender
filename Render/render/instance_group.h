@@ -90,7 +90,9 @@ namespace Byte {
 				std::ptrdiff_t index{ std::distance(_keys.begin(), it) };
 				_keys.erase(it);
 				size_t stride{ _layout.stride() / sizeof(float) };
-				_data.erase(_data.begin() + static_cast<size_t>(index) * stride, _data.begin() + (static_cast<size_t>(index) + 1) * stride);
+				auto start{ _data.begin() + static_cast<size_t>(index) * stride };
+				auto end{ _data.begin() + (static_cast<size_t>(index) + 1) * stride };
+				_data.erase(start, end);
 				_changed = true;
 			}
 		}
