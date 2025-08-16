@@ -49,7 +49,7 @@ namespace Byte {
 		}
 
 		bool any() const {
-			for (Bitset bitset : _bitsets) {
+			for (Bitset bitset: _bitsets) {
 				if (bitset.any()) {
 					return true;
 				}
@@ -92,7 +92,7 @@ namespace Byte {
 		template<typename... Components>
 		static Signature build() {
 			Signature out;
-			(out.set(Registry<Components>::id()), ...);
+			(out.set(Registry<std::decay_t<Components>>::id()), ...);
 			return out;
 		}
 

@@ -95,7 +95,7 @@ namespace Byte {
 
 		EntityID pL{ scene.world().create<PointLight, Transform>(PointLight{}, Transform{}) };
 
-		scene.world().get<PointLight>(pL).color = Vec3{ 90.0f, 10.0f, 20.0f };
+		scene.world().get<PointLight>(pL).color = Vec3{ 9.0f, 1.0f, 2.0f };
 		scene.world().get<Transform>(pL).position(Vec3{ 5.0f, 5.0f, 5.0f });
 	}
 

@@ -14,13 +14,15 @@ namespace Byte {
     public:
         using std::vector<Type>::vector;
 
-        void push_back(const Type& value) {
-            std::vector<Type>::push_back(value);
-        }
-
         void pop_back() {
             std::vector<Type>::pop_back();
             check_shrink();
+        }
+
+        typename std::vector<Type>::iterator erase(typename std::vector<Type>::iterator pos) {
+            auto it{ std::vector<Type>::erase(pos) };
+            check_shrink();
+            return it;
         }
 
         void resize(size_t new_size) {
@@ -39,11 +41,11 @@ namespace Byte {
     struct EntityID {
         uint64_t id{};
 
-        operator uint64_t() const {
+        explicit operator uint64_t() const {
             return id;
         }
 
-        operator bool() const {
+        explicit operator bool() const {
             return static_cast<bool>(id);
         }
 
@@ -56,18 +58,18 @@ namespace Byte {
         }
     };
 
-	template<typename EntityID>
-	struct EntityIDGenerator {
-		inline static std::random_device rd;
-		inline static std::mt19937_64 generator;             
-		inline static std::uniform_int_distribution<uint64_t> distribution;
+    template<typename EntityID>
+    struct EntityIDGenerator {
+        inline static std::random_device rd;
+        inline static std::mt19937_64 generator;
+        inline static std::uniform_int_distribution<uint64_t> distribution;
 
-		static EntityID generate() {
-			return EntityID{ distribution(generator) };
-		}
-	};
+        static EntityID generate() {
+            return EntityID{ distribution(generator) };
+        }
+    };
 
-	using World = _World<EntityID, EntityIDGenerator, shrink_vector, 1024>;
+    using World = _World<EntityID, EntityIDGenerator, shrink_vector, 1024>;
 
 }
 

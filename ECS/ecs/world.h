@@ -12,10 +12,10 @@
 namespace Byte {
 
 	template<
-		typename _EntityID,
-		template<typename> class _EntityIDGenerator,
-		template<typename> class _Container,
-		size_t _MAX_COMPONENT_COUNT>
+	typename _EntityID,
+	template<typename> class _EntityIDGenerator,
+	template<typename> class _Container,
+	size_t _MAX_COMPONENT_COUNT>
 	class _World {
 	public:
 		inline static constexpr size_t MAX_COMPONENT_COUNT{ _MAX_COMPONENT_COUNT };
@@ -60,14 +60,17 @@ namespace Byte {
 
 		EntityID create() {
 			EntityID id{ EntityIDGenerator::generate() };
-			_entities.emplace(id, EntityData{});
+			_entities.emplace(id,EntityData{});
 			return id;
 		}
 
 		template<typename Component, typename... Components>
 		EntityID create(Component&& component, Components&&... components) {
 			EntityID out{ create() };
-			attach(out, std::forward<Component>(component), std::forward<Components>(components)...);
+
+			attach(out,
+				std::forward<Component>(component),
+				std::forward<Components>(components)...);
 			return out;
 		}
 
@@ -99,15 +102,15 @@ namespace Byte {
 			}
 
 			auto result{ _arches.find(signature) };
-			if (result != _arches.end()) {
+			if (result != _arches.end()){
 				newArche = &result->second;
 			}
 			else {
 				if (oldArche) {
-					_arches.emplace(signature, Archetype::template build<Component, Components...>(*oldArche));
+					_arches.emplace(signature,Archetype::template build<Component, Components...>(*oldArche));
 				}
 				else {
-					_arches.emplace(signature, Archetype::template build<Component, Components...>());
+					_arches.emplace(signature,Archetype::template build<Component, Components...>());
 				}
 				newArche = &_arches[signature];
 			}
@@ -123,8 +126,8 @@ namespace Byte {
 				newIndex = newArche->pushEntity(id);
 			}
 
-			newArche->pushComponent<Component>(std::forward<Component>(component));
-			(newArche->pushComponent<Components>(std::forward<Components>(components)), ...);
+			newArche->pushComponent(std::forward<Component>(component));
+			(newArche->pushComponent(std::forward<Components>(components)), ...);
 
 			data.arche = newArche;
 			data._index = newIndex;
@@ -183,7 +186,7 @@ namespace Byte {
 
 			return false;
 		}
-
+		
 		size_t size() const {
 			return _entities.size();
 		}
@@ -193,7 +196,7 @@ namespace Byte {
 			out._arches = _arches;
 			out._entities = _entities;
 
-			for (auto pair : _entities) {
+			for (auto pair: _entities) {
 				auto& test{ out._entities.at(pair.first) };
 				auto& test2{ out._arches.at(pair.second.arche->signature()) };
 				out._entities.at(pair.first).arche = &out._arches.at(pair.second.arche->signature());
