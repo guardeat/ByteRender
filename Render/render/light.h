@@ -13,9 +13,9 @@ namespace Byte {
 	struct PointLight {
 		Vec3 color{ 1.0f,1.0f,1.0f };
 
-		float constant = 1.0f;
-		float linear = 0.01f;
-		float quadratic = 0.005f;
+		float constant{ 1.0f };
+		float linear{ 0.01f };
+		float quadratic{ 0.005f };
 
 		float radius() {
 			float maxColorIntensity{ std::fmaxf(std::fmaxf(color.x, color.y), color.z) };
