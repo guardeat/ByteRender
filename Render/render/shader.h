@@ -52,4 +52,11 @@ namespace Byte {
 		}
 	};
 
+	template<>
+	struct GPUResource<Shader> : public _GPUResource<Shader> {
+		using _GPUResource<Shader>::_GPUResource;
+
+		Map<Tag, int64_t> uniformCache;
+	};
+
 }

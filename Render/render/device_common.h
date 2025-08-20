@@ -59,18 +59,18 @@ namespace Byte {
 
 		template<typename AssetType>
 		void load(AssetType& asset) {
-			auto gID{ RenderAPI::build(asset) };
+			auto gResource{ RenderAPI::build(asset) };
 
-			_data.emplace(asset.assetID(), std::move(gID));
+			_data.emplace(asset.assetID(), std::move(gResource));
 		}
 
 		void load(InstanceGroup& group, Mesh& mesh) {
-			auto gID{ RenderAPI::build(group, mesh) };
+			auto gResource{ RenderAPI::build(group, mesh) };
 
 			group.sync();
-			gID.capacity = group.count();
+			gResource.capacity = group.count();
 
-			_data.emplace(group.assetID(), std::move(gID));
+			_data.emplace(group.assetID(), std::move(gResource));
 		}
 
 		template<typename AssetType>
@@ -89,20 +89,20 @@ namespace Byte {
 
 		template<typename AssetType>
 		void bind(const AssetType& asset) const {
-			const GPUResourceType<AssetType>& resourceID{ get(asset) };
+			const GPUResourceType<AssetType>& gResource{ get(asset) };
 
 			if constexpr (std::is_same_v<AssetType, Texture>) {
 				bind(asset, TextureUnit::UNIT_0);
 			}
 
 			else {
-				RenderAPI::bind(resourceID);
+				RenderAPI::bind(gResource);
 			}
 		}
 
 		void bind(const Texture& texture, TextureUnit unit) const {
-			GPUResourceType<Texture> resourceID{ get(texture) };
-			RenderAPI::bind(resourceID, unit);
+			const GPUResourceType<Texture>& gResource{ get(texture) };
+			RenderAPI::bind(gResource, unit);
 		}
 
 		void bind(size_t width, size_t height) const {
@@ -110,15 +110,15 @@ namespace Byte {
 		}
 
 		void update(InstanceGroup& group, float capacityMultiplier = 2.0f) {
-			GPUResourceType<InstanceGroup>& bufferGroup{ get(group) };
+			GPUResourceType<InstanceGroup>& gResource{ get(group) };
 			size_t size{ group.data().size() };
-			if (size > bufferGroup.capacity) {
+			if (size > gResource.capacity) {
 				size_t newSize{ static_cast<size_t>(group.data().size() * capacityMultiplier) };
-				bufferGroup.capacity = newSize;
-				OpenGL::bufferData(bufferGroup.renderBuffers[1], group.data(), newSize, false);
+				gResource.capacity = newSize;
+				OpenGL::bufferData(gResource.renderBuffers[1], group.data(), newSize, false);
 			}
 			else {
-				OpenGL::subBufferData(bufferGroup.renderBuffers[1], group.data());
+				OpenGL::subBufferData(gResource.renderBuffers[1], group.data());
 			}
 
 			group.sync();
@@ -133,17 +133,17 @@ namespace Byte {
 		}
 
 		void clear() {
-			for (auto& [assetID, resource] : _data) {
+			for (auto& [assetID, gResource] : _data) {
 				std::visit([](auto& res) {
 					RenderAPI::release(res);
-					}, resource);
+					}, gResource);
 			}
 			_data.clear();
 		}
 	};
 
 	template<
-		typename RenderAPI, 
+		typename RenderAPI,
 		template<typename> class GPUResourceType,
 		typename GPUMemoryDeviceType>
 	class GPUShaderDevice {
@@ -183,36 +183,46 @@ namespace Byte {
 		}
 
 		template<typename Type>
-		void set(const Shader& shader, const Tag& tag,const Type& value) const {
-			GPUResourceType<Shader> id{ _shaders.at(shader.assetID()) };
-			RenderAPI::uniform(id, tag, value);
+		void set(const Shader& shader, const Tag& tag, const Type& value) {
+			GPUResourceType<Shader>& gShader{ _shaders.at(shader.assetID()) };
+			int64_t loc{ uniformLocation(gShader, tag) };
+			RenderAPI::uniform(loc, value);
 		}
 
 		template<>
-		void set(const Shader& shader, const Tag& tag, const TextureUnit& unit) const {
-			GPUResourceType<Shader> id{ _shaders.at(shader.assetID()) };
-			RenderAPI::uniform(id, tag, static_cast<int>(unit));
+		void set(const Shader& shader, const Tag& tag, const TextureUnit& unit) {
+			GPUResourceType<Shader>& gShader{ _shaders.at(shader.assetID()) };
+			int64_t loc{ uniformLocation(gShader, tag) };
+			RenderAPI::uniform(loc, static_cast<int>(unit));
 		}
 
-		void set(const Shader& shader, const Material& material, const Repository& repository) const {
-			GPUResourceType<Shader> id{ _shaders.at(shader.assetID()) };
+		void set(const Shader& shader, const Transform& transform) {
+			GPUResourceType<Shader>& gShader{ _shaders.at(shader.assetID()) };
+			RenderAPI::uniform(uniformLocation(gShader, "uPosition"), transform.position());
+			RenderAPI::uniform(uniformLocation(gShader, "uScale"), transform.scale());
+			RenderAPI::uniform(uniformLocation(gShader, "uRotation"), transform.rotation());
+		}
+
+		void set(const Shader& shader, const Material& material, const Repository& repository) {
+			GPUResourceType<Shader>& gShader{ _shaders.at(shader.assetID()) };
 
 			if (shader.useDefaultMaterial()) {
 				int32_t materialMode{};
 				constexpr size_t ALBEDO_BIT{ 0 };
 				constexpr size_t MATERIAL_BIT{ 1 };
 
-				if( material.albedoTexture() != 0) {
+				if (material.albedoTexture() != 0) {
 					materialMode |= (1 << ALBEDO_BIT);
 					const Texture& texture{ repository.texture(material.albedoTexture()) };
 					_memory->bind(texture, TextureUnit::UNIT_0);
 					set(shader, "uAlbedoTexture", TextureUnit::UNIT_0);
 				}
 				else {
-					RenderAPI::uniform(id, "uAlbedo", material.color());
+					int64_t loc{ uniformLocation(gShader, "uAlbedo") };
+					RenderAPI::uniform(loc, material.color());
 				}
 
-				if( material.materialTexture() != 0) {
+				if (material.materialTexture() != 0) {
 					materialMode |= (1 << MATERIAL_BIT);
 					const Texture& texture{ repository.texture(material.materialTexture()) };
 					TextureUnit textureUnit{ static_cast<TextureUnit>(materialMode) };
@@ -220,40 +230,33 @@ namespace Byte {
 					set(shader, "uMaterialTexture", textureUnit);
 				}
 				else {
-					RenderAPI::uniform(id, "uMetallic", material.metallic());
-					RenderAPI::uniform(id, "uRoughness", material.roughness());
-
-					RenderAPI::uniform(id, "uEmission", material.emission());
-					RenderAPI::uniform(id, "uAO", material.ambientOcclusion());
+					RenderAPI::uniform(uniformLocation(gShader, "uMetallic"), material.metallic());
+					RenderAPI::uniform(uniformLocation(gShader, "uRoughness"), material.roughness());
+					RenderAPI::uniform(uniformLocation(gShader, "uEmission"), material.emission());
+					RenderAPI::uniform(uniformLocation(gShader, "uAO"), material.ambientOcclusion());
 				}
 
-				RenderAPI::uniform(id, "uMaterialMode", materialMode);
+				RenderAPI::uniform(uniformLocation(gShader, "uMaterialMode"), materialMode);
 			}
 
 			for (const auto& [tag, input] : material.parameters()) {
 				if (shader.uniforms().contains(tag)) {
-					std::visit([this, &tag, &id, &shader](const auto& inputValue) {
-						OpenGL::uniform(id, tag, inputValue);
+					std::visit([this, &tag, &gShader](const auto& inputValue) {
+						int64_t loc{ uniformLocation(gShader, tag) };
+						RenderAPI::uniform(loc, inputValue);
 						}, input);
 				}
 			}
 		}
 
-		void set(const Shader& shader, const Transform& transform) const {
-			GPUResourceType<Shader> id{ _shaders.at(shader.assetID()) };
-			RenderAPI::uniform(id, "uPosition", transform.position());
-			RenderAPI::uniform(id, "uScale", transform.scale());
-			RenderAPI::uniform(id, "uRotation", transform.rotation());
-		}
-
 		void bind(const Shader& shader) const {
-			GPUResourceType<Shader> resourceID{ _shaders.at(shader.assetID()) };
-			RenderAPI::bind(resourceID);
+			const GPUResourceType<Shader>& gShader{ _shaders.at(shader.assetID()) };
+			RenderAPI::bind(gShader);
 		}
 
 		void build(Shader& shader) {
-			GPUResourceType<Shader> shaderID{ RenderAPI::build(shader) };
-			_shaders.emplace(shader.assetID(), std::move(shaderID));
+			GPUResourceType<Shader> gShader{ RenderAPI::build(shader) };
+			_shaders.emplace(shader.assetID(), std::move(gShader));
 		}
 
 		bool built(const Shader& shader) const {
@@ -269,15 +272,28 @@ namespace Byte {
 		}
 
 		void clear() {
-			for (auto& [assetID, resource] : _shaders) {
-				RenderAPI::release(resource);
+			for (auto& [assetID, gShader] : _shaders) {
+				RenderAPI::release(gShader);
 			}
 			_shaders.clear();
+		}
+
+	private:
+		int64_t uniformLocation(GPUResourceType<Shader>& gShader, const Tag& tag) const {
+			auto value{ gShader.uniformCache.find(tag) };
+
+			if (value != gShader.uniformCache.end()) {
+				return value->second;
+			}
+
+			int64_t loc{ RenderAPI::uniformLocation(gShader, tag) };
+			gShader.uniformCache.emplace(tag, loc);
+			return loc;
 		}
 	};
 
 	template<
-		typename RenderAPI, 
+		typename RenderAPI,
 		template<typename> class GPUResourceType,
 		typename GPUMemoryDeviceType>
 	class GPUFramebufferDevice {
@@ -335,15 +351,16 @@ namespace Byte {
 
 				Vector<GPUResourceID> ids;
 				for (auto& [_, texture] : buffer.textures()) {
-					ids.push_back(_memory->get(texture).id);
+					GPUResourceType<Texture>& gTexture{ _memory->get(texture) };
+					ids.push_back(gTexture.id);
 
 					texture.width(static_cast<size_t>(static_cast<float>(width) * buffer.resizeFactor()));
 					texture.height(static_cast<size_t>(static_cast<float>(height) * buffer.resizeFactor()));
 					_memory->data().erase(texture.assetID());
 				}
 
-				GPUResourceType<Framebuffer>& id{ _framebuffers.at(assetID) };
-				RenderAPI::release(id, ids);
+				GPUResourceType<Framebuffer>& gBuffer{ _framebuffers.at(assetID) };
+				RenderAPI::release(gBuffer, ids);
 				_framebuffers.erase(assetID);
 
 				buffer.attachments().clear();
@@ -363,19 +380,19 @@ namespace Byte {
 		}
 
 		void bind(const Framebuffer& buffer) const {
-			GPUResourceType<Framebuffer> resourceID{ _framebuffers.at(buffer.assetID()) };
-			RenderAPI::bind(buffer, resourceID);
+			const GPUResourceType<Framebuffer>& gBuffer{ _framebuffers.at(buffer.assetID()) };
+			RenderAPI::bind(buffer, gBuffer);
 		}
 
 		void build(Framebuffer& buffer) {
-			auto [id, textures] = RenderAPI::build(buffer);
+			auto [gBuffer, textures] = RenderAPI::build(buffer);
 
-			for (auto [assetID, gID] : textures) {
-				_memory->data().emplace(assetID, gID);
-				id.textures.push_back(assetID);
+			for (auto [assetID, gTexture] : textures) {
+				_memory->data().emplace(assetID, gTexture);
+				gBuffer.textures.push_back(assetID);
 			}
 
-			_framebuffers.emplace(buffer.assetID(), std::move(id));
+			_framebuffers.emplace(buffer.assetID(), std::move(gBuffer));
 		}
 
 		bool built(const Framebuffer& buffer) const {
@@ -385,35 +402,32 @@ namespace Byte {
 		void release(const Framebuffer& buffer) {
 			Vector<GPUResourceID> ids;
 			for (auto& [_, texture] : buffer.textures()) {
-				const GPUResourceType<Texture>& textureID{ _memory->get(texture) };
-				ids.push_back(textureID.id);
+				GPUResourceType<Texture>& gTexture{ _memory->get(texture) };
+				ids.push_back(gTexture.id);
 				_memory->data().erase(texture.assetID());
 			}
 
-			GPUResourceType<Framebuffer>& bufferID{ _framebuffers.at(buffer.assetID()) };
-
-			RenderAPI::release(bufferID, ids);
+			GPUResourceType<Framebuffer>& gBuffer{ _framebuffers.at(buffer.assetID()) };
+			RenderAPI::release(gBuffer, ids);
 			_framebuffers.erase(buffer.assetID());
 		}
 
 		void clear() {
-			Vector<GPUResourceType<Texture>> textures;
-
-			for (auto& [assetID, buffer] : _framebuffers) {
+			for (auto& [assetID, gBuffer] : _framebuffers) {
 				Vector<GPUResourceID> textures;
 
-				for (auto assetID : buffer.textures) {
+				for (auto assetID : gBuffer.textures) {
 					if (_memory->data().contains(assetID)) {
-						auto& gpuID{ std::get<GPUResourceType<Texture>>(_memory->data().at(assetID)) };
-						textures.push_back(gpuID.id);
+						GPUResourceType<Texture>& gTexture{ 
+							std::get<GPUResourceType<Texture>>(_memory->data().at(assetID)) };
+						textures.push_back(gTexture.id);
 						_memory->data().erase(assetID);
 					}
 				}
-				
-				RenderAPI::release(buffer, textures);
+
+				RenderAPI::release(gBuffer, textures);
 			}
 		}
-
 	};
 
 }
