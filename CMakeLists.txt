@@ -1,4 +1,9 @@
-cmake_minimum_required(VERSION 3.24)
+cmake_minimum_required(VERSION 3.25)
+
+# std::format needs macOS 13.3+ (libc++ availability). Must be set before project().
+if(NOT DEFINED CMAKE_OSX_DEPLOYMENT_TARGET)
+    set(CMAKE_OSX_DEPLOYMENT_TARGET "13.3" CACHE STRING "Minimum macOS version")
+endif()
 
 project(ByteRender
     VERSION 0.1.0
@@ -26,11 +31,11 @@ add_subdirectory(modules/core)
 add_subdirectory(modules/rhi)
 add_subdirectory(modules/render_graph)
 
-if(BYTE_RENDERER_BUILD_SAMPLES)
+if(BYTE_RENDER_BUILD_SAMPLES)
     add_subdirectory(samples)
 endif()
 
-if(BYTE_RENDERER_BUILD_TESTS AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/tests/CMakeLists.txt")
+if(BYTE_RENDER_BUILD_TESTS AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/tests/CMakeLists.txt")
     enable_testing()
     add_subdirectory(tests)
 endif()

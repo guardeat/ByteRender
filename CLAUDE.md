@@ -15,7 +15,7 @@ Read `docs/ARCHITECTURE.md` for the design and `docs/ROADMAP.md` for the step pl
 1. **Layering:** `core` ← `rhi` ← `render_graph` ← user code. Lower layers never include higher ones.
 2. **No backend types above the backend.** No `Vk*`, `vulkan.h`, `volk.h`, or VMA in any public header
    or in `render_graph`. Backend dependencies are linked `PRIVATE`.
-3. **RHI is API-agnostic.** Backend is selected at **compile time** (`BYTE_RENDERER_RHI_BACKEND`), one backend per build.
+3. **RHI is API-agnostic.** Backend is selected at **compile time** (`BYTE_RENDER_RHI_BACKEND`), one backend per build.
 4. **No static classes, no singletons, no global mutable state.** Every engine object is an instance.
 5. **Creation goes through a parent object or a (non-static) factory object** — dependency-injection style.
    e.g. `instance.create_device(...)`, `device.create_texture(...)`. No static `create()` methods.
@@ -26,16 +26,32 @@ Read `docs/ARCHITECTURE.md` for the design and `docs/ROADMAP.md` for the step pl
 
 ## Error handling
 - The engine **never throws**. Recoverable/runtime failures return `Result<T>`.
-- Programmer errors use `BYTE_RENDERER_ASSERT(cond, "msg")`, enabled in Debug by default
-  (`BYTE_RENDERER_ASSERTS=AUTO|ON|OFF`), compiled out otherwise.
+- Programmer errors use `BYTE_RENDER_ASSERT(cond, "msg {}", args...)` (std::format syntax), enabled in Debug
+  by default (`BYTE_RENDER_ASSERTS=AUTO|ON|OFF`), compiled out otherwise.
+- Create errors with `make_error(ErrorCode::X, "msg {}", args...)` or `Error{...}`.
 - No RTTI-dependent code (`dynamic_cast`, `typeid`) in the engine.
+
+## Modern C++ (C++20)
+- Strings: `std::string_view` for non-owning strings (parameters, returned literals/names),
+  `std::string` when the string is owned/stored. No `const char*` in APIs (except at C-API boundaries).
+- Formatting: `std::format` / `std::format_string`. No `printf`-style formatting, no iostreams in the engine.
+- Ranges of data: `std::span` instead of pointer + count. Fixed sizes: `std::array`.
+- `enum class` always; bit flags via `byte::core::Flags<E>` + `BYTE_RENDER_ENABLE_FLAGS(E)`.
+- `[[nodiscard]]` on functions whose result must be checked; `constexpr`/`noexcept` where they apply.
+- Designated initializers for descriptor structs: `TextureDesc{ .extent = {...}, .format = ... }`.
+- `std::source_location` instead of `__FILE__`/`__LINE__`.
+- No owning raw pointers / naked `new`/`delete` outside backend allocators and pimpl internals.
+- **Templates are used when they are the right fit** (generic containers/types like `Result<T>`, `Flags<E>`,
+  type-safe handles, formatting helpers), always **constrained with concepts**. Avoid template-heavy
+  metaprogramming in public APIs and never use templates to leak backend types.
+- Interfaces for user-provided extension points (e.g. `LogSink`) may use virtual functions; engine RHI objects do not.
 
 ## Code style
 - Types / classes / enums: `PascalCase` — `Texture`, `TextureDesc`, `Format::RGBA8Unorm`
 - Functions / methods / variables: `snake_case` — `create_texture()`, `bindless_index()`
 - Members: `m_` prefix — `m_impl`, `m_extent`
 - Constants: `k_` prefix — `k_max_frames_in_flight`
-- Macros: `BYTE_RENDERER_` prefix, `UPPER_SNAKE_CASE`
+- Macros: `BYTE_RENDER_` prefix, `UPPER_SNAKE_CASE`
 - Namespaces: `byte::core` (engine-wide), `byte::render::rhi`, `byte::render::rg` (rendering).
   Engine headers define `WIN32_LEAN_AND_MEAN` before any `<windows.h>` include; consumers who include the full `<windows.h>` (which pulls in the SDK `byte` typedef) must include it in a separate TU or define `WIN32_LEAN_AND_MEAN`. Never `using namespace std;` together with `using namespace byte;`.
 - Files: `snake_case.hpp` / `snake_case.cpp` (e.g. `texture.hpp`, `vulkan_device.cpp`), one main class per file.
@@ -43,8 +59,10 @@ Read `docs/ARCHITECTURE.md` for the design and `docs/ROADMAP.md` for the step pl
 
 ## Platforms & toolchain
 - Targets: Windows (MSVC, Clang), Linux (GCC, Clang), macOS (Apple Clang, via MoltenVK).
-- Build: CMake ≥ 3.24 (Unix Makefiles for now), dependencies via `FetchContent` with pinned versions.
+- Minimum compilers (for C++20 incl. `std::format`): GCC 13, Clang 17, MSVC 19.30 (VS 2022),
+  Apple Clang 15 with macOS deployment target 13.3.
+- Build: CMake ≥ 3.25 (Unix Makefiles for now), dependencies via `FetchContent` with pinned versions.
   The only manual install is the Vulkan SDK.
 - Shaders: GLSL, compiled to SPIR-V at build time.
-- Libraries are static by default; `BYTE_RENDERER_BUILD_SHARED=ON` builds shared libs
-  (each module has its own export macro: `BYTE_RENDERER_CORE_API`, `BYTE_RENDERER_RHI_API`, `BYTE_RENDERER_RG_API`).
+- Libraries are static by default; `BYTE_RENDER_BUILD_SHARED=ON` builds shared libs
+  (each module has its own export macro: `BYTE_RENDER_CORE_API`, `BYTE_RENDER_RHI_API`, `BYTE_RENDER_RG_API`).

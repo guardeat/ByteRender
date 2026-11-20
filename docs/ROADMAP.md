@@ -9,9 +9,9 @@ Steps may be split further when we get to them.
   Install CMake. Repo layout from ARCHITECTURE §3, `.gitignore`, `.clang-format`,
   `.editorconfig`, build options, warnings-as-errors, empty `core`/`rhi`/`render_graph` targets,
   per-module export macros, a `hello` sample that builds and runs on macOS (static + shared).
-- [ ] **Step 2 — Core module.**
-  `Result<T>` / `Error`, `BYTE_RENDERER_ASSERT`, log sink interface,
-  basic types (`Extent2D/3D`, flags helpers). doctest set up with first unit tests.
+- [x] **Step 2 — Core module.**
+  `Result<T>` / `Error`, `BYTE_RENDER_ASSERT`, log sink interface,
+  basic types (`Extent2D/3D`), `Flags<E>`. doctest set up with first unit tests.
 
 ## Phase 1 — RHI + Vulkan bring-up
 - [ ] **Step 3 — Instance.** Requires the Vulkan SDK installed. `rhi::Instance` (pimpl) → Vulkan instance via volk, portability enumeration

@@ -2,11 +2,11 @@
 
 namespace byte::render::rhi {
 
-BackendType backend_type() {
+BackendType backend_type() noexcept {
     return BackendType::Vulkan;
 }
 
-const char* backend_name() {
+std::string_view backend_name() noexcept {
     return "Vulkan";
 }
 

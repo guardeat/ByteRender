@@ -58,11 +58,11 @@ ByteRender/
 | `byte::rhi` | static/shared | `core` PUBLIC; backend deps (volk, VMA) **PRIVATE** |
 | `byte::render_graph` | static/shared (INTERFACE until step 11) | `rhi` PUBLIC |
 
-Underlying target names are `byte_renderer_<module>`; consumers use the `byte::` aliases.
-Each module has its own export macro (`BYTE_RENDERER_CORE_API`, `BYTE_RENDERER_RHI_API`,
-`BYTE_RENDERER_RG_API`) so shared builds export/import correctly across module boundaries.
+Underlying target names are `byte_render_<module>`; consumers use the `byte::` aliases.
+Each module has its own export macro (`BYTE_RENDER_CORE_API`, `BYTE_RENDER_RHI_API`,
+`BYTE_RENDER_RG_API`) so shared builds export/import correctly across module boundaries.
 
-`BYTE_RENDERER_RHI_BACKEND=Vulkan` selects which `src/<backend>/` folder is compiled into `byte::rhi`.
+`BYTE_RENDER_RHI_BACKEND=Vulkan` selects which `src/<backend>/` folder is compiled into `byte::rhi`.
 Consumers only ever link `byte::render_graph` and/or `byte::rhi`.
 
 ## 4. Object model (compile-time backend via pimpl)
@@ -74,7 +74,7 @@ backend-defined `Impl`. No vtables, no backend types in headers, one indirection
 // modules/rhi/include/byte/render/rhi/texture.hpp
 namespace byte::render::rhi {
 
-class BYTE_RENDERER_RHI_API Texture {
+class BYTE_RENDER_RHI_API Texture {
 public:
     Texture() = default;                       // empty / invalid
     ~Texture();                                // hands GPU part to the retire queue
@@ -186,9 +186,24 @@ vec4 c = texture(sampler2D(g_textures[nonuniformEXT(pc.albedo)], g_samplers[pc.s
 ## 12. Error handling
 - No exceptions thrown by the engine. Fallible operations return `byte::core::Result<T>`
   (own small `expected`-like type, since C++20 has no `std::expected`).
-- `BYTE_RENDERER_ASSERT(cond, msg)` for programmer errors: on in Debug or with
-  `BYTE_RENDERER_ASSERTS=ON`, compiled out otherwise.
-- Logging goes through a user-replaceable log sink passed in at `Instance` creation (no global logger).
+- `BYTE_RENDER_ASSERT(cond, "fmt {}", args...)` for programmer errors: on in Debug or with
+  `BYTE_RENDER_ASSERTS=ON`, compiled out otherwise (condition not evaluated). Failure prints
+  expression, message and source location to stderr, then aborts.
+
+```cpp
+Result<Texture> Device::create_texture(const TextureDesc& desc) {
+    if (desc.extent.width == 0) {
+        return make_error(ErrorCode::InvalidArgument, "texture '{}' has zero width", desc.debug_name);
+    }
+    ...
+}
+```
+
+### Logging
+- `LogSink` is a user-implementable interface (thread-safe); `ConsoleLogSink` is provided.
+- `Logger` is an object owned by the application (not a global): `Logger logger{sink, LogLevel::Info};`
+  It formats with `std::format` and captures the caller's `std::source_location` automatically.
+- Engine objects receive a `Logger&` at creation (e.g. `InstanceDesc`); the logger must outlive them.
 
 ## 13. Dependencies (pinned, via FetchContent)
 | Dependency | Used by | Visibility |
@@ -203,9 +218,9 @@ vec4 c = texture(sampler2D(g_textures[nonuniformEXT(pc.albedo)], g_samplers[pc.s
 ## 14. Build options
 | Option | Default | Meaning |
 |---|---|---|
-| `BYTE_RENDERER_RHI_BACKEND` | `Vulkan` | Compile-time backend selection |
-| `BYTE_RENDERER_BUILD_SHARED` | `OFF` | Build shared libraries instead of static |
-| `BYTE_RENDERER_ASSERTS` | `AUTO` | `BYTE_RENDERER_ASSERT`: `AUTO` = Debug only, `ON`, `OFF` |
-| `BYTE_RENDERER_WARNINGS_AS_ERRORS` | `ON` | Warnings are errors in ByteRender targets |
-| `BYTE_RENDERER_BUILD_SAMPLES` | `ON` (top-level) | Build sample apps |
-| `BYTE_RENDERER_BUILD_TESTS` | `ON` (top-level) | Build unit tests |
+| `BYTE_RENDER_RHI_BACKEND` | `Vulkan` | Compile-time backend selection |
+| `BYTE_RENDER_BUILD_SHARED` | `OFF` | Build shared libraries instead of static |
+| `BYTE_RENDER_ASSERTS` | `AUTO` | `BYTE_RENDER_ASSERT`: `AUTO` = Debug only, `ON`, `OFF` |
+| `BYTE_RENDER_WARNINGS_AS_ERRORS` | `ON` | Warnings are errors in ByteRender targets |
+| `BYTE_RENDER_BUILD_SAMPLES` | `ON` (top-level) | Build sample apps |
+| `BYTE_RENDER_BUILD_TESTS` | `ON` (top-level) | Build unit tests |

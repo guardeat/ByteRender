@@ -2,16 +2,16 @@
 
 namespace byte::core {
 
-Version version() {
+Version version() noexcept {
     return Version{
-        .major = BYTE_RENDERER_VERSION_MAJOR,
-        .minor = BYTE_RENDERER_VERSION_MINOR,
-        .patch = BYTE_RENDERER_VERSION_PATCH,
+        .major = BYTE_RENDER_VERSION_MAJOR,
+        .minor = BYTE_RENDER_VERSION_MINOR,
+        .patch = BYTE_RENDER_VERSION_PATCH,
     };
 }
 
-const char* version_string() {
-    return BYTE_RENDERER_VERSION_STRING;
+std::string_view version_string() noexcept {
+    return BYTE_RENDER_VERSION_STRING;
 }
 
 } // namespace byte::core

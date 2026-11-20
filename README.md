@@ -9,17 +9,18 @@ API-agnostic RHI, a compile-time selected backend (Vulkan) and a render graph.
 
 ## Build
 
-Requirements: CMake ≥ 3.24, a C++20 compiler.
+Requirements: CMake ≥ 3.25, a C++20 compiler with std::format (GCC 13, Clang 17, MSVC 2022, Apple Clang 15).
 
 ```sh
 cmake -S . -B build                  # Debug by default
 cmake --build build -j
 ./build/bin/hello
+ctest --test-dir build --output-on-failure
 ```
 
 Shared libraries instead of static:
 
 ```sh
-cmake -S . -B build-shared -DBYTE_RENDERER_BUILD_SHARED=ON
+cmake -S . -B build-shared -DBYTE_RENDER_BUILD_SHARED=ON
 cmake --build build-shared -j
 ```
