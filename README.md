@@ -17,13 +17,10 @@ brew install cmake molten-vk vulkan-loader vulkan-headers vulkan-validationlayer
 ```
 
 Homebrew's validation-layer manifest references its library without a path, so the loader can't load it.
-Install a per-user manifest with the absolute path (once):
+Fix the manifest (run once, and again after `brew upgrade vulkan-validationlayers`):
 
 ```sh
-mkdir -p ~/.local/share/vulkan/explicit_layer.d
-sed 's#"library_path": "libVkLayer_khronos_validation.dylib"#"library_path": "/opt/homebrew/lib/libVkLayer_khronos_validation.dylib"#' \
-  /opt/homebrew/opt/vulkan-validationlayers/share/vulkan/explicit_layer.d/VkLayer_khronos_validation.json \
-  > ~/.local/share/vulkan/explicit_layer.d/VkLayer_khronos_validation.json
+./tools/macos/fix_homebrew_validation_layer.sh
 ```
 
 Check with `vulkaninfo --summary`. If validation can't load, ByteRender logs a warning and continues without it.

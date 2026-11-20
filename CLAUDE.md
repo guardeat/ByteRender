@@ -25,6 +25,14 @@ Read `docs/ARCHITECTURE.md` for the design and `docs/ROADMAP.md` for the step pl
 7. **No resource may outlive its `Device`.** Debug builds report leaks by name.
 8. **Binding model is bindless only** (v1). There is no descriptor-set API.
 
+## Zero-noise policy (100% clean)
+- Configure, build, link and tests produce **zero warnings** (compiler, linker, CMake, third-party build scripts).
+- Running samples/tests produces **no warnings, errors or third-party chatter** (validation layer, loader,
+  MoltenVK) at the default log levels. Only the engine's/sample's intentional log lines appear.
+- When something is noisy, **fix the root cause**. Suppressing or filtering a message is only acceptable when
+  it is provably not a problem, and must be documented where it is done.
+- Every step is verified with a from-scratch build and a run before committing.
+
 ## Error handling
 - The engine **never throws**. Recoverable/runtime failures return `Result<T>`.
 - Programmer errors use `BYTE_RENDER_ASSERT(cond, "msg {}", args...)` (std::format syntax), enabled in Debug
