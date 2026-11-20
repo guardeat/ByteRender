@@ -99,15 +99,27 @@ private:
 
 ### Creation
 - Objects are created by their **parent** or by a **non-static factory object** (DI style):
-  `Instance` → `Device` → `Texture`, `Buffer`, `Pipeline`, `Swapchain`, `CommandList`, ...
+  `InstanceFactory` → `Instance` → `Device` → `Texture`, `Buffer`, `Pipeline`, `Swapchain`, `CommandList`, ...
+- The root object (`Instance`) has no parent, so it comes from `InstanceFactory`, which holds the injected
+  dependencies (the `Logger`). The factory may be destroyed after creation; the logger must outlive the instance.
 - No static `create()` methods, no singletons, no global registries.
-- `Impl` storage is allocated by the device (pools), not by the user.
+- `Impl` is held as a raw owning pointer (not `std::unique_ptr`) so exported classes stay free of MSVC C4251
+  warnings in DLL builds. Root objects `new`/`delete` their `Impl`; resources get theirs from device pools.
 
 ```cpp
-rhi::Instance  instance{rhi::InstanceDesc{ .app_name = "Sample", .enable_validation = true }};
-auto device  = instance.create_device(rhi::DeviceDesc{});           // Result<Device>
-auto albedo  = device->create_texture(rhi::TextureDesc{ ... });      // Result<Texture>
+core::ConsoleLogSink sink;
+core::Logger logger{sink, core::LogLevel::Debug};
+
+rhi::InstanceFactory factory{logger};
+auto instance = factory.create_instance({.app_name = "Sample", .enable_validation = true}); // Result<Instance>
+auto device   = instance->create_device(rhi::DeviceDesc{.adapter_index = 0});              // Result<Device>
+auto albedo   = device->create_texture(rhi::TextureDesc{ ... });                            // Result<Texture>
 ```
+
+### Process-global state (the only exceptions)
+Vulkan's loader entry points (volk function pointers) are process-wide by nature. They live hidden in the
+Vulkan backend: the loader is initialized once per process, and **only one `Instance` may be alive at a
+time** (creating a second returns an error). Device-level functions will use per-device tables.
 
 ## 5. Lifetime: CPU ownership vs. GPU lifetime
 
@@ -208,8 +220,9 @@ Result<Texture> Device::create_texture(const TextureDesc& desc) {
 ## 13. Dependencies (pinned, via FetchContent)
 | Dependency | Used by | Visibility |
 |---|---|---|
-| Vulkan SDK (headers, validation layers, glslang) | Vulkan backend, shader build | system install |
-| volk (Vulkan meta-loader) | Vulkan backend | private |
+| Vulkan-Headers 1.4.363 | Vulkan backend | private (fetched) |
+| volk 1.4.363 (Vulkan meta-loader, loads the loader at runtime — no link-time Vulkan dependency) | Vulkan backend | private (fetched) |
+| Vulkan runtime: loader, driver (MoltenVK on macOS), validation layers; glslang | runtime / shader build | system install (Vulkan SDK, or Homebrew on macOS) |
 | Vulkan Memory Allocator | Vulkan backend | private |
 | SPIRV-Reflect | Vulkan backend / tools | private |
 | GLFW | samples only | — |

@@ -14,7 +14,7 @@ Steps may be split further when we get to them.
   basic types (`Extent2D/3D`), `Flags<E>`. doctest set up with first unit tests.
 
 ## Phase 1 — RHI + Vulkan bring-up
-- [ ] **Step 3 — Instance.** Requires the Vulkan SDK installed. `rhi::Instance` (pimpl) → Vulkan instance via volk, portability enumeration
+- [x] **Step 3 — Instance.** `InstanceFactory` → `rhi::Instance` (pimpl) → Vulkan instance via volk, portability enumeration
   for MoltenVK, validation layers + debug messenger routed to the log sink, adapter enumeration.
   Sample prints available GPUs.
 - [ ] **Step 4 — Device.** Adapter selection, logical device, queues, feature checks

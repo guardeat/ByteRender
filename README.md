@@ -7,6 +7,31 @@ API-agnostic RHI, a compile-time selected backend (Vulkan) and a render graph.
 - Design: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)
 - Plan: [`docs/ROADMAP.md`](docs/ROADMAP.md)
 
+## Setup
+
+### macOS
+Either install the [LunarG Vulkan SDK](https://vulkan.lunarg.com/sdk/home), or use Homebrew:
+
+```sh
+brew install cmake molten-vk vulkan-loader vulkan-headers vulkan-validationlayers vulkan-tools glslang
+```
+
+Homebrew's validation-layer manifest references its library without a path, so the loader can't load it.
+Install a per-user manifest with the absolute path (once):
+
+```sh
+mkdir -p ~/.local/share/vulkan/explicit_layer.d
+sed 's#"library_path": "libVkLayer_khronos_validation.dylib"#"library_path": "/opt/homebrew/lib/libVkLayer_khronos_validation.dylib"#' \
+  /opt/homebrew/opt/vulkan-validationlayers/share/vulkan/explicit_layer.d/VkLayer_khronos_validation.json \
+  > ~/.local/share/vulkan/explicit_layer.d/VkLayer_khronos_validation.json
+```
+
+Check with `vulkaninfo --summary`. If validation can't load, ByteRender logs a warning and continues without it.
+
+### Windows / Linux
+Install the [LunarG Vulkan SDK](https://vulkan.lunarg.com/sdk/home) (or your distro's Vulkan loader,
+validation layers and glslang packages on Linux).
+
 ## Build
 
 Requirements: CMake ≥ 3.25, a C++20 compiler with std::format (GCC 13, Clang 17, MSVC 2022, Apple Clang 15).

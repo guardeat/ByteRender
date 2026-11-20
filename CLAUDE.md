@@ -17,6 +17,7 @@ Read `docs/ARCHITECTURE.md` for the design and `docs/ROADMAP.md` for the step pl
    or in `render_graph`. Backend dependencies are linked `PRIVATE`.
 3. **RHI is API-agnostic.** Backend is selected at **compile time** (`BYTE_RENDER_RHI_BACKEND`), one backend per build.
 4. **No static classes, no singletons, no global mutable state.** Every engine object is an instance.
+   Sole exception: process-wide Vulkan loader state inside the backend (ARCHITECTURE §4).
 5. **Creation goes through a parent object or a (non-static) factory object** — dependency-injection style.
    e.g. `instance.create_device(...)`, `device.create_texture(...)`. No static `create()` methods.
 6. **Ownership:** RHI objects are move-only RAII values with exactly one owner. No `shared_ptr` in the public API.
@@ -49,7 +50,8 @@ Read `docs/ARCHITECTURE.md` for the design and `docs/ROADMAP.md` for the step pl
 ## Code style
 - Types / classes / enums: `PascalCase` — `Texture`, `TextureDesc`, `Format::RGBA8Unorm`
 - Functions / methods / variables: `snake_case` — `create_texture()`, `bindless_index()`
-- Members: `m_` prefix — `m_impl`, `m_extent`
+- Members: `m_` prefix for class members — `m_impl`, `m_logger`. Public fields of plain structs
+  (descs, infos, backend `Impl` structs) have no prefix — `desc.app_name`, `extent.width`.
 - Constants: `k_` prefix — `k_max_frames_in_flight`
 - Macros: `BYTE_RENDER_` prefix, `UPPER_SNAKE_CASE`
 - Namespaces: `byte::core` (engine-wide), `byte::render::rhi`, `byte::render::rg` (rendering).
@@ -62,7 +64,7 @@ Read `docs/ARCHITECTURE.md` for the design and `docs/ROADMAP.md` for the step pl
 - Minimum compilers (for C++20 incl. `std::format`): GCC 13, Clang 17, MSVC 19.30 (VS 2022),
   Apple Clang 15 with macOS deployment target 13.3.
 - Build: CMake ≥ 3.25 (Unix Makefiles for now), dependencies via `FetchContent` with pinned versions.
-  The only manual install is the Vulkan SDK.
+  The only manual install is the Vulkan runtime/SDK (LunarG SDK, or Homebrew packages on macOS — see README).
 - Shaders: GLSL, compiled to SPIR-V at build time.
 - Libraries are static by default; `BYTE_RENDER_BUILD_SHARED=ON` builds shared libs
   (each module has its own export macro: `BYTE_RENDER_CORE_API`, `BYTE_RENDER_RHI_API`, `BYTE_RENDER_RG_API`).
