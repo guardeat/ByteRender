@@ -8,6 +8,7 @@
 #include <volk.h>
 
 #include <string_view>
+#include <type_traits>
 #include <vector>
 
 namespace byte::render::rhi::vulkan {
@@ -18,6 +19,15 @@ namespace byte::render::rhi::vulkan {
 // Error for a failed Vulkan call, e.g. `return make_vk_error(result, "vkCreateInstance");`
 [[nodiscard]] core::Error make_vk_error(VkResult result, std::string_view call);
 
+// Names a Vulkan object for validation messages and GPU debuggers. No-op without VK_EXT_debug_utils.
+void set_debug_name(VkDevice device, VkObjectType type, uint64_t handle, std::string_view name);
+
+template <class Handle>
+    requires std::is_pointer_v<Handle> // Vulkan handles are pointers on 64-bit targets
+void set_debug_name(VkDevice device, VkObjectType type, Handle handle, std::string_view name) {
+    set_debug_name(device, type, reinterpret_cast<uint64_t>(handle), name);
+}
+
 [[nodiscard]] constexpr core::Version to_version(uint32_t vk_version) noexcept {
     return core::Version{
         .major = VK_API_VERSION_MAJOR(vk_version),
@@ -26,22 +36,33 @@ namespace byte::render::rhi::vulkan {
     };
 }
 
-// Runs a Vulkan two-call enumeration (count, then data) and returns the items.
-//   auto layers = enumerate<VkLayerProperties>(vkEnumerateInstanceLayerProperties);
-//   auto gpus   = enumerate<VkPhysicalDevice>(vkEnumeratePhysicalDevices, instance);
+// Runs a Vulkan two-call enumeration (count, then data) and returns the items. Works for both
+// VkResult-returning and void-returning enumeration functions.
+//   auto layers   = enumerate<VkLayerProperties>(vkEnumerateInstanceLayerProperties);
+//   auto gpus     = enumerate<VkPhysicalDevice>(vkEnumeratePhysicalDevices, instance);
+//   auto families = enumerate<VkQueueFamilyProperties>(vkGetPhysicalDeviceQueueFamilyProperties, gpu);
 template <class T, class Function, class... Args>
 [[nodiscard]] std::vector<T> enumerate(Function function, Args... args) {
     std::vector<T> items;
     uint32_t count = 0;
-    VkResult result = VK_INCOMPLETE;
-    while (result == VK_INCOMPLETE) {
-        if (function(args..., &count, nullptr) != VK_SUCCESS) {
+    if constexpr (std::is_void_v<std::invoke_result_t<Function, Args..., uint32_t*, T*>>) {
+        function(args..., &count, nullptr);
+        items.resize(count);
+        function(args..., &count, items.data());
+    } else {
+        VkResult result = VK_INCOMPLETE;
+        while (result == VK_INCOMPLETE) {
+            if (function(args..., &count, nullptr) != VK_SUCCESS) {
+                return {};
+            }
+            items.resize(count);
+            result = function(args..., &count, items.data());
+        }
+        if (result != VK_SUCCESS) {
             return {};
         }
-        items.resize(count);
-        result = function(args..., &count, items.data());
     }
-    items.resize(result == VK_SUCCESS ? count : 0);
+    items.resize(count);
     return items;
 }
 

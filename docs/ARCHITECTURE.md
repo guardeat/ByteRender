@@ -166,6 +166,28 @@ layout(push_constant) uniform PushConstants { uint albedo; uint sampler_id; } pc
 vec4 c = texture(sampler2D(g_textures[nonuniformEXT(pc.albedo)], g_samplers[pc.sampler_id]), uv);
 ```
 
+## 6b. Device & adapter requirements (Vulkan backend)
+An adapter is **supported** only if it provides all of the following; `AdapterInfo::is_supported` /
+`unsupported_reason` report the result, and `Instance::create_device()` picks the best supported adapter
+(discrete > integrated > virtual > others, then most device-local memory) unless an index is given.
+
+| Requirement | Why |
+|---|---|
+| Vulkan 1.3 | baseline API |
+| A queue family with graphics + compute | single universal queue (v1) |
+| `dynamicRendering`, `synchronization2` (1.3) | no render-pass objects, modern barriers |
+| `timelineSemaphore` (1.2) | GPU lifetime tracking, submission sync |
+| `descriptorIndexing`, `runtimeDescriptorArray`, `descriptorBindingPartiallyBound`, `descriptorBindingVariableDescriptorCount`, `descriptorBindingUpdateUnusedWhilePending`, `descriptorBinding{SampledImage,StorageImage,StorageBuffer}UpdateAfterBind`, `shader{SampledImage,StorageImage,StorageBuffer}ArrayNonUniformIndexing` (1.2) | bindless heap |
+| `bufferDeviceAddress`, `scalarBlockLayout` (1.2) | buffers by GPU address, C-like data layout |
+| `samplerAnisotropy` (1.0) | standard texture filtering |
+
+Optional: presentation (`VK_KHR_surface` + a platform surface extension on the instance, `VK_KHR_swapchain`
+on the device) → `Device::supports_presentation()`. `VK_KHR_portability_subset` is enabled when exposed (MoltenVK).
+
+Backend details: device-level Vulkan calls go through a per-device `VolkDeviceTable` (no global device
+function pointers); memory is managed by VMA (one allocator per device); objects get debug names when
+validation is on.
+
 ## 7. Synchronization & submission
 - Vulkan 1.3 features: **dynamic rendering** (no `VkRenderPass`/`VkFramebuffer`) and **synchronization2**.
 - The RHI exposes barriers as abstract **resource states** (`Undefined`, `ShaderRead`, `ColorAttachment`,
@@ -227,6 +249,12 @@ Result<Texture> Device::create_texture(const TextureDesc& desc) {
 | SPIRV-Reflect | Vulkan backend / tools | private |
 | GLFW | samples only | — |
 | doctest | tests only | — |
+
+### Tests
+- `byte_render_tests`: unit tests, no GPU needed.
+- `byte_render_gpu_tests` (CTest label `gpu`): need a Vulkan 1.3 GPU. They run with validation enabled and
+  **fail if anything logs a warning or error** (engine, loader, validation layer, driver) — the zero-noise
+  policy is enforced by tests. Skip them on machines without a GPU: `ctest -LE gpu`.
 
 ## 14. Build options
 | Option | Default | Meaning |

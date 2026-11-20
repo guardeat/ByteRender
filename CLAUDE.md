@@ -32,6 +32,7 @@ Read `docs/ARCHITECTURE.md` for the design and `docs/ROADMAP.md` for the step pl
 - When something is noisy, **fix the root cause**. Suppressing or filtering a message is only acceptable when
   it is provably not a problem, and must be documented where it is done.
 - Every step is verified with a from-scratch build and a run before committing.
+- GPU tests capture all log output and fail on any warning/error; new GPU features get such tests.
 
 ## Error handling
 - The engine **never throws**. Recoverable/runtime failures return `Result<T>`.

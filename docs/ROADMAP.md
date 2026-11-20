@@ -17,7 +17,7 @@ Steps may be split further when we get to them.
 - [x] **Step 3 — Instance.** `InstanceFactory` → `rhi::Instance` (pimpl) → Vulkan instance via volk, portability enumeration
   for MoltenVK, validation layers + debug messenger routed to the log sink, adapter enumeration.
   Sample prints available GPUs.
-- [ ] **Step 4 — Device.** Adapter selection, logical device, queues, feature checks
+- [x] **Step 4 — Device.** Adapter selection, logical device, queues, feature checks
   (Vulkan 1.3, dynamic rendering, sync2, descriptor indexing, timeline semaphores), VMA, live-object tracking.
 - [ ] **Step 5 — Timeline & retire queue.** Per-queue timeline semaphore, submit/wait, retire queue + `collect()`,
   `wait_idle()`. Unit-test the retire logic.

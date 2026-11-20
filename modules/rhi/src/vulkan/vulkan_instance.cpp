@@ -1,11 +1,13 @@
 #include "vulkan/vulkan_instance.hpp"
 
+#include "vulkan/vulkan_device_requirements.hpp"
 #include "vulkan/vulkan_loader.hpp"
 
 #include <byte/core/assert.hpp>
 #include <byte/render/rhi/instance_factory.hpp>
 
 #include <algorithm>
+#include <array>
 #include <atomic>
 #include <cstring>
 #include <memory>
@@ -16,7 +18,16 @@ namespace byte::render::rhi {
 namespace {
 
 constexpr const char* k_validation_layer = "VK_LAYER_KHRONOS_validation";
-constexpr uint32_t k_required_api_version = VK_API_VERSION_1_3;
+
+// Window-system surface extensions, enabled when available. Names as literals so no platform headers are needed.
+constexpr std::array k_platform_surface_extensions{
+    "VK_EXT_metal_surface",   // macOS / iOS (MoltenVK)
+    "VK_KHR_win32_surface",   // Windows
+    "VK_KHR_xlib_surface",    // Linux X11
+    "VK_KHR_xcb_surface",     // Linux X11 (XCB)
+    "VK_KHR_wayland_surface", // Linux Wayland
+};
+using vulkan::k_required_api_version;
 
 // Vulkan instance-level function pointers (volk) are process-global, so only one Instance may be alive.
 std::atomic<bool> g_instance_alive{false};
@@ -108,12 +119,22 @@ AdapterInfo describe_adapter(VkPhysicalDevice physical_device, uint32_t index) {
             info.device_local_memory_bytes += memory.memoryHeaps[heap].size;
         }
     }
+
+    if (auto reason = vulkan::check_adapter_requirements(physical_device)) {
+        info.unsupported_reason = std::move(*reason);
+    } else {
+        info.is_supported = true;
+    }
     return info;
 }
 
 } // namespace
 
 Instance::Impl::~Impl() {
+    if (live_devices.count() > 0) {
+        live_devices.report_leaks(*logger, "Instance");
+        BYTE_RENDER_ASSERT(false, "all Devices must be destroyed before their Instance");
+    }
     if (debug_messenger != VK_NULL_HANDLE) {
         vkDestroyDebugUtilsMessengerEXT(instance, debug_messenger, nullptr);
     }
@@ -181,6 +202,20 @@ core::Result<Instance> InstanceFactory::create_instance(const InstanceDesc& desc
         flags |= VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR;
     }
 
+    // Presentation support: VK_KHR_surface plus at least one platform surface extension.
+    bool surface_supported = false;
+    if (has_extension(extensions, VK_KHR_SURFACE_EXTENSION_NAME)) {
+        for (const char* platform_extension : k_platform_surface_extensions) {
+            if (has_extension(extensions, platform_extension)) {
+                enabled_extensions.push_back(platform_extension);
+                surface_supported = true;
+            }
+        }
+        if (surface_supported) {
+            enabled_extensions.push_back(VK_KHR_SURFACE_EXTENSION_NAME);
+        }
+    }
+
     bool validation = false;
     if (desc.enable_validation) {
         if (has_layer(layers, k_validation_layer) && has_extension(extensions, VK_EXT_DEBUG_UTILS_EXTENSION_NAME)) {
@@ -222,6 +257,7 @@ core::Result<Instance> InstanceFactory::create_instance(const InstanceDesc& desc
     auto impl = std::make_unique<Instance::Impl>();
     impl->logger = m_logger;
     impl->validation_enabled = validation;
+    impl->surface_supported = surface_supported;
 
     VkResult result = vkCreateInstance(&create_info, nullptr, &impl->instance);
     if (result == VK_ERROR_LAYER_NOT_PRESENT && validation) {
@@ -258,8 +294,9 @@ core::Result<Instance> InstanceFactory::create_instance(const InstanceDesc& desc
     }
 
     const core::Version api = vulkan::to_version(loader_version);
-    logger.debug("Vulkan instance created (loader {}.{}.{}, validation {}, {} adapter(s))", api.major, api.minor,
-                 api.patch, validation ? "on" : "off", impl->adapters.size());
+    logger.debug("Vulkan instance created (loader {}.{}.{}, validation {}, presentation {}, {} adapter(s))",
+                 api.major, api.minor, api.patch, validation ? "on" : "off", surface_supported ? "on" : "off",
+                 impl->adapters.size());
 
     return Instance{impl.release()};
 }

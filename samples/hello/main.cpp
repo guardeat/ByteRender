@@ -24,10 +24,23 @@ int main() {
     }
 
     for (const rhi::AdapterInfo& adapter : instance->adapters()) {
-        logger.info("adapter {}: {} ({}, {} {}, API {}.{}.{}, {} MiB device-local)", adapter.index, adapter.name,
+        logger.info("adapter {}: {} ({}, {} {}, API {}.{}.{}, {} MiB device-local){}", adapter.index, adapter.name,
                     rhi::to_string(adapter.type), adapter.driver_name, adapter.driver_info,
                     adapter.api_version.major, adapter.api_version.minor, adapter.api_version.patch,
-                    adapter.device_local_memory_bytes / (1024 * 1024));
+                    adapter.device_local_memory_bytes / (1024 * 1024),
+                    adapter.is_supported ? "" : " - unsupported: " + adapter.unsupported_reason);
+    }
+
+    core::Result<rhi::Device> device = instance->create_device({.debug_name = "Main Device"});
+    if (!device) {
+        logger.error("failed to create device: {}", device.error().message);
+        return 1;
+    }
+    logger.info("using {} (presentation: {})", device->adapter().name, device->supports_presentation());
+
+    if (auto idle = device->wait_idle(); !idle) {
+        logger.error("wait_idle failed: {}", idle.error().message);
+        return 1;
     }
     return 0;
 }

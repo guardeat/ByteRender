@@ -37,7 +37,8 @@ Requirements: CMake ≥ 3.25, a C++20 compiler with std::format (GCC 13, Clang 1
 cmake -S . -B build                  # Debug by default
 cmake --build build -j
 ./build/bin/hello
-ctest --test-dir build --output-on-failure
+ctest --test-dir build --output-on-failure          # all tests
+ctest --test-dir build --output-on-failure -LE gpu  # skip tests that need a GPU
 ```
 
 Shared libraries instead of static:

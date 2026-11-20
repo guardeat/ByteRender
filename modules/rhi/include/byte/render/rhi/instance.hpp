@@ -1,7 +1,9 @@
 #pragma once
 
+#include <byte/core/result.hpp>
 #include <byte/core/version.hpp>
 #include <byte/render/rhi/adapter.hpp>
+#include <byte/render/rhi/device.hpp>
 #include <byte/render/rhi/export.hpp>
 
 #include <span>
@@ -21,6 +23,8 @@ struct InstanceDesc {
 // Created by InstanceFactory. Move-only; one live Instance per process.
 class BYTE_RENDER_RHI_API Instance {
 public:
+    struct Impl; // backend-defined, opaque to users
+
     Instance() noexcept = default;
     ~Instance();
 
@@ -33,9 +37,10 @@ public:
     [[nodiscard]] bool is_validation_enabled() const noexcept;
     [[nodiscard]] std::span<const AdapterInfo> adapters() const noexcept;
 
+    [[nodiscard]] core::Result<Device> create_device(const DeviceDesc& desc);
+
 private:
     friend class InstanceFactory;
-    struct Impl;
 
     explicit Instance(Impl* impl) noexcept : m_impl(impl) {}
 

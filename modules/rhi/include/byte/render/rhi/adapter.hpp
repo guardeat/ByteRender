@@ -39,6 +39,9 @@ struct AdapterInfo {
     uint64_t device_local_memory_bytes = 0;
     // Graphics API version supported by the adapter (the Vulkan version for the Vulkan backend).
     core::Version api_version;
+    // Whether the adapter meets ByteRender's requirements; if not, `unsupported_reason` says why.
+    bool is_supported = false;
+    std::string unsupported_reason;
 };
 
 } // namespace byte::render::rhi
