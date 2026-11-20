@@ -71,7 +71,7 @@ Every RHI type is a **concrete, move-only class** whose only data member is a po
 backend-defined `Impl`. No vtables, no backend types in headers, one indirection.
 
 ```cpp
-// modules/rhi/include/byte/render/rhi/Texture.h
+// modules/rhi/include/byte/render/rhi/texture.hpp
 namespace byte::render::rhi {
 
 class BYTE_RENDERER_RHI_API Texture {

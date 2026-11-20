@@ -38,7 +38,7 @@ Read `docs/ARCHITECTURE.md` for the design and `docs/ROADMAP.md` for the step pl
 - Macros: `BYTE_RENDERER_` prefix, `UPPER_SNAKE_CASE`
 - Namespaces: `byte::core` (engine-wide), `byte::render::rhi`, `byte::render::rg` (rendering).
   Engine headers define `WIN32_LEAN_AND_MEAN` before any `<windows.h>` include; consumers who include the full `<windows.h>` (which pulls in the SDK `byte` typedef) must include it in a separate TU or define `WIN32_LEAN_AND_MEAN`. Never `using namespace std;` together with `using namespace byte;`.
-- Files: `PascalCase.h` / `PascalCase.cpp`, one main class per file.
+- Files: `snake_case.hpp` / `snake_case.cpp` (e.g. `texture.hpp`, `vulkan_device.cpp`), one main class per file.
 - Formatting is enforced by `.clang-format`. Warnings are errors in engine targets.
 
 ## Platforms & toolchain

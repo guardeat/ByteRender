@@ -1,6 +1,6 @@
 #pragma once
 
-// Symbol visibility for byte::rhi. See byte/core/Export.h.
+// Symbol visibility for byte::rhi. See byte/core/export.hpp.
 
 #if defined(BYTE_RENDERER_SHARED)
     #if defined(_WIN32)

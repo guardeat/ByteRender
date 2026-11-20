@@ -1,5 +1,5 @@
-#include <byte/core/Version.h>
-#include <byte/render/rhi/Backend.h>
+#include <byte/core/version.hpp>
+#include <byte/render/rhi/backend.hpp>
 
 #include <cstdio>
 

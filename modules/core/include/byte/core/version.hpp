@@ -1,6 +1,6 @@
 #pragma once
 
-#include <byte/core/Export.h>
+#include <byte/core/export.hpp>
 
 #include <cstdint>
 

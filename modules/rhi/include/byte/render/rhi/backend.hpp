@@ -1,6 +1,6 @@
 #pragma once
 
-#include <byte/render/rhi/Export.h>
+#include <byte/render/rhi/export.hpp>
 
 #include <cstdint>
 

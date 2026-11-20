@@ -1,5 +1,5 @@
 add_library(byte_renderer_core ${BYTE_RENDERER_LIBRARY_TYPE}
-    src/Version.cpp
+    src/version.cpp
 )
 add_library(byte::core ALIAS byte_renderer_core)
 

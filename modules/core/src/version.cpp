@@ -1,4 +1,4 @@
-#include <byte/core/Version.h>
+#include <byte/core/version.hpp>
 
 namespace byte::core {
 

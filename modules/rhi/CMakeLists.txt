@@ -2,7 +2,7 @@
 
 if(BYTE_RENDERER_RHI_BACKEND STREQUAL "Vulkan")
     set(backend_sources
-        src/vulkan/VulkanBackend.cpp
+        src/vulkan/vulkan_backend.cpp
     )
     set(backend_definition BYTE_RENDERER_RHI_BACKEND_VULKAN=1)
 endif()
