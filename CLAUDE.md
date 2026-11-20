@@ -36,8 +36,8 @@ Read `docs/ARCHITECTURE.md` for the design and `docs/ROADMAP.md` for the step pl
 - Members: `m_` prefix — `m_impl`, `m_extent`
 - Constants: `k_` prefix — `k_max_frames_in_flight`
 - Macros: `BYTE_RENDERER_` prefix, `UPPER_SNAKE_CASE`
-- Namespaces: `byterender::core`, `byterender::rhi`, `byterender::rg`
-  (not `byte` — collides with `std::byte` and the Windows SDK `byte` typedef)
+- Namespaces: `byte::core` (engine-wide), `byte::render::rhi`, `byte::render::rg` (rendering).
+  Engine headers define `WIN32_LEAN_AND_MEAN` before any `<windows.h>` include; consumers who include the full `<windows.h>` (which pulls in the SDK `byte` typedef) must include it in a separate TU or define `WIN32_LEAN_AND_MEAN`. Never `using namespace std;` together with `using namespace byte;`.
 - Files: `PascalCase.h` / `PascalCase.cpp`, one main class per file.
 - Formatting is enforced by `.clang-format`. Warnings are errors in engine targets.
 

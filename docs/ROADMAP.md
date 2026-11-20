@@ -51,4 +51,4 @@ Steps may be split further when we get to them.
 - Additional backends (Metal / D3D12) — would revisit compile-time vs. runtime selection
 
 ## Open decisions
-- Reverse-Z depth as default (proposed: yes)
+- (none)

@@ -15,13 +15,13 @@ Non-goals for v1: mobile, old GPUs without descriptor indexing, runtime backend 
 ```
  User projects
  ───────────────────────────────────────────────
- byterender::rg      Render graph         (knows only the RHI)
+ byte::render::rg    Render graph         (knows only the RHI)
  ───────────────────────────────────────────────
- byterender::rhi     API-agnostic RHI     (public headers, pimpl)
+ byte::render::rhi   API-agnostic RHI     (public headers, pimpl)
  ───────────────────────────────────────────────
  RHI backend         Vulkan               (private; compiled into the RHI library)
  ───────────────────────────────────────────────
- byterender::core    Result, asserts, logging, containers, utilities
+ byte::core          Result, asserts, logging, containers, utilities
 ```
 
 Rule: **nothing above the backend line sees a Vulkan type.** The render graph speaks in
@@ -35,15 +35,15 @@ ByteRender/
 ├─ cmake/                      helper modules (shader compile, warnings, options)
 ├─ modules/
 │  ├─ core/
-│  │  ├─ include/byterender/core/   public headers
+│  │  ├─ include/byte/core/         public headers
 │  │  └─ src/
 │  ├─ rhi/
-│  │  ├─ include/byterender/rhi/    public, API-agnostic headers
+│  │  ├─ include/byte/render/rhi/   public, API-agnostic headers
 │  │  └─ src/
 │  │     ├─ common/                 backend-agnostic implementation helpers
 │  │     └─ vulkan/                 Vulkan backend (only place Vulkan is included)
 │  └─ render_graph/
-│     ├─ include/byterender/rg/
+│     ├─ include/byte/render/rg/
 │     └─ src/
 ├─ shaders/                    engine GLSL shaders
 ├─ samples/                    small apps (use GLFW); not part of the library
@@ -54,12 +54,12 @@ ByteRender/
 ### CMake targets
 | Target | Kind | Links |
 |---|---|---|
-| `byterender::core` | static/shared | — |
-| `byterender::rhi` | static/shared | `core` PUBLIC; backend deps (volk, VMA) **PRIVATE** |
-| `byterender::render_graph` | static/shared | `rhi` PUBLIC |
+| `byte::core` | static/shared | — |
+| `byte::rhi` | static/shared | `core` PUBLIC; backend deps (volk, VMA) **PRIVATE** |
+| `byte::render_graph` | static/shared | `rhi` PUBLIC |
 
-`BYTE_RENDERER_RHI_BACKEND=Vulkan` selects which `src/<backend>/` folder is compiled into `byterender::rhi`.
-Consumers only ever link `byterender::render_graph` and/or `byterender::rhi`.
+`BYTE_RENDERER_RHI_BACKEND=Vulkan` selects which `src/<backend>/` folder is compiled into `byte::rhi`.
+Consumers only ever link `byte::render_graph` and/or `byte::rhi`.
 
 ## 4. Object model (compile-time backend via pimpl)
 
@@ -67,8 +67,8 @@ Every RHI type is a **concrete, move-only class** whose only data member is a po
 backend-defined `Impl`. No vtables, no backend types in headers, one indirection.
 
 ```cpp
-// modules/rhi/include/byterender/rhi/Texture.h
-namespace byterender::rhi {
+// modules/rhi/include/byte/render/rhi/Texture.h
+namespace byte::render::rhi {
 
 class BYTE_RENDERER_API Texture {
 public:
@@ -90,7 +90,7 @@ private:
     Impl* m_impl = nullptr;
 };
 
-} // namespace byterender::rhi
+} // namespace byte::render::rhi
 ```
 
 ### Creation
@@ -174,13 +174,13 @@ vec4 c = texture(sampler2D(g_textures[nonuniformEXT(pc.albedo)], g_samplers[pc.s
 - Future non-Vulkan backends can convert SPIR-V via SPIRV-Cross.
 
 ## 11. Conventions
-- Depth range [0, 1]. **Reverse-Z proposed as default — to be confirmed.**
+- Depth range [0, 1]. **Reverse-Z by default**: depth cleared to 0, `GREATER` compare, infinite far plane supported (industry standard for depth precision).
 - Right-handed world space, Y-up. Clip-space conventions are fixed by the RHI so all backends match.
 - Windowing is **not** owned by the engine: it accepts a native window handle
   (`HWND` / X11 / Wayland / `CAMetalLayer`) through an API-agnostic `NativeWindow` struct.
 
 ## 12. Error handling
-- No exceptions thrown by the engine. Fallible operations return `byterender::core::Result<T>`
+- No exceptions thrown by the engine. Fallible operations return `byte::core::Result<T>`
   (own small `expected`-like type, since C++20 has no `std::expected`).
 - `BYTE_RENDERER_ASSERT(cond, msg)` for programmer errors: on in Debug or with
   `BYTE_RENDERER_ENABLE_ASSERTS=ON`, compiled out otherwise.
