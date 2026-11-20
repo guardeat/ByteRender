@@ -26,8 +26,8 @@ Read `docs/ARCHITECTURE.md` for the design and `docs/ROADMAP.md` for the step pl
 
 ## Error handling
 - The engine **never throws**. Recoverable/runtime failures return `Result<T>`.
-- Programmer errors use `BYTE_RENDERER_ASSERT(cond, "msg")`, enabled in Debug
-  (or via `BYTE_RENDERER_ENABLE_ASSERTS`), compiled out otherwise.
+- Programmer errors use `BYTE_RENDERER_ASSERT(cond, "msg")`, enabled in Debug by default
+  (`BYTE_RENDERER_ASSERTS=AUTO|ON|OFF`), compiled out otherwise.
 - No RTTI-dependent code (`dynamic_cast`, `typeid`) in the engine.
 
 ## Code style
@@ -43,8 +43,8 @@ Read `docs/ARCHITECTURE.md` for the design and `docs/ROADMAP.md` for the step pl
 
 ## Platforms & toolchain
 - Targets: Windows (MSVC, Clang), Linux (GCC, Clang), macOS (Apple Clang, via MoltenVK).
-- Build: CMake ≥ 3.24, dependencies via `FetchContent` with pinned versions.
+- Build: CMake ≥ 3.24 (Unix Makefiles for now), dependencies via `FetchContent` with pinned versions.
   The only manual install is the Vulkan SDK.
 - Shaders: GLSL, compiled to SPIR-V at build time.
 - Libraries are static by default; `BYTE_RENDERER_BUILD_SHARED=ON` builds shared libs
-  (public symbols use `BYTE_RENDERER_API`).
+  (each module has its own export macro: `BYTE_RENDERER_CORE_API`, `BYTE_RENDERER_RHI_API`, `BYTE_RENDERER_RG_API`).

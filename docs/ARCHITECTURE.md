@@ -56,7 +56,11 @@ ByteRender/
 |---|---|---|
 | `byte::core` | static/shared | — |
 | `byte::rhi` | static/shared | `core` PUBLIC; backend deps (volk, VMA) **PRIVATE** |
-| `byte::render_graph` | static/shared | `rhi` PUBLIC |
+| `byte::render_graph` | static/shared (INTERFACE until step 11) | `rhi` PUBLIC |
+
+Underlying target names are `byte_renderer_<module>`; consumers use the `byte::` aliases.
+Each module has its own export macro (`BYTE_RENDERER_CORE_API`, `BYTE_RENDERER_RHI_API`,
+`BYTE_RENDERER_RG_API`) so shared builds export/import correctly across module boundaries.
 
 `BYTE_RENDERER_RHI_BACKEND=Vulkan` selects which `src/<backend>/` folder is compiled into `byte::rhi`.
 Consumers only ever link `byte::render_graph` and/or `byte::rhi`.
@@ -70,7 +74,7 @@ backend-defined `Impl`. No vtables, no backend types in headers, one indirection
 // modules/rhi/include/byte/render/rhi/Texture.h
 namespace byte::render::rhi {
 
-class BYTE_RENDERER_API Texture {
+class BYTE_RENDERER_RHI_API Texture {
 public:
     Texture() = default;                       // empty / invalid
     ~Texture();                                // hands GPU part to the retire queue
@@ -183,7 +187,7 @@ vec4 c = texture(sampler2D(g_textures[nonuniformEXT(pc.albedo)], g_samplers[pc.s
 - No exceptions thrown by the engine. Fallible operations return `byte::core::Result<T>`
   (own small `expected`-like type, since C++20 has no `std::expected`).
 - `BYTE_RENDERER_ASSERT(cond, msg)` for programmer errors: on in Debug or with
-  `BYTE_RENDERER_ENABLE_ASSERTS=ON`, compiled out otherwise.
+  `BYTE_RENDERER_ASSERTS=ON`, compiled out otherwise.
 - Logging goes through a user-replaceable log sink passed in at `Instance` creation (no global logger).
 
 ## 13. Dependencies (pinned, via FetchContent)
@@ -201,6 +205,7 @@ vec4 c = texture(sampler2D(g_textures[nonuniformEXT(pc.albedo)], g_samplers[pc.s
 |---|---|---|
 | `BYTE_RENDERER_RHI_BACKEND` | `Vulkan` | Compile-time backend selection |
 | `BYTE_RENDERER_BUILD_SHARED` | `OFF` | Build shared libraries instead of static |
-| `BYTE_RENDERER_ENABLE_ASSERTS` | `ON` in Debug | Enable `BYTE_RENDERER_ASSERT` |
+| `BYTE_RENDERER_ASSERTS` | `AUTO` | `BYTE_RENDERER_ASSERT`: `AUTO` = Debug only, `ON`, `OFF` |
+| `BYTE_RENDERER_WARNINGS_AS_ERRORS` | `ON` | Warnings are errors in ByteRender targets |
 | `BYTE_RENDERER_BUILD_SAMPLES` | `ON` (top-level) | Build sample apps |
 | `BYTE_RENDERER_BUILD_TESTS` | `ON` (top-level) | Build unit tests |

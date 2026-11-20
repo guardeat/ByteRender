@@ -1,0 +1,19 @@
+# Build output
+/build*/
+/out/
+compile_commands.json
+
+# IDEs
+.vscode/
+.idea/
+.vs/
+*.xcodeproj/
+*.xcworkspace/
+CMakeUserPresets.json
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Compiled shaders (generated at build time)
+*.spv

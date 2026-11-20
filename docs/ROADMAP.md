@@ -5,16 +5,16 @@ Steps may be split further when we get to them.
 
 ## Phase 0 — Foundations
 - [x] **Step 0 — Rules & design docs.** `CLAUDE.md`, `docs/ARCHITECTURE.md`, `docs/ROADMAP.md`. Git repo.
-- [ ] **Step 1 — Toolchain & CMake skeleton.**
-  Install CMake + Vulkan SDK. Repo layout from ARCHITECTURE §3, `.gitignore`, `.clang-format`,
+- [x] **Step 1 — Toolchain & CMake skeleton.**
+  Install CMake. Repo layout from ARCHITECTURE §3, `.gitignore`, `.clang-format`,
   `.editorconfig`, build options, warnings-as-errors, empty `core`/`rhi`/`render_graph` targets,
-  a `hello` sample that builds and runs on macOS.
+  per-module export macros, a `hello` sample that builds and runs on macOS (static + shared).
 - [ ] **Step 2 — Core module.**
-  `Result<T>` / `Error`, `BYTE_RENDERER_ASSERT`, log sink interface, `BYTE_RENDERER_API` export macro,
+  `Result<T>` / `Error`, `BYTE_RENDERER_ASSERT`, log sink interface,
   basic types (`Extent2D/3D`, flags helpers). doctest set up with first unit tests.
 
 ## Phase 1 — RHI + Vulkan bring-up
-- [ ] **Step 3 — Instance.** `rhi::Instance` (pimpl) → Vulkan instance via volk, portability enumeration
+- [ ] **Step 3 — Instance.** Requires the Vulkan SDK installed. `rhi::Instance` (pimpl) → Vulkan instance via volk, portability enumeration
   for MoltenVK, validation layers + debug messenger routed to the log sink, adapter enumeration.
   Sample prints available GPUs.
 - [ ] **Step 4 — Device.** Adapter selection, logical device, queues, feature checks
