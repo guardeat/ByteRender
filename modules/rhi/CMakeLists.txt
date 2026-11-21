@@ -8,6 +8,7 @@ if(BYTEE_RHI_BACKEND STREQUAL "Vulkan")
         src/vulkan/vulkan_device.cpp
         src/vulkan/vulkan_instance.cpp
         src/vulkan/vulkan_loader.cpp
+        src/vulkan/vulkan_queue.cpp
         src/vulkan/vulkan_requirements.cpp
         src/vulkan/vulkan_vma.cpp
         src/vulkan/vulkan_volk.cpp

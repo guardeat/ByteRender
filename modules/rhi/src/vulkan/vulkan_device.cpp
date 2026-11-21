@@ -64,10 +64,28 @@ core::Error no_supported_adapter_error(std::span<const AdapterInfo> adapters) {
 
 } // namespace
 
+namespace vulkan {
+
+uint64_t to_timeout_nanoseconds(std::chrono::nanoseconds timeout) noexcept {
+    if (timeout <= std::chrono::nanoseconds::zero()) {
+        return 0;
+    }
+    if (timeout == std::chrono::nanoseconds::max()) {
+        return UINT64_MAX; // wait forever
+    }
+    return static_cast<uint64_t>(timeout.count());
+}
+
+} // namespace vulkan
+
 Device::Impl::~Impl() {
     if (device != VK_NULL_HANDLE) {
         // A destructor cannot report failure; afterwards the GPU is idle unless the device was lost.
         static_cast<void>(vk.vkDeviceWaitIdle(device));
+        retired_objects.drain([this](const vulkan::RetiredObject& object) { destroy_now(object); });
+    }
+    for (std::unique_ptr<vulkan::Queue>& queue_ptr : queues) {
+        queue_ptr.reset();
     }
     if (allocator != VK_NULL_HANDLE) {
         vmaDestroyAllocator(allocator);
@@ -89,6 +107,67 @@ core::Error Device::Impl::fail(VkResult result, core::ErrorFormat<> call) {
 
 core::Error Device::Impl::lost_error() const {
     return core::make_error(core::ErrorCode::DeviceLost, "device '{}' was lost; it must be recreated", debug_name);
+}
+
+vulkan::DeviceQueueValues Device::Impl::last_submitted() const noexcept {
+    vulkan::DeviceQueueValues values{};
+    for (std::size_t index = 0; index < vulkan::k_queue_count; ++index) {
+        values[index] = queues[index]->last_submitted();
+    }
+    return values;
+}
+
+vulkan::DeviceQueueValues Device::Impl::cached_completed() const noexcept {
+    vulkan::DeviceQueueValues values{};
+    for (std::size_t index = 0; index < vulkan::k_queue_count; ++index) {
+        values[index] = queues[index]->cached_completed();
+    }
+    return values;
+}
+
+core::Result<SyncPoint> Device::Impl::submit(QueueType type, std::span<const VkCommandBufferSubmitInfo> command_buffers,
+                                             std::span<const VkSemaphoreSubmitInfo> waits,
+                                             std::span<const VkSemaphoreSubmitInfo> signals) {
+    if (lost.load(std::memory_order_acquire)) {
+        return lost_error();
+    }
+    uint64_t value = 0;
+    if (const VkResult result = queue(type).submit(command_buffers, waits, signals, value); result != VK_SUCCESS) {
+        return fail(result, "vkQueueSubmit2");
+    }
+    BYTEE_TRY(collect());
+    return SyncPoint{.queue = type, .value = value};
+}
+
+void Device::Impl::retire(vulkan::RetiredObject object) {
+    const vulkan::DeviceQueueValues retire_after = last_submitted();
+    // Read after last_submitted(): completed values only grow, so this never over-reports progress.
+    if (detail::is_reached(retire_after, cached_completed())) {
+        destroy_now(object);
+        return;
+    }
+    retired_objects.push(retire_after, object);
+}
+
+core::Result<void> Device::Impl::collect() {
+    vulkan::DeviceQueueValues completed{};
+    for (std::size_t index = 0; index < vulkan::k_queue_count; ++index) {
+        if (const VkResult result = queues[index]->query_completed(completed[index]); result != VK_SUCCESS) {
+            return fail(result, "vkGetSemaphoreCounterValue");
+        }
+    }
+    retired_objects.collect(completed, [this](const vulkan::RetiredObject& object) { destroy_now(object); });
+    return {};
+}
+
+void Device::Impl::destroy_now(const vulkan::RetiredObject& object) const noexcept {
+    switch (object.type) {
+    case VK_OBJECT_TYPE_FENCE: vk.vkDestroyFence(device, reinterpret_cast<VkFence>(object.handle), nullptr); return;
+    case VK_OBJECT_TYPE_SEMAPHORE:
+        vk.vkDestroySemaphore(device, reinterpret_cast<VkSemaphore>(object.handle), nullptr);
+        return;
+    default: BYTEE_ASSERT(false, "retired object of unsupported type {}", static_cast<int>(object.type)); return;
+    }
 }
 
 Device::Impl* get_impl(const Device& device) noexcept {
@@ -134,6 +213,44 @@ bool Device::is_lost() const noexcept {
     return impl_->lost.load(std::memory_order_acquire);
 }
 
+bool Device::is_complete(SyncPoint point) const {
+    BYTEE_ASSERT(is_valid(), "Device is empty");
+    const vulkan::Queue& queue = impl_->queue(point.queue);
+    if (point.value <= queue.cached_completed()) {
+        return true;
+    }
+    if (point.value > queue.last_submitted() || impl_->lost.load(std::memory_order_acquire)) {
+        return false;
+    }
+    uint64_t completed = 0;
+    if (const VkResult result = queue.query_completed(completed); result != VK_SUCCESS) {
+        static_cast<void>(impl_->fail(result, "vkGetSemaphoreCounterValue")); // marks a lost device
+        return false;
+    }
+    return point.value <= completed;
+}
+
+core::Result<void> Device::wait(SyncPoint point, std::chrono::nanoseconds timeout) {
+    BYTEE_ASSERT(is_valid(), "Device is empty");
+    if (impl_->lost.load(std::memory_order_acquire)) {
+        return impl_->lost_error();
+    }
+    const vulkan::Queue& queue = impl_->queue(point.queue);
+    if (point.value > queue.last_submitted()) {
+        return core::make_error(core::ErrorCode::InvalidArgument,
+                                "cannot wait for {} queue value {}: only {} submitted (it would never complete)",
+                                to_string(point.queue), point.value, queue.last_submitted());
+    }
+    const VkResult result = queue.wait(point.value, vulkan::to_timeout_nanoseconds(timeout));
+    if (result == VK_TIMEOUT) {
+        return core::Error{core::ErrorCode::Timeout}; // allocation-free: callers may poll with short timeouts
+    }
+    if (result != VK_SUCCESS) {
+        return impl_->fail(result, "vkWaitSemaphores");
+    }
+    return impl_->collect();
+}
+
 core::Result<void> Device::wait_idle() {
     BYTEE_ASSERT(is_valid(), "Device is empty");
     if (impl_->lost.load(std::memory_order_acquire)) {
@@ -142,7 +259,7 @@ core::Result<void> Device::wait_idle() {
     if (const VkResult result = impl_->vk.vkDeviceWaitIdle(impl_->device); result != VK_SUCCESS) {
         return impl_->fail(result, "vkDeviceWaitIdle");
     }
-    return {};
+    return impl_->collect();
 }
 
 core::Result<Device> Instance::create_device(const DeviceDesc& desc) {
@@ -211,7 +328,6 @@ core::Result<Device> Instance::create_device(const DeviceDesc& desc) {
     impl->debug_name = desc.debug_name;
     impl->adapter = adapter;
     impl->physical_device = physical_device;
-    impl->queue_family = *queue_family;
     impl->presentation_supported = presentation;
 
     if (const VkResult result = vkCreateDevice(physical_device, &create_info, nullptr, &impl->device);
@@ -219,7 +335,14 @@ core::Result<Device> Instance::create_device(const DeviceDesc& desc) {
         return vulkan::make_vk_error(result, "vkCreateDevice");
     }
     volkLoadDeviceTable(&impl->vk, impl->device);
-    impl->vk.vkGetDeviceQueue(impl->device, impl->queue_family, 0, &impl->queue);
+
+    std::unique_ptr<vulkan::Queue>& universal_queue = impl->queues[static_cast<std::size_t>(QueueType::Graphics)];
+    if (const VkResult result =
+            vulkan::create_queue(impl->device, impl->vk, *queue_family, 0,
+                                 std::format("{} universal queue", desc.debug_name), universal_queue);
+        result != VK_SUCCESS) {
+        return vulkan::make_vk_error(result, "vkCreateSemaphore (queue timeline)");
+    }
 
     const VmaVulkanFunctions vma_functions{
         .vkGetInstanceProcAddr = vkGetInstanceProcAddr,
@@ -238,8 +361,6 @@ core::Result<Device> Instance::create_device(const DeviceDesc& desc) {
     }
 
     vulkan::set_debug_name(impl->device, VK_OBJECT_TYPE_DEVICE, impl->device, desc.debug_name);
-    vulkan::set_debug_name(impl->device, VK_OBJECT_TYPE_QUEUE, impl->queue,
-                           std::format("{} universal queue", desc.debug_name));
 
     impl->tracker_id = instance.live_devices.add("Device", desc.debug_name);
     instance.logger->debug("device '{}' created on {} (queue family {}, presentation {})", desc.debug_name,

@@ -14,6 +14,7 @@ add_executable(bytee_tests
     core/test_types.cpp
     core/test_version.cpp
     rhi/test_live_object_tracker.cpp
+    rhi/test_retire_list.cpp
 )
 target_include_directories(bytee_tests PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}"
@@ -33,6 +34,7 @@ add_executable(bytee_gpu_tests
     main.cpp
     rhi/test_device.cpp
     rhi/test_instance.cpp
+    rhi/test_sync.cpp
 )
 target_include_directories(bytee_gpu_tests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}")
 target_link_libraries(bytee_gpu_tests PRIVATE bytee::rhi bytee_doctest)
@@ -57,6 +59,7 @@ if(NOT BYTEE_BUILD_SHARED AND BYTEE_RHI_BACKEND STREQUAL "Vulkan")
     add_executable(bytee_vulkan_gpu_tests
         main.cpp
         vulkan/test_vulkan_device.cpp
+        vulkan/test_vulkan_queue.cpp
     )
     target_include_directories(bytee_vulkan_gpu_tests PRIVATE
         "${CMAKE_CURRENT_SOURCE_DIR}"

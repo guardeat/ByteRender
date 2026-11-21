@@ -188,6 +188,11 @@ Mechanism — **timeline retirement**:
 4. `collect()` frees every entry whose values are complete — on submit, frame begin, `wait()` and `wait_idle()`.
 5. Device destruction waits for idle and frees everything.
 
+Implementation: `vulkan::Queue` (VkQueue + timeline semaphore, returns raw `VkResult`s so the device can mark itself
+lost), `detail::RetireList<Item_, QueueCount_>` (typed, thread-safe FIFO; the destroy function is passed to
+`collect()`, runs outside the lock one item at a time — no allocation, re-entrant), `Device::Impl::retire()` /
+`collect()`. Backend-internal Vulkan objects use a `RetireList<RetiredObject>`; each resource pool gets its own list.
+
 Tagging with "last submitted" is conservative but cheap (no per-use tracking while recording) and correct under
 bindless, where shaders may read any slot. Destroying a resource still referenced by an **unsubmitted** command
 list is a programmer error.
@@ -200,7 +205,9 @@ list is a programmer error.
 
 ## 8. Synchronization & submission
 - `SyncPoint {queue, value}` names a point in a queue's submission stream; `submit()` returns one.
-  `Device::is_complete()` polls, `Device::wait(point, timeout)` blocks; waiting for a never-submitted point is an error.
+  `Device::is_complete()` polls (false for never-submitted points and on a lost device); `Device::wait(point, timeout)`
+  blocks and then collects retired objects. Errors: `Timeout` (allocation-free, so polling with short timeouts is
+  cheap), `InvalidArgument` for a never-submitted point (instead of a deadlock), `DeviceLost`.
 - v1: one universal queue (`QueueType::Graphics`). Data structures are sized by queue count for later
   async compute / transfer queues.
 - Barriers are expressed as abstract **resource states** (`ShaderRead`, `ColorAttachment`, `DepthWrite`, `CopySrc`,

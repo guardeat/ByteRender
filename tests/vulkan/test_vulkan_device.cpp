@@ -15,7 +15,7 @@ TEST_CASE_FIXTURE(DeviceFixture, "The device has its own function table, a queue
     CHECK(impl.device != VK_NULL_HANDLE);
     CHECK(impl.vk.vkQueueSubmit2 != nullptr);
     CHECK(impl.vk.vkCmdBeginRendering != nullptr);
-    CHECK(impl.queue != VK_NULL_HANDLE);
+    CHECK(impl.queue(rhi::QueueType::Graphics).handle() != VK_NULL_HANDLE);
     CHECK(impl.allocator != VK_NULL_HANDLE);
 
     VmaTotalStatistics statistics{};
@@ -25,7 +25,8 @@ TEST_CASE_FIXTURE(DeviceFixture, "The device has its own function table, a queue
 
 TEST_CASE_FIXTURE(DeviceFixture, "Debug names are accepted by the validation layer") {
     const rhi::Device::Impl& impl = *rhi::get_impl(device);
-    vulkan::set_debug_name(impl.device, VK_OBJECT_TYPE_QUEUE, impl.queue, "renamed queue");
+    vulkan::set_debug_name(impl.device, VK_OBJECT_TYPE_QUEUE, impl.queue(rhi::QueueType::Graphics).handle(),
+                           "renamed queue");
     vulkan::set_debug_name(impl.device, VK_OBJECT_TYPE_DEVICE, impl.device, "");
 }
 

@@ -18,7 +18,7 @@ Rendering features are validated **headless first** (image tests), presentation 
   validation into the logger, adapter enumeration with requirement checks. Sample lists GPUs.
 - [x] **Step 5 — Device.** Adapter selection, universal queue, `VolkDeviceTable`, VMA, leak tracking,
   debug names. GPU tests with the zero-noise fixture.
-- [ ] **Step 6 — Timeline & retirement.** Timeline queues, typed retire lists, `SyncPoint`, `wait`/`is_complete`/
+- [x] **Step 6 — Timeline & retirement.** Timeline queues, typed retire lists, `SyncPoint`, `wait`/`is_complete`/
   `wait_idle`. Unit + white-box tests, sanitizer runs.
 - [ ] **Step 7 — Buffers & textures.** Pools + handles + `Resource` deleters, VMA allocations, deferred release,
   `info()` queries, staging uploads.
