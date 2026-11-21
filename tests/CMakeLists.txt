@@ -18,6 +18,7 @@ add_executable(byte_render_tests
     core/test_log.cpp
     core/test_result.cpp
     rhi/test_live_object_tracker.cpp
+    rhi/test_retire_queue.cpp
 )
 target_include_directories(byte_render_tests PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}"
@@ -32,6 +33,7 @@ add_test(NAME byte_render_tests COMMAND byte_render_tests)
 add_executable(byte_render_gpu_tests
     main.cpp
     rhi/test_device.cpp
+    rhi/test_sync.cpp
 )
 target_include_directories(byte_render_gpu_tests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}")
 target_link_libraries(byte_render_gpu_tests PRIVATE byte::rhi byte_render_doctest)
@@ -39,3 +41,20 @@ target_compile_features(byte_render_gpu_tests PRIVATE cxx_std_20)
 byte_render_set_warnings(byte_render_gpu_tests)
 add_test(NAME byte_render_gpu_tests COMMAND byte_render_gpu_tests)
 set_tests_properties(byte_render_gpu_tests PROPERTIES LABELS gpu)
+
+# Backend white-box GPU tests: use backend internals, so only for static builds of the Vulkan backend.
+if(NOT BYTE_RENDER_BUILD_SHARED AND BYTE_RENDER_RHI_BACKEND STREQUAL "Vulkan")
+    add_executable(byte_render_vulkan_tests
+        main.cpp
+        vulkan/test_vulkan_queue.cpp
+    )
+    target_include_directories(byte_render_vulkan_tests PRIVATE
+        "${CMAKE_CURRENT_SOURCE_DIR}"
+        "${PROJECT_SOURCE_DIR}/modules/rhi/src"
+    )
+    target_link_libraries(byte_render_vulkan_tests PRIVATE byte::rhi byte_render_vulkan_deps byte_render_doctest)
+    target_compile_features(byte_render_vulkan_tests PRIVATE cxx_std_20)
+    byte_render_set_warnings(byte_render_vulkan_tests)
+    add_test(NAME byte_render_vulkan_tests COMMAND byte_render_vulkan_tests)
+    set_tests_properties(byte_render_vulkan_tests PROPERTIES LABELS gpu)
+endif()

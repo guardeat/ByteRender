@@ -62,11 +62,16 @@ core::Error no_supported_adapter_error(std::span<const AdapterInfo> adapters) {
 
 Device::Impl::~Impl() {
     if (device != VK_NULL_HANDLE) {
-        vk.vkDeviceWaitIdle(device);
+        // Nothing can be reported from a destructor; the GPU is idle afterwards unless the device was lost.
+        [[maybe_unused]] const VkResult idle = vk.vkDeviceWaitIdle(device);
+        retire_queue.drain();
     }
     if (live_objects.count() > 0) {
         live_objects.report_leaks(*logger, "Device");
         BYTE_RENDER_ASSERT(false, "all resources must be destroyed before their Device");
+    }
+    for (std::unique_ptr<vulkan::Queue>& queue_ptr : queues) {
+        queue_ptr.reset();
     }
     if (allocator != VK_NULL_HANDLE) {
         vmaDestroyAllocator(allocator);
@@ -77,6 +82,38 @@ Device::Impl::~Impl() {
     if (instance && tracker_id != 0) {
         instance->live_devices.remove(tracker_id);
     }
+}
+
+void Device::Impl::retire(std::function<void()> destroy) {
+    vulkan::DeviceQueueValues retire_after{};
+    vulkan::DeviceQueueValues completed{};
+    for (size_t index = 0; index < vulkan::k_queue_count; ++index) {
+        retire_after[index] = queues[index]->last_submitted();
+        // Read after last_submitted(): completed values only grow, so this never over-reports progress.
+        completed[index] = queues[index]->cached_completed();
+    }
+    if (detail::is_reached(retire_after, completed)) {
+        destroy();
+        return;
+    }
+    retire_queue.push(retire_after, std::move(destroy));
+}
+
+core::Result<void> Device::Impl::collect() {
+    vulkan::DeviceQueueValues completed{};
+    for (size_t index = 0; index < vulkan::k_queue_count; ++index) {
+        core::Result<uint64_t> value = queues[index]->completed();
+        if (!value) {
+            return std::move(value).error();
+        }
+        completed[index] = *value;
+    }
+    retire_queue.collect(completed);
+    return {};
+}
+
+Device::Impl* get_impl(const Device& device) noexcept {
+    return device.m_impl;
 }
 
 Device::~Device() {
@@ -101,12 +138,34 @@ bool Device::supports_presentation() const noexcept {
     return m_impl->presentation_supported;
 }
 
+bool Device::is_complete(SyncPoint point) const {
+    BYTE_RENDER_ASSERT(is_valid(), "Device is empty");
+    const vulkan::Queue& queue = m_impl->queue(point.queue);
+    if (point.value <= queue.cached_completed()) {
+        return true;
+    }
+    const core::Result<uint64_t> completed = queue.completed();
+    if (!completed) {
+        m_impl->logger->error("{}", completed.error().message);
+        return false;
+    }
+    return point.value <= *completed;
+}
+
+core::Result<void> Device::wait(SyncPoint point, std::chrono::nanoseconds timeout) {
+    BYTE_RENDER_ASSERT(is_valid(), "Device is empty");
+    if (auto waited = m_impl->queue(point.queue).wait(point.value, timeout); !waited) {
+        return waited;
+    }
+    return m_impl->collect();
+}
+
 core::Result<void> Device::wait_idle() {
     BYTE_RENDER_ASSERT(is_valid(), "Device is empty");
     if (const VkResult result = m_impl->vk.vkDeviceWaitIdle(m_impl->device); result != VK_SUCCESS) {
         return vulkan::make_vk_error(result, "vkDeviceWaitIdle");
     }
-    return {};
+    return m_impl->collect();
 }
 
 core::Result<Device> Instance::create_device(const DeviceDesc& desc) {
@@ -175,7 +234,6 @@ core::Result<Device> Instance::create_device(const DeviceDesc& desc) {
     impl->logger = instance.logger;
     impl->adapter = adapter;
     impl->physical_device = physical_device;
-    impl->graphics_queue_family = *queue_family;
     impl->presentation_supported = presentation;
 
     if (const VkResult result = vkCreateDevice(physical_device, &create_info, nullptr, &impl->device);
@@ -183,7 +241,13 @@ core::Result<Device> Instance::create_device(const DeviceDesc& desc) {
         return vulkan::make_vk_error(result, "vkCreateDevice");
     }
     volkLoadDeviceTable(&impl->vk, impl->device);
-    impl->vk.vkGetDeviceQueue(impl->device, impl->graphics_queue_family, 0, &impl->graphics_queue);
+
+    core::Result<std::unique_ptr<vulkan::Queue>> graphics_queue = vulkan::create_queue(
+        impl->device, impl->vk, *queue_family, 0, std::format("{} graphics queue", desc.debug_name));
+    if (!graphics_queue) {
+        return std::move(graphics_queue).error();
+    }
+    impl->queues[static_cast<size_t>(QueueType::Graphics)] = std::move(graphics_queue).value();
 
     const VmaVulkanFunctions vma_functions{
         .vkGetInstanceProcAddr = vkGetInstanceProcAddr,
@@ -202,13 +266,11 @@ core::Result<Device> Instance::create_device(const DeviceDesc& desc) {
     }
 
     vulkan::set_debug_name(impl->device, VK_OBJECT_TYPE_DEVICE, impl->device, desc.debug_name);
-    vulkan::set_debug_name(impl->device, VK_OBJECT_TYPE_QUEUE, impl->graphics_queue,
-                           std::format("{} graphics queue", desc.debug_name));
 
     impl->tracker_id = instance.live_devices.add("Device", desc.debug_name);
 
     instance.logger->debug("device '{}' created on {} (queue family {}, presentation {})", desc.debug_name,
-                           adapter.name, impl->graphics_queue_family, presentation ? "yes" : "no");
+                           adapter.name, *queue_family, presentation ? "yes" : "no");
     return Device{impl.release()};
 }
 

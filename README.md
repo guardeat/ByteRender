@@ -41,6 +41,15 @@ ctest --test-dir build --output-on-failure          # all tests
 ctest --test-dir build --output-on-failure -LE gpu  # skip tests that need a GPU
 ```
 
+Sanitizers (Clang/GCC):
+
+```sh
+cmake -S . -B build-asan -DCMAKE_CXX_FLAGS="-fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer" \
+      -DCMAKE_EXE_LINKER_FLAGS="-fsanitize=address,undefined"
+cmake -S . -B build-tsan -DCMAKE_CXX_FLAGS="-fsanitize=thread -fno-omit-frame-pointer" \
+      -DCMAKE_EXE_LINKER_FLAGS="-fsanitize=thread"
+```
+
 Shared libraries instead of static:
 
 ```sh

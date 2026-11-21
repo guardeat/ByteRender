@@ -19,7 +19,7 @@ Steps may be split further when we get to them.
   Sample prints available GPUs.
 - [x] **Step 4 — Device.** Adapter selection, logical device, queues, feature checks
   (Vulkan 1.3, dynamic rendering, sync2, descriptor indexing, timeline semaphores), VMA, live-object tracking.
-- [ ] **Step 5 — Timeline & retire queue.** Per-queue timeline semaphore, submit/wait, retire queue + `collect()`,
+- [x] **Step 5 — Timeline & retire queue.** Per-queue timeline semaphore, submit/wait, retire queue + `collect()`,
   `wait_idle()`. Unit-test the retire logic.
 - [ ] **Step 6 — Window surface, swapchain, frame loop.** `NativeWindow`, `Swapchain`, frames in flight,
   resize handling, `CommandList` basics, resource-state barriers. **Clear screen to a color** (GLFW sample).

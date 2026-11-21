@@ -1,7 +1,7 @@
 // GPU tests: need a Vulkan 1.3 capable GPU and driver. Every test also enforces the zero-noise policy:
 // nothing (engine, loader, validation layer, driver) may log a warning or an error.
 
-#include "support/capture_log_sink.hpp"
+#include "support/gpu_fixture.hpp"
 
 #include <byte/render/rhi/instance_factory.hpp>
 
@@ -9,22 +9,7 @@
 
 namespace core = byte::core;
 namespace rhi = byte::render::rhi;
-
-namespace {
-
-struct GpuFixture {
-    byte::tests::CaptureLogSink sink;
-    core::Logger logger{sink, core::LogLevel::Trace};
-
-    core::Result<rhi::Instance> create_instance() {
-        const rhi::InstanceFactory factory{logger};
-        return factory.create_instance({.app_name = "byte_render_gpu_tests", .enable_validation = true});
-    }
-
-    ~GpuFixture() { CHECK_MESSAGE(sink.problems().empty(), sink.problems()); }
-};
-
-} // namespace
+using byte::tests::GpuFixture;
 
 TEST_CASE_FIXTURE(GpuFixture, "Instance reports a supported adapter with validation enabled") {
     auto instance = create_instance();

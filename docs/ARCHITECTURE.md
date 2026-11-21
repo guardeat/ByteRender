@@ -103,6 +103,9 @@ private:
 - The root object (`Instance`) has no parent, so it comes from `InstanceFactory`, which holds the injected
   dependencies (the `Logger`). The factory may be destroyed after creation; the logger must outlive the instance.
 - No static `create()` methods, no singletons, no global registries.
+- Backend code reaches another object's implementation through a friend function declared in the public
+  class and defined by the backend: `Device::Impl* get_impl(const Device&)`. It returns a pointer to an
+  incomplete type, so it is useless outside the backend.
 - `Impl` is held as a raw owning pointer (not `std::unique_ptr`) so exported classes stay free of MSVC C4251
   warnings in DLL builds. Root objects `new`/`delete` their `Impl`; resources get theirs from device pools.
 
@@ -128,21 +131,28 @@ Two separate lifetimes:
 - **GPU lifetime** — the `VkImage`, its memory and its bindless slot. Owned by the device; dies only when
   the GPU has provably finished all work that could reference it.
 
-Mechanism — **timeline retirement**:
-1. Each queue owns a timeline semaphore. Every submit signals an increasing 64-bit value.
-2. When a resource object is destroyed, its GPU part is pushed to the device's **retire queue**,
-   tagged with the queue's *last submitted* timeline value.
-3. The device calls `collect()` at frame begin and on submit: everything with
-   `tag <= completed_value` is destroyed (memory freed, bindless slot returned).
-4. Resources never referenced by a submitted command list are freed immediately.
-5. `device.wait_idle()` drains everything (used at shutdown).
+Mechanism — **timeline retirement** (implemented: `vulkan::Queue`, `detail::RetireQueue`, `Device::Impl::retire`):
+1. Each queue owns a timeline semaphore. Every submit signals the next 64-bit value (1, 2, 3, ...).
+2. When a resource object is destroyed, its GPU destructor is tagged with every queue's *last submitted*
+   value at that moment.
+3. If the GPU has already completed those values (e.g. nothing in flight), it is destroyed **immediately**.
+   Otherwise it goes into the device's **retire queue**.
+4. `collect()` destroys, in retirement order, every entry whose values all queues have completed.
+   It runs on `Device::wait()`, `Device::wait_idle()`, and (from step 6) on submit and frame begin.
+5. `wait_idle()` and device destruction release everything (the GPU is idle by then).
 
-Why not per-use refcounting: no atomics while recording, and it stays correct under bindless,
-where a shader may read any slot so exact per-command-list usage is unknowable.
+Properties:
+- Tagging with "last submitted" is conservative: an object destroyed while unrelated work is in flight
+  waits for that work too. In exchange it is exact enough, cheap (no per-use tracking or atomics while
+  recording) and correct under bindless, where a shader may read any slot.
+- The retire queue is thread-safe; resources may be destroyed from any thread. Destructors run outside its lock.
+- Processing is FIFO and stops at the first entry that isn't ready; interleaved concurrent retirements can only
+  delay destruction, never make it early.
 
-Invariants:
-- No RHI object may outlive its `Device`. The device tracks live objects and reports leaks (with debug names) in Debug.
-- The retire queue is thread-safe (resources may be destroyed from any thread).
+Rules:
+- No RHI object may outlive its `Device`. The device tracks live objects and reports leaks (with debug names).
+- Destroying a resource that is referenced by a command list that **has not been submitted yet** is a
+  programmer error (its GPU lifetime cannot be known until the submission exists).
 
 ## 6. Binding model — bindless only (v1)
 
@@ -189,6 +199,12 @@ function pointers); memory is managed by VMA (one allocator per device); objects
 validation is on.
 
 ## 7. Synchronization & submission
+- **`SyncPoint {queue, value}`** names a point in a queue's submission stream; submissions return one.
+  `Device::is_complete(point)` polls, `Device::wait(point, timeout)` blocks (`ErrorCode::Timeout` on expiry).
+  Waiting for a point that was never submitted returns `ErrorCode::InvalidArgument` instead of deadlocking.
+  A default `SyncPoint` is always complete.
+- Queues: v1 has one universal queue (`QueueType::Graphics`: graphics + compute + transfer). Queue arrays and
+  retirement are already sized by queue count, so async compute/transfer queues slot in later.
 - Vulkan 1.3 features: **dynamic rendering** (no `VkRenderPass`/`VkFramebuffer`) and **synchronization2**.
 - The RHI exposes barriers as abstract **resource states** (`Undefined`, `ShaderRead`, `ColorAttachment`,
   `DepthWrite`, `CopySrc`, `CopyDst`, `Present`, ...). The backend maps them to stages/access/layouts.
@@ -252,6 +268,8 @@ Result<Texture> Device::create_texture(const TextureDesc& desc) {
 
 ### Tests
 - `byte_render_tests`: unit tests, no GPU needed.
+- `byte_render_vulkan_tests` (label `gpu`, static Vulkan builds only): white-box tests of backend internals
+  (timeline queues, deferred destruction with real Vulkan objects).
 - `byte_render_gpu_tests` (CTest label `gpu`): need a Vulkan 1.3 GPU. They run with validation enabled and
   **fail if anything logs a warning or error** (engine, loader, validation layer, driver) — the zero-noise
   policy is enforced by tests. Skip them on machines without a GPU: `ctest -LE gpu`.

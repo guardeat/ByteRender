@@ -3,7 +3,9 @@
 #include <byte/core/result.hpp>
 #include <byte/render/rhi/adapter.hpp>
 #include <byte/render/rhi/export.hpp>
+#include <byte/render/rhi/queue.hpp>
 
+#include <chrono>
 #include <cstdint>
 #include <optional>
 #include <string_view>
@@ -36,11 +38,21 @@ public:
     // True if the device can present to window surfaces (swapchains).
     [[nodiscard]] bool supports_presentation() const noexcept;
 
-    // Blocks until the GPU has finished all submitted work.
+    // True if the GPU has finished all work up to and including `point` (non-blocking).
+    [[nodiscard]] bool is_complete(SyncPoint point) const;
+
+    // Blocks until `point` is complete. Fails with ErrorCode::Timeout if `timeout` expires first, and with
+    // ErrorCode::InvalidArgument if `point` was never submitted (it could never complete).
+    [[nodiscard]] core::Result<void> wait(SyncPoint point,
+                                          std::chrono::nanoseconds timeout = std::chrono::nanoseconds::max());
+
+    // Blocks until the GPU has finished all submitted work, then releases every retired GPU object.
     [[nodiscard]] core::Result<void> wait_idle();
 
 private:
     friend class Instance;
+    // Backend access to the implementation (declared and defined by the backend).
+    friend Impl* get_impl(const Device& device) noexcept;
 
     explicit Device(Impl* impl) noexcept : m_impl(impl) {}
 
