@@ -5,18 +5,22 @@ if(BYTEE_RHI_BACKEND STREQUAL "Vulkan")
     set(backend_sources
         src/vulkan/vulkan_backend.cpp
         src/vulkan/vulkan_common.cpp
+        src/vulkan/vulkan_device.cpp
         src/vulkan/vulkan_instance.cpp
         src/vulkan/vulkan_loader.cpp
         src/vulkan/vulkan_requirements.cpp
+        src/vulkan/vulkan_vma.cpp
         src/vulkan/vulkan_volk.cpp
     )
     set(backend_libraries bytee_vulkan_dependencies)
-    # volk's implementation is third-party code: compile it without Bytee's warning flags.
+    # volk and VMA implementations are third-party code: compile them without Bytee's warning flags.
     if(MSVC)
-        set_source_files_properties(src/vulkan/vulkan_volk.cpp PROPERTIES COMPILE_OPTIONS "/W0")
+        set(third_party_options "/W0")
     else()
-        set_source_files_properties(src/vulkan/vulkan_volk.cpp PROPERTIES COMPILE_OPTIONS "-w")
+        set(third_party_options "-w")
     endif()
+    set_source_files_properties(src/vulkan/vulkan_volk.cpp src/vulkan/vulkan_vma.cpp
+        PROPERTIES COMPILE_OPTIONS "${third_party_options}")
 endif()
 
 add_library(bytee_rhi ${BYTEE_LIBRARY_TYPE}

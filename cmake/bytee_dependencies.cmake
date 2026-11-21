@@ -18,7 +18,8 @@ function(bytee_fetch_doctest)
     target_include_directories(bytee_doctest SYSTEM INTERFACE "${doctest_SOURCE_DIR}")
 endfunction()
 
-# Vulkan backend: Vulkan-Headers + volk (headers only; volk's implementation is compiled by the backend itself).
+# Vulkan backend: Vulkan-Headers + volk + Vulkan Memory Allocator (headers only; the volk and VMA implementations are
+# compiled by the backend itself).
 # Private to byte::rhi: never propagated to consumers' include paths.
 function(bytee_fetch_vulkan)
     if(TARGET bytee_vulkan_dependencies)
@@ -34,15 +35,26 @@ function(bytee_fetch_vulkan)
         URL_HASH SHA256=1547d8d74395d4048fb3f4a6313da56db626e89b55db238d0d7e8944c8a645f3
         SOURCE_SUBDIR do-not-build
     )
-    FetchContent_MakeAvailable(vulkan_headers volk)
+    FetchContent_Declare(vma
+        URL https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator/archive/refs/tags/v3.5.0.tar.gz
+        URL_HASH SHA256=c5f3db848fca9cb9726b41f256cc3007773321fa92a86d1e0902e66474e8a9e3
+        SOURCE_SUBDIR do-not-build
+    )
+    FetchContent_MakeAvailable(vulkan_headers volk vma)
 
     add_library(bytee_vulkan_dependencies INTERFACE)
     target_include_directories(bytee_vulkan_dependencies SYSTEM INTERFACE
         "${vulkan_headers_SOURCE_DIR}/include"
         "${volk_SOURCE_DIR}"
+        "${vma_SOURCE_DIR}/include"
     )
     # volk provides every Vulkan function as a pointer; the loader is opened at runtime (no link dependency).
-    target_compile_definitions(bytee_vulkan_dependencies INTERFACE VK_NO_PROTOTYPES)
+    target_compile_definitions(bytee_vulkan_dependencies INTERFACE
+        VK_NO_PROTOTYPES
+        # VMA fetches the Vulkan functions it needs through volk's vkGetInstanceProcAddr / vkGetDeviceProcAddr.
+        VMA_STATIC_VULKAN_FUNCTIONS=0
+        VMA_DYNAMIC_VULKAN_FUNCTIONS=1
+        VMA_VULKAN_VERSION=1003000
+    )
     target_link_libraries(bytee_vulkan_dependencies INTERFACE ${CMAKE_DL_LIBS})
-    set(bytee_volk_source_dir "${volk_SOURCE_DIR}" PARENT_SCOPE)
 endfunction()

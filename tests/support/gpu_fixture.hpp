@@ -27,3 +27,23 @@ struct GpuFixture {
 };
 
 } // namespace bytee::tests
+
+namespace bytee::tests {
+
+// An Instance (validation on) and a Device on the best adapter, created before each test.
+struct DeviceFixture : GpuFixture {
+    render::rhi::Instance instance;
+    render::rhi::Device device;
+
+    DeviceFixture() {
+        auto created_instance = create_instance();
+        REQUIRE_MESSAGE(created_instance.has_value(), created_instance.error().message());
+        instance = std::move(created_instance).value();
+
+        auto created_device = instance.create_device({.debug_name = "Test Device"});
+        REQUIRE_MESSAGE(created_device.has_value(), created_device.error().message());
+        device = std::move(created_device).value();
+    }
+};
+
+} // namespace bytee::tests

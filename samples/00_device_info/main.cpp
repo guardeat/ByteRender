@@ -1,4 +1,4 @@
-// Lists the GPUs Bytee can see and whether each one meets Bytee's requirements.
+// Lists the GPUs Bytee can see, whether each one meets Bytee's requirements, and creates a device on the best one.
 
 #include <bytee/core/log.hpp>
 #include <bytee/core/version.hpp>
@@ -32,5 +32,13 @@ int main() {
                     adapter.device_local_memory_bytes / (1024 * 1024),
                     adapter.is_supported ? "supported" : "unsupported: " + adapter.unsupported_reason);
     }
+
+    core::Result<rhi::Device> device = instance->create_device({.debug_name = "Main Device"});
+    if (!device) {
+        logger.error("cannot create a device: {}", device.error().message());
+        return 1;
+    }
+    logger.info("device created on {} (presentation: {})", device->adapter().name,
+                device->is_presentation_supported() ? "yes" : "no");
     return 0;
 }

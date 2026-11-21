@@ -1,5 +1,6 @@
 #pragma once
 
+#include "common/live_object_tracker.hpp"
 #include "vulkan/vulkan_common.hpp"
 
 #include <bytee/core/log.hpp>
@@ -20,6 +21,8 @@ struct BYTEE_HIDDEN Instance::Impl {
     std::vector<VkPhysicalDevice> physical_devices;
     std::vector<AdapterInfo> adapters;
 
+    detail::LiveObjectTracker live_devices;
+
     Impl() = default;
     ~Impl();
     Impl(const Impl&) = delete;
@@ -27,5 +30,9 @@ struct BYTEE_HIDDEN Instance::Impl {
 };
 
 [[nodiscard]] Instance::Impl* get_impl(const Instance& instance) noexcept;
+
+// Destroys an Instance implementation. If Devices are still alive this is a programmer error: it is reported by name
+// and asserts in Debug; otherwise the implementation is deliberately leaked, because the devices still use it.
+void destroy(Instance::Impl* impl) noexcept;
 
 } // namespace bytee::render::rhi

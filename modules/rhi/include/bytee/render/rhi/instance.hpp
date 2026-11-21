@@ -1,8 +1,10 @@
 #pragma once
 
 #include <bytee/core/compiler.hpp>
+#include <bytee/core/result.hpp>
 #include <bytee/core/version.hpp>
 #include <bytee/render/rhi/adapter.hpp>
+#include <bytee/render/rhi/device.hpp>
 #include <bytee/render/rhi/export.hpp>
 
 #include <span>
@@ -21,6 +23,7 @@ struct InstanceDesc {
 
 // Root of the RHI: the connection to the graphics API and the list of adapters (GPUs).
 // Created by InstanceFactory. Move-only. Only one Instance may be alive per process (architecture §10).
+// Every Device created from it must be destroyed first.
 class BYTEE_RHI_API Instance {
 public:
     struct BYTEE_HIDDEN Impl; // backend-defined, opaque
@@ -43,6 +46,10 @@ public:
     // True if window-system presentation is available (swapchains can be created on supporting devices).
     [[nodiscard]] bool is_presentation_supported() const noexcept;
     [[nodiscard]] std::span<const AdapterInfo> adapters() const noexcept;
+
+    // Fails with ErrorCode::InvalidArgument for an out-of-range adapter index and ErrorCode::NotSupported if the
+    // requested adapter (or, without an index, every adapter) does not meet Bytee's requirements.
+    [[nodiscard]] core::Result<Device> create_device(const DeviceDesc& desc);
 
 private:
     friend class InstanceFactory;

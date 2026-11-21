@@ -45,6 +45,20 @@ core::ErrorCode to_error_code(VkResult result) noexcept {
     }
 }
 
+void set_debug_name(VkDevice device, VkObjectType type, uint64_t handle, std::string_view name) {
+    if (vkSetDebugUtilsObjectNameEXT == nullptr || name.empty()) {
+        return;
+    }
+    const std::string terminated{name};
+    const VkDebugUtilsObjectNameInfoEXT info{
+        .sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT,
+        .objectType = type,
+        .objectHandle = handle,
+        .pObjectName = terminated.c_str(),
+    };
+    vkSetDebugUtilsObjectNameEXT(device, &info);
+}
+
 core::Error make_vk_error(VkResult result, core::ErrorFormat<> call) {
 #if defined(BYTEE_ENABLE_ERROR_LOCATIONS)
     return core::Error{to_error_code(result), std::format("{} failed: {}", std::format(call.format), to_string(result)),

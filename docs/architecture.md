@@ -222,7 +222,13 @@ list is a programmer error.
   - `Instance` creation: Vulkan 1.3 loader required; portability enumeration when exposed; `VK_KHR_surface` plus every
     available platform surface extension (`Instance::is_presentation_supported()`); validation optional — a missing or
     broken layer logs one warning and creation continues without it.
-- Memory: Vulkan Memory Allocator, one allocator per device.
+- Memory: Vulkan Memory Allocator, one allocator per device (functions fetched through volk).
+- `Device` creation: best supported adapter (discrete > integrated > virtual > others, then most device-local memory)
+  or an explicit index; one universal queue; per-device `VolkDeviceTable`; `VK_KHR_swapchain` only when the instance
+  supports presentation; several devices per instance allowed.
+- Destruction order is enforced: a parent destroyed while children are alive reports each child by type and debug
+  name and asserts in Debug; in Release the parent is deliberately leaked instead of freed (a leak is recoverable,
+  a use-after-free is not).
 - Required adapter features: Vulkan 1.3, `dynamicRendering`, `synchronization2`, `timelineSemaphore`, the descriptor
   indexing set for bindless, `bufferDeviceAddress`, `scalarBlockLayout`, `samplerAnisotropy`; a queue family with
   graphics + compute. `AdapterInfo` reports unsupported adapters with a reason.

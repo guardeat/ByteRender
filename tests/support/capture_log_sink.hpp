@@ -34,6 +34,12 @@ public:
         return entries_;
     }
 
+    // Forgets recorded messages, e.g. after a test checked an error it provoked on purpose.
+    void clear() {
+        const std::scoped_lock lock{mutex_};
+        entries_.clear();
+    }
+
     // Warnings and errors, one per line; empty when clean.
     [[nodiscard]] std::string problems() const {
         const std::scoped_lock lock{mutex_};

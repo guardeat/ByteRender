@@ -141,13 +141,25 @@ Instance::Impl* get_impl(const Instance& instance) noexcept {
     return instance.impl_;
 }
 
+void destroy(Instance::Impl* impl) noexcept {
+    if (impl == nullptr) {
+        return;
+    }
+    if (impl->live_devices.count() > 0) {
+        impl->live_devices.report_leaks(*impl->logger, "Instance");
+        BYTEE_ASSERT(false, "every Device must be destroyed before its Instance");
+        return; // leaked on purpose: a leak is recoverable, a use-after-free is not
+    }
+    delete impl;
+}
+
 Instance::~Instance() {
-    delete impl_;
+    destroy(impl_);
 }
 
 Instance& Instance::operator=(Instance&& other) noexcept {
     if (this != &other) {
-        delete impl_;
+        destroy(impl_);
         impl_ = std::exchange(other.impl_, nullptr);
     }
     return *this;

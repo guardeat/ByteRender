@@ -23,6 +23,16 @@ inline constexpr uint32_t k_required_api_version = VK_API_VERSION_1_3;
 //   return make_vk_error(result, "vkCreateInstance");
 [[nodiscard]] core::Error make_vk_error(VkResult result, core::ErrorFormat<> call);
 
+// Names a Vulkan object for validation messages and GPU debuggers. No-op unless VK_EXT_debug_utils is enabled
+// (validation on).
+void set_debug_name(VkDevice device, VkObjectType type, uint64_t handle, std::string_view name);
+
+template <class Handle_>
+    requires std::is_pointer_v<Handle_> // Vulkan handles are pointers on 64-bit targets
+void set_debug_name(VkDevice device, VkObjectType type, Handle_ handle, std::string_view name) {
+    set_debug_name(device, type, reinterpret_cast<uint64_t>(handle), name);
+}
+
 [[nodiscard]] constexpr core::Version to_version(uint32_t vk_version) noexcept {
     return core::Version{
         .major = VK_API_VERSION_MAJOR(vk_version),
