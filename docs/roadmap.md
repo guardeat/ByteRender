@@ -5,7 +5,7 @@ Rendering features are validated **headless first** (image tests), presentation 
 
 ## Phase 0 — Foundation
 - [x] **Step 0 — Rules & design.** `CLAUDE.md`, `docs/architecture.md`, `docs/roadmap.md`.
-- [ ] **Step 1 — Build system.** Repo hygiene files, CMake presets (debug/release/asan/tsan/shared), options,
+- [x] **Step 1 — Build system.** Repo hygiene files, CMake presets (debug/release/asan/tsan/shared), options,
   warnings-as-errors, sanitizers, LTO, module skeletons with export macros, doctest harness,
   `00_device_info` sample printing the version.
 - [ ] **Step 2 — Core basics.** `Result<T_>`, `Error`, `BYTE_RENDER_ASSERT`, `LogSink`/`Logger`, `Flags<Enum_>`,

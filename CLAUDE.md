@@ -9,7 +9,8 @@ multiple projects. **Performance is a primary goal.**
 ## Workflow
 1. One roadmap step at a time. Never implement beyond the current step.
 2. Plan the step before coding it; discuss design changes first, update `docs/architecture.md`, then implement.
-3. Every step ends with a from-scratch build, tests passing and a run, then **one commit**.
+3. Every step ends with a from-scratch build of **every preset** (`debug`, `release`, `shared`, `asan`, `tsan`),
+   tests passing, samples run, `format_check` clean — then **one commit**.
 4. If a step reveals a problem with an earlier decision, stop and raise it — never silently work around it.
 
 ## Zero-noise policy (100% clean)

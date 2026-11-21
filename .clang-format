@@ -1,0 +1,34 @@
+# Verified with clang-format 23.
+---
+Language: Cpp
+BasedOnStyle: LLVM
+Standard: c++20
+ColumnLimit: 120
+IndentWidth: 4
+AccessModifierOffset: -4
+NamespaceIndentation: None
+FixNamespaceComments: true
+PointerAlignment: Left
+ReferenceAlignment: Left
+IndentPPDirectives: BeforeHash
+AllowShortFunctionsOnASingleLine: Inline
+AllowShortIfStatementsOnASingleLine: Never
+AllowShortLoopsOnASingleLine: false
+AllowShortCaseLabelsOnASingleLine: true
+AlwaysBreakTemplateDeclarations: Yes
+BreakConstructorInitializers: BeforeComma
+PackConstructorInitializers: Never
+RequiresClausePosition: OwnLine
+IndentRequiresClause: true
+EmptyLineBeforeAccessModifier: LogicalBlock
+SortIncludes: CaseSensitive
+IncludeBlocks: Regroup
+IncludeCategories:
+  - Regex: '^"'                                   # private headers of this module
+    Priority: 1
+  - Regex: '^<byte/'                              # ByteRender public headers
+    Priority: 2
+  - Regex: '^<(vulkan|volk|vk_mem_alloc|GLFW|doctest)'  # third-party
+    Priority: 3
+  - Regex: '^<'                                   # standard library / system
+    Priority: 4
