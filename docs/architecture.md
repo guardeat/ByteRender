@@ -241,8 +241,32 @@ list is a programmer error.
 - Right-handed world space, Y-up. Clip-space conventions are fixed by the RHI so all backends match.
 
 ## 15. Errors and logging
-- No exceptions; `Result<T_>` for runtime failures, `BYTE_RENDER_ASSERT` for programmer errors (Debug).
-- `Logger` is injected through `InstanceFactory`; it formats with `std::format` and captures `std::source_location`.
+
+### Two kinds of failure
+| Kind | Example | Mechanism | Release builds |
+|---|---|---|---|
+| Runtime failure (can happen in a correct program) | out of GPU memory, no supported adapter, device lost, timeout | `core::Result<T_>` returned to the caller | always active |
+| Programmer error (bug in the calling code) | empty object used, invalid handle, out-of-range index | `BYTE_RENDER_ASSERT(cond, "msg {}", args...)`: prints condition, message, location, then aborts | compiled out |
+
+- `Result<T_>` holds a value or an `Error {ErrorCode code; std::string message; std::source_location location;}`.
+  The message is only allocated on failure. `Result<void>` for operations without a value. `[[nodiscard]]`.
+- **Error locations are Debug-only**: `Error::location` always exists (stable layout across configurations) but is
+  only filled when `BYTE_RENDER_ERROR_LOCATIONS` is on (default: Debug), so Release binaries contain no file names.
+- **The engine returns errors; it does not log them.** The caller decides how to report. The engine itself only
+  logs fallback warnings (e.g. validation unavailable), leak reports and graphics-API validation messages.
+- **Device lost is sticky**: the first `DeviceLost` marks the device as lost; every later fallible call returns
+  `ErrorCode::DeviceLost` immediately without touching the GPU. The application recovers by destroying and
+  recreating the device.
+- Assert failures print and abort (no hookable global handler — no globals). A debugger stops at the failing line.
+
+### Logging
+- `LogSink`: user-implementable, thread-safe destination (console, file, editor panel). `ConsoleLogSink` provided.
+- `Logger`: application-owned object (not a global), injected through `InstanceFactory`. Runtime level check is a
+  single atomic load; text is formatted with `std::format` only when the level is enabled; the caller's
+  `std::source_location` is captured automatically.
+- **Compile-time stripping**: `BYTE_RENDER_LOG_LEVEL` (default `Debug` in Debug builds, `Info` otherwise). Calls
+  below it compile to nothing — no check, no format string in the binary.
+- Graphics-API messages (validation layer, loader) are routed into the same logger.
 
 ## 16. Build, dependencies, options
 
@@ -260,8 +284,11 @@ list is a programmer error.
 | `BYTE_RENDER_RHI_BACKEND` | `Vulkan` | Compile-time backend |
 | `BYTE_RENDER_BUILD_SHARED` | `OFF` | Shared instead of static libraries |
 | `BYTE_RENDER_ASSERTS` | `AUTO` | `AUTO` = Debug only, `ON`, `OFF` |
+| `BYTE_RENDER_ERROR_LOCATIONS` | `AUTO` | Record where errors are created: `AUTO` = Debug only, `ON`, `OFF` |
+| `BYTE_RENDER_LOG_LEVEL` | `AUTO` | Compile-time minimum log level: `AUTO` = `Debug` in Debug, `Info` otherwise |
+| `BYTE_RENDER_SANITIZE` | empty | `address` (ASan+UBSan) or `thread` (TSan), top-level builds |
 | `BYTE_RENDER_WARNINGS_AS_ERRORS` | `ON` | Warnings are errors in ByteRender targets |
-| `BYTE_RENDER_LTO` | `ON` | Link-time optimization in Release |
+| `BYTE_RENDER_LTO` | `ON` when top-level | Link-time optimization in Release (consumers opt in: GCC LTO static libraries contain only bitcode) |
 | `BYTE_RENDER_BUILD_SAMPLES` / `_TESTS` | `ON` when top-level | Samples / tests |
 
 ## 17. Testing
