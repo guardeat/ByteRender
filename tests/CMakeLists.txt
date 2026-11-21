@@ -13,6 +13,7 @@ add_executable(bytee_tests
     core/test_result.cpp
     core/test_types.cpp
     core/test_version.cpp
+    rhi/test_format.cpp
     rhi/test_live_object_tracker.cpp
     rhi/test_retire_list.cpp
 )
@@ -20,7 +21,7 @@ target_include_directories(bytee_tests PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}"
     "${PROJECT_SOURCE_DIR}/modules/rhi/src" # backend-agnostic internals (header-only)
 )
-target_link_libraries(bytee_tests PRIVATE bytee::core bytee_doctest)
+target_link_libraries(bytee_tests PRIVATE bytee::rhi bytee_doctest) # rhi: header-only checks (formats); no GPU use
 target_compile_definitions(bytee_tests PRIVATE
     BYTEE_EXPECTED_VERSION_MAJOR=${PROJECT_VERSION_MAJOR}
     BYTEE_EXPECTED_VERSION_MINOR=${PROJECT_VERSION_MINOR}
@@ -34,6 +35,7 @@ add_executable(bytee_gpu_tests
     main.cpp
     rhi/test_device.cpp
     rhi/test_instance.cpp
+    rhi/test_resources.cpp
     rhi/test_sync.cpp
 )
 target_include_directories(bytee_gpu_tests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}")
@@ -60,6 +62,7 @@ if(NOT BYTEE_BUILD_SHARED AND BYTEE_RHI_BACKEND STREQUAL "Vulkan")
         main.cpp
         vulkan/test_vulkan_device.cpp
         vulkan/test_vulkan_queue.cpp
+        vulkan/test_vulkan_resources.cpp
     )
     target_include_directories(bytee_vulkan_gpu_tests PRIVATE
         "${CMAKE_CURRENT_SOURCE_DIR}"
@@ -94,4 +97,7 @@ if(BYTEE_ASSERTS STREQUAL "ON" OR (BYTEE_ASSERTS STREQUAL "AUTO" AND CMAKE_BUILD
     bytee_add_death_test(bytee_device_outlives_instance death/device_outlives_instance.cpp bytee::rhi
         "Instance destroyed while Device 'Leaky Device' is still alive.*every Device must be destroyed before its Instance")
     set_tests_properties(bytee_device_outlives_instance PROPERTIES LABELS gpu)
+    bytee_add_death_test(bytee_texture_outlives_device death/texture_outlives_device.cpp bytee::rhi
+        "Device 'Leaky Device' destroyed while Texture 'leaked' is still alive.*every resource must be destroyed before its Device")
+    set_tests_properties(bytee_texture_outlives_device PROPERTIES LABELS gpu)
 endif()

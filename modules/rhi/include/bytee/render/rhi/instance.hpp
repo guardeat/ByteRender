@@ -13,6 +13,10 @@
 
 namespace bytee::render::rhi {
 
+namespace detail {
+struct BYTEE_HIDDEN InstanceImpl; // backend-defined, opaque
+} // namespace detail
+
 struct InstanceDesc {
     std::string_view app_name = "Bytee Application";
     core::Version app_version;
@@ -25,11 +29,8 @@ struct InstanceDesc {
 // Created by InstanceFactory. Move-only. Only one Instance may be alive per process (architecture §10).
 // Every Device created from it must be destroyed first.
 class BYTEE_RHI_API Instance {
-public:
-    struct BYTEE_HIDDEN Impl; // backend-defined, opaque
-
 private:
-    Impl* impl_ = nullptr;
+    detail::InstanceImpl* impl_ = nullptr;
 
 public:
     Instance() noexcept = default;
@@ -54,9 +55,9 @@ public:
 private:
     friend class InstanceFactory;
     // Backend access to the implementation (defined by the backend).
-    friend Impl* get_impl(const Instance& instance) noexcept;
+    friend detail::InstanceImpl* get_impl(const Instance& instance) noexcept;
 
-    explicit Instance(Impl* impl) noexcept
+    explicit Instance(detail::InstanceImpl* impl) noexcept
         : impl_(impl) {}
 };
 

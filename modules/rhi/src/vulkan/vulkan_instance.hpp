@@ -10,7 +10,7 @@
 
 namespace bytee::render::rhi {
 
-struct BYTEE_HIDDEN Instance::Impl {
+struct BYTEE_HIDDEN detail::InstanceImpl {
     core::Logger* logger = nullptr;
     VkInstance instance = VK_NULL_HANDLE;
     VkDebugUtilsMessengerEXT debug_messenger = VK_NULL_HANDLE;
@@ -23,16 +23,16 @@ struct BYTEE_HIDDEN Instance::Impl {
 
     detail::LiveObjectTracker live_devices;
 
-    Impl() = default;
-    ~Impl();
-    Impl(const Impl&) = delete;
-    Impl& operator=(const Impl&) = delete;
+    InstanceImpl() = default;
+    ~InstanceImpl();
+    InstanceImpl(const InstanceImpl&) = delete;
+    InstanceImpl& operator=(const InstanceImpl&) = delete;
 };
 
-[[nodiscard]] Instance::Impl* get_impl(const Instance& instance) noexcept;
+[[nodiscard]] detail::InstanceImpl* get_impl(const Instance& instance) noexcept;
 
 // Destroys an Instance implementation. If Devices are still alive this is a programmer error: it is reported by name
 // and asserts in Debug; otherwise the implementation is deliberately leaked, because the devices still use it.
-void destroy(Instance::Impl* impl) noexcept;
+void destroy(detail::InstanceImpl* impl) noexcept;
 
 } // namespace bytee::render::rhi

@@ -174,6 +174,13 @@ const rhi::TextureInfo& info = device->info(view);          // data lives in the
 - Resource data (descriptions, backend handles, allocations) lives in the device's pools; queries go through the
   device. Hot paths pass handles.
 - A texture's pool index **is its bindless descriptor slot**, so shaders receive `handle.index()` directly.
+- Implementation: `ResourceReleaser` (the deleter) holds the device's opaque `detail::DeviceImpl*`; opaque backend
+  types are declared at namespace scope (`detail::InstanceImpl`, `detail::DeviceImpl`) so public headers can name them.
+- Buffers: `MemoryLocation::Device | Upload | Readback`; every buffer has a GPU address (`info.device_address`);
+  Upload/Readback buffers are persistently mapped and accessed with `Device::write()` / `read()`.
+- Textures: 2D (with array layers) and 3D, explicit mip count; a default image view; format/usage support is checked
+  against the GPU (`NotSupported`); invalid descriptions return `InvalidArgument`.
+- Pool capacities come from `DeviceDesc::limits`; a full pool returns `ErrorCode::LimitExceeded`.
 
 ## 6. Lifetime: CPU ownership vs. GPU lifetime
 - **CPU lifetime**: the `Resource` object. Destroying it releases the handle to the device.

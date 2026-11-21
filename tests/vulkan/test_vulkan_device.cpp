@@ -11,7 +11,7 @@ namespace vulkan = bytee::render::rhi::vulkan;
 using bytee::tests::DeviceFixture;
 
 TEST_CASE_FIXTURE(DeviceFixture, "The device has its own function table, a queue and a memory allocator") {
-    const rhi::Device::Impl& impl = *rhi::get_impl(device);
+    const rhi::detail::DeviceImpl& impl = *rhi::get_impl(device);
     CHECK(impl.device != VK_NULL_HANDLE);
     CHECK(impl.vk.vkQueueSubmit2 != nullptr);
     CHECK(impl.vk.vkCmdBeginRendering != nullptr);
@@ -24,14 +24,14 @@ TEST_CASE_FIXTURE(DeviceFixture, "The device has its own function table, a queue
 }
 
 TEST_CASE_FIXTURE(DeviceFixture, "Debug names are accepted by the validation layer") {
-    const rhi::Device::Impl& impl = *rhi::get_impl(device);
+    const rhi::detail::DeviceImpl& impl = *rhi::get_impl(device);
     vulkan::set_debug_name(impl.device, VK_OBJECT_TYPE_QUEUE, impl.queue(rhi::QueueType::Graphics).handle(),
                            "renamed queue");
     vulkan::set_debug_name(impl.device, VK_OBJECT_TYPE_DEVICE, impl.device, "");
 }
 
 TEST_CASE_FIXTURE(DeviceFixture, "Device lost is sticky") {
-    rhi::Device::Impl& impl = *rhi::get_impl(device);
+    rhi::detail::DeviceImpl& impl = *rhi::get_impl(device);
     const core::Error error = impl.fail(VK_ERROR_DEVICE_LOST, "simulated call");
     CHECK(error.code() == core::ErrorCode::DeviceLost);
     CHECK(device.is_lost());

@@ -78,12 +78,12 @@ uint64_t to_timeout_nanoseconds(std::chrono::nanoseconds timeout) noexcept {
 
 } // namespace vulkan
 
-Device::Impl::~Impl() {
-    if (device != VK_NULL_HANDLE) {
-        // A destructor cannot report failure; afterwards the GPU is idle unless the device was lost.
-        static_cast<void>(vk.vkDeviceWaitIdle(device));
-        retired_objects.drain([this](const vulkan::RetiredObject& object) { destroy_now(object); });
-    }
+detail::DeviceImpl::DeviceImpl(const DeviceLimits& limits)
+    : buffers(limits.max_buffers)
+    , textures(limits.max_textures) {}
+
+detail::DeviceImpl::~DeviceImpl() {
+    finish_pending_work();
     for (std::unique_ptr<vulkan::Queue>& queue_ptr : queues) {
         queue_ptr.reset();
     }
@@ -98,18 +98,29 @@ Device::Impl::~Impl() {
     }
 }
 
-core::Error Device::Impl::fail(VkResult result, core::ErrorFormat<> call) {
+void detail::DeviceImpl::finish_pending_work() noexcept {
+    if (device == VK_NULL_HANDLE) {
+        return;
+    }
+    // Nothing can be reported from here; afterwards the GPU is idle unless the device was lost.
+    static_cast<void>(vk.vkDeviceWaitIdle(device));
+    retired_buffers.drain([this](BufferHandle buffer) { destroy_now(buffer); });
+    retired_textures.drain([this](TextureHandle texture) { destroy_now(texture); });
+    retired_objects.drain([this](const vulkan::RetiredObject& object) { destroy_now(object); });
+}
+
+core::Error detail::DeviceImpl::fail(VkResult result, core::ErrorFormat<> call) {
     if (result == VK_ERROR_DEVICE_LOST && !lost.exchange(true, std::memory_order_acq_rel)) {
         logger->error("device '{}' was lost; it must be recreated", debug_name);
     }
     return vulkan::make_vk_error(result, call);
 }
 
-core::Error Device::Impl::lost_error() const {
+core::Error detail::DeviceImpl::lost_error() const {
     return core::make_error(core::ErrorCode::DeviceLost, "device '{}' was lost; it must be recreated", debug_name);
 }
 
-vulkan::DeviceQueueValues Device::Impl::last_submitted() const noexcept {
+vulkan::DeviceQueueValues detail::DeviceImpl::last_submitted() const noexcept {
     vulkan::DeviceQueueValues values{};
     for (std::size_t index = 0; index < vulkan::k_queue_count; ++index) {
         values[index] = queues[index]->last_submitted();
@@ -117,7 +128,7 @@ vulkan::DeviceQueueValues Device::Impl::last_submitted() const noexcept {
     return values;
 }
 
-vulkan::DeviceQueueValues Device::Impl::cached_completed() const noexcept {
+vulkan::DeviceQueueValues detail::DeviceImpl::cached_completed() const noexcept {
     vulkan::DeviceQueueValues values{};
     for (std::size_t index = 0; index < vulkan::k_queue_count; ++index) {
         values[index] = queues[index]->cached_completed();
@@ -125,9 +136,10 @@ vulkan::DeviceQueueValues Device::Impl::cached_completed() const noexcept {
     return values;
 }
 
-core::Result<SyncPoint> Device::Impl::submit(QueueType type, std::span<const VkCommandBufferSubmitInfo> command_buffers,
-                                             std::span<const VkSemaphoreSubmitInfo> waits,
-                                             std::span<const VkSemaphoreSubmitInfo> signals) {
+core::Result<SyncPoint> detail::DeviceImpl::submit(QueueType type,
+                                                   std::span<const VkCommandBufferSubmitInfo> command_buffers,
+                                                   std::span<const VkSemaphoreSubmitInfo> waits,
+                                                   std::span<const VkSemaphoreSubmitInfo> signals) {
     if (lost.load(std::memory_order_acquire)) {
         return lost_error();
     }
@@ -139,7 +151,7 @@ core::Result<SyncPoint> Device::Impl::submit(QueueType type, std::span<const VkC
     return SyncPoint{.queue = type, .value = value};
 }
 
-void Device::Impl::retire(vulkan::RetiredObject object) {
+void detail::DeviceImpl::retire(vulkan::RetiredObject object) {
     const vulkan::DeviceQueueValues retire_after = last_submitted();
     // Read after last_submitted(): completed values only grow, so this never over-reports progress.
     if (detail::is_reached(retire_after, cached_completed())) {
@@ -149,18 +161,20 @@ void Device::Impl::retire(vulkan::RetiredObject object) {
     retired_objects.push(retire_after, object);
 }
 
-core::Result<void> Device::Impl::collect() {
+core::Result<void> detail::DeviceImpl::collect() {
     vulkan::DeviceQueueValues completed{};
     for (std::size_t index = 0; index < vulkan::k_queue_count; ++index) {
         if (const VkResult result = queues[index]->query_completed(completed[index]); result != VK_SUCCESS) {
             return fail(result, "vkGetSemaphoreCounterValue");
         }
     }
+    retired_buffers.collect(completed, [this](BufferHandle buffer) { destroy_now(buffer); });
+    retired_textures.collect(completed, [this](TextureHandle texture) { destroy_now(texture); });
     retired_objects.collect(completed, [this](const vulkan::RetiredObject& object) { destroy_now(object); });
     return {};
 }
 
-void Device::Impl::destroy_now(const vulkan::RetiredObject& object) const noexcept {
+void detail::DeviceImpl::destroy_now(const vulkan::RetiredObject& object) const noexcept {
     switch (object.type) {
     case VK_OBJECT_TYPE_FENCE: vk.vkDestroyFence(device, reinterpret_cast<VkFence>(object.handle), nullptr); return;
     case VK_OBJECT_TYPE_SEMAPHORE:
@@ -170,14 +184,15 @@ void Device::Impl::destroy_now(const vulkan::RetiredObject& object) const noexce
     }
 }
 
-Device::Impl* get_impl(const Device& device) noexcept {
+detail::DeviceImpl* get_impl(const Device& device) noexcept {
     return device.impl_;
 }
 
-void destroy(Device::Impl* impl) noexcept {
+void destroy(detail::DeviceImpl* impl) noexcept {
     if (impl == nullptr) {
         return;
     }
+    impl->finish_pending_work(); // retired-but-pending resources are not leaks
     if (impl->live_objects.count() > 0) {
         impl->live_objects.report_leaks(*impl->logger, std::format("Device '{}'", impl->debug_name));
         BYTEE_ASSERT(false, "every resource must be destroyed before its Device");
@@ -264,7 +279,12 @@ core::Result<void> Device::wait_idle() {
 
 core::Result<Device> Instance::create_device(const DeviceDesc& desc) {
     BYTEE_ASSERT(is_valid(), "Instance is empty");
-    Impl& instance = *impl_;
+    detail::InstanceImpl& instance = *impl_;
+
+    if (desc.limits.max_buffers == 0 || desc.limits.max_textures == 0) {
+        return core::make_error(core::ErrorCode::InvalidArgument, "device '{}': resource limits must not be 0",
+                                desc.debug_name);
+    }
 
     uint32_t adapter_index = 0;
     if (desc.adapter_index) {
@@ -322,7 +342,7 @@ core::Result<Device> Instance::create_device(const DeviceDesc& desc) {
         .ppEnabledExtensionNames = enabled_extensions.data(),
     };
 
-    auto impl = std::make_unique<Device::Impl>();
+    auto impl = std::make_unique<detail::DeviceImpl>(desc.limits);
     impl->instance = &instance;
     impl->logger = instance.logger;
     impl->debug_name = desc.debug_name;
@@ -335,6 +355,9 @@ core::Result<Device> Instance::create_device(const DeviceDesc& desc) {
         return vulkan::make_vk_error(result, "vkCreateDevice");
     }
     volkLoadDeviceTable(&impl->vk, impl->device);
+    VkPhysicalDeviceProperties properties{};
+    vkGetPhysicalDeviceProperties(physical_device, &properties);
+    impl->device_limits = properties.limits;
 
     std::unique_ptr<vulkan::Queue>& universal_queue = impl->queues[static_cast<std::size_t>(QueueType::Graphics)];
     if (const VkResult result =

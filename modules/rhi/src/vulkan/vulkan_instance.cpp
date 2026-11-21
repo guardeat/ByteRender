@@ -127,7 +127,7 @@ AdapterInfo describe_adapter(VkPhysicalDevice physical_device, uint32_t index) {
 
 } // namespace
 
-Instance::Impl::~Impl() {
+detail::InstanceImpl::~InstanceImpl() {
     if (debug_messenger != VK_NULL_HANDLE) {
         vkDestroyDebugUtilsMessengerEXT(instance, debug_messenger, nullptr);
     }
@@ -137,11 +137,11 @@ Instance::Impl::~Impl() {
     }
 }
 
-Instance::Impl* get_impl(const Instance& instance) noexcept {
+detail::InstanceImpl* get_impl(const Instance& instance) noexcept {
     return instance.impl_;
 }
 
-void destroy(Instance::Impl* impl) noexcept {
+void destroy(detail::InstanceImpl* impl) noexcept {
     if (impl == nullptr) {
         return;
     }
@@ -199,11 +199,11 @@ core::Result<Instance> InstanceFactory::create_instance(const InstanceDesc& desc
         return core::make_error(core::ErrorCode::NotSupported, "only one rhi::Instance may be alive at a time");
     }
 
-    // From here on, the Impl destructor (or this guard, until vkCreateInstance succeeds) releases the slot.
-    auto impl = std::make_unique<Instance::Impl>();
+    // From here on, the InstanceImpl destructor (or this guard, until vkCreateInstance succeeds) releases the slot.
+    auto impl = std::make_unique<detail::InstanceImpl>();
     impl->logger = logger_;
     struct AliveGuard {
-        const Instance::Impl* impl;
+        const detail::InstanceImpl* impl;
         ~AliveGuard() {
             if (impl->instance == VK_NULL_HANDLE) {
                 instance_alive.store(false, std::memory_order_release);

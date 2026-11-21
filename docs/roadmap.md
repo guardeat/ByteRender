@@ -20,10 +20,10 @@ Rendering features are validated **headless first** (image tests), presentation 
   debug names. GPU tests with the zero-noise fixture.
 - [x] **Step 6 — Timeline & retirement.** Timeline queues, typed retire lists, `SyncPoint`, `wait`/`is_complete`/
   `wait_idle`. Unit + white-box tests, sanitizer runs.
-- [ ] **Step 7 — Buffers & textures.** Pools + handles + `Resource` deleters, VMA allocations, deferred release,
-  `info()` queries, staging uploads.
+- [x] **Step 7 — Buffers & textures.** Pools + handles + `Resource` deleters, VMA allocations, deferred release,
+  `info()` queries, CPU access to host-visible buffers. (Staging uploads moved to step 8: they need copy commands.)
 - [ ] **Step 8 — Command lists & barriers.** Per-thread command pools, `CommandList`, resource-state barriers
-  (batched sync2), `submit()` → `SyncPoint`, copies.
+  (batched sync2), `submit()` → `SyncPoint`, copies, staging uploads (buffer → buffer / texture).
 - [ ] **Step 9 — Headless clear & readback.** Dynamic rendering clear into a texture, readback, image-compare test
   helper. `01_headless_clear` sample writes a PNG-free raw/PPM image.
 - [ ] **Step 10 — Shaders & graphics pipeline.** CMake GLSL → SPIR-V, `GraphicsPipeline`, push constants.

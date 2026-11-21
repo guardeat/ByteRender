@@ -7,6 +7,7 @@
 #include "vulkan/vulkan_queue.hpp"
 
 #include <bytee/core/log.hpp>
+#include <bytee/core/pool.hpp>
 #include <bytee/render/rhi/device.hpp>
 
 #include <vk_mem_alloc.h>
@@ -16,6 +17,7 @@
 #include <chrono>
 #include <cstddef>
 #include <memory>
+#include <mutex>
 #include <span>
 #include <string>
 
@@ -26,19 +28,35 @@ namespace vulkan {
 inline constexpr std::size_t k_queue_count = 1; // one per QueueType
 using DeviceQueueValues = detail::QueueValues<k_queue_count>;
 
-// A backend-internal Vulkan object waiting for the GPU to finish with it. Resource kinds with their own pools get
-// their own typed retire lists instead (step 7).
+// A backend-internal Vulkan object waiting for the GPU to finish with it. Pooled resource kinds (buffers, textures)
+// have their own typed retire lists instead.
 struct RetiredObject {
     VkObjectType type = VK_OBJECT_TYPE_UNKNOWN;
     uint64_t handle = 0;
+};
+
+struct BufferRecord {
+    VkBuffer buffer = VK_NULL_HANDLE;
+    VmaAllocation allocation = VK_NULL_HANDLE;
+    std::byte* mapped = nullptr; // persistently mapped for Upload / Readback memory
+    detail::LiveObjectTracker::Id tracker_id = 0;
+    BufferInfo info;
+};
+
+struct TextureRecord {
+    VkImage image = VK_NULL_HANDLE;
+    VkImageView view = VK_NULL_HANDLE; // default view: every mip level and layer
+    VmaAllocation allocation = VK_NULL_HANDLE;
+    detail::LiveObjectTracker::Id tracker_id = 0;
+    TextureInfo info;
 };
 
 [[nodiscard]] uint64_t to_timeout_nanoseconds(std::chrono::nanoseconds timeout) noexcept;
 
 } // namespace vulkan
 
-struct BYTEE_HIDDEN Device::Impl {
-    Instance::Impl* instance = nullptr; // the creating instance; outlives the device
+struct BYTEE_HIDDEN detail::DeviceImpl {
+    detail::InstanceImpl* instance = nullptr; // the creating instance; outlives the device
     core::Logger* logger = nullptr;
     detail::LiveObjectTracker::Id tracker_id = 0; // entry in instance->live_devices
     std::string debug_name;
@@ -48,6 +66,7 @@ struct BYTEE_HIDDEN Device::Impl {
     VkDevice device = VK_NULL_HANDLE;
     VolkDeviceTable vk{}; // device-level functions for this device only: no loader dispatch, no globals
     VmaAllocator allocator = VK_NULL_HANDLE;
+    VkPhysicalDeviceLimits device_limits{};
 
     // Indexed by QueueType. Destroyed explicitly before the VkDevice.
     std::array<std::unique_ptr<vulkan::Queue>, vulkan::k_queue_count> queues;
@@ -55,13 +74,20 @@ struct BYTEE_HIDDEN Device::Impl {
 
     std::atomic<bool> lost{false}; // sticky: set by the first VK_ERROR_DEVICE_LOST
 
+    // Resources. Lookups are lock-free (pool addresses are stable); insert/remove take resources_mutex.
+    std::mutex resources_mutex;
+    core::Pool<vulkan::BufferRecord, BufferTag> buffers;
+    core::Pool<vulkan::TextureRecord, TextureTag> textures;
+
     detail::RetireList<vulkan::RetiredObject, vulkan::k_queue_count> retired_objects;
+    detail::RetireList<BufferHandle, vulkan::k_queue_count> retired_buffers;
+    detail::RetireList<TextureHandle, vulkan::k_queue_count> retired_textures;
     detail::LiveObjectTracker live_objects; // child resources, for leak reports
 
-    Impl() = default;
-    ~Impl();
-    Impl(const Impl&) = delete;
-    Impl& operator=(const Impl&) = delete;
+    explicit DeviceImpl(const DeviceLimits& limits);
+    ~DeviceImpl();
+    DeviceImpl(const DeviceImpl&) = delete;
+    DeviceImpl& operator=(const DeviceImpl&) = delete;
 
     // Error for a failed call; VK_ERROR_DEVICE_LOST also marks the device lost (permanently).
     [[nodiscard]] core::Error fail(VkResult result, core::ErrorFormat<> call);
@@ -92,12 +118,21 @@ struct BYTEE_HIDDEN Device::Impl {
     [[nodiscard]] core::Result<void> collect();
 
     void destroy_now(const vulkan::RetiredObject& object) const noexcept;
+
+    // Called by ResourceReleaser when the owning Resource is destroyed: retires the handle (deferred destruction).
+    void release(BufferHandle buffer);
+    void release(TextureHandle texture);
+    void destroy_now(BufferHandle buffer);
+    void destroy_now(TextureHandle texture);
+
+    // Waits for the GPU and destroys everything still retired (used before the leak check at destruction).
+    void finish_pending_work() noexcept;
 };
 
-[[nodiscard]] Device::Impl* get_impl(const Device& device) noexcept;
+[[nodiscard]] detail::DeviceImpl* get_impl(const Device& device) noexcept;
 
 // Destroys a Device implementation. Live child resources are a programmer error: reported by name, assert in Debug,
 // and the implementation is deliberately leaked (the resources still use it).
-void destroy(Device::Impl* impl) noexcept;
+void destroy(detail::DeviceImpl* impl) noexcept;
 
 } // namespace bytee::render::rhi

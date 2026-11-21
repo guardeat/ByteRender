@@ -25,6 +25,7 @@ enum class ErrorCode : uint32_t {
     InitializationFailed,
     DeviceLost,
     Timeout,
+    LimitExceeded, // a fixed capacity is exhausted (e.g. a resource pool)
 };
 
 [[nodiscard]] constexpr std::string_view to_string(ErrorCode code) noexcept {
@@ -36,6 +37,7 @@ enum class ErrorCode : uint32_t {
     case ErrorCode::InitializationFailed: return "InitializationFailed";
     case ErrorCode::DeviceLost: return "DeviceLost";
     case ErrorCode::Timeout: return "Timeout";
+    case ErrorCode::LimitExceeded: return "LimitExceeded";
     }
     return "Unknown";
 }

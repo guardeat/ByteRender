@@ -116,4 +116,5 @@ TEST_CASE("BYTEE_TRY propagates errors and continues on success") {
 TEST_CASE("ErrorCode names") {
     CHECK(to_string(ErrorCode::OutOfMemory) == "OutOfMemory");
     CHECK(to_string(ErrorCode::Timeout) == "Timeout");
+    CHECK(to_string(ErrorCode::LimitExceeded) == "LimitExceeded");
 }

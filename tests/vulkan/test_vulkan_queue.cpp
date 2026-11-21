@@ -16,14 +16,14 @@ using bytee::tests::GpuFixture;
 
 namespace {
 
-VkFence create_fence(const rhi::Device::Impl& impl) {
+VkFence create_fence(const rhi::detail::DeviceImpl& impl) {
     const VkFenceCreateInfo info{.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO};
     VkFence fence = VK_NULL_HANDLE;
     REQUIRE(impl.vk.vkCreateFence(impl.device, &info, nullptr, &fence) == VK_SUCCESS);
     return fence;
 }
 
-VkSemaphore create_timeline_semaphore(const rhi::Device::Impl& impl) {
+VkSemaphore create_timeline_semaphore(const rhi::detail::DeviceImpl& impl) {
     const VkSemaphoreTypeCreateInfo type{.sType = VK_STRUCTURE_TYPE_SEMAPHORE_TYPE_CREATE_INFO,
                                          .semaphoreType = VK_SEMAPHORE_TYPE_TIMELINE};
     const VkSemaphoreCreateInfo info{.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO, .pNext = &type};
@@ -39,7 +39,7 @@ vulkan::RetiredObject retired(VkFence fence) {
 } // namespace
 
 TEST_CASE_FIXTURE(DeviceFixture, "The timeline advances with every submission") {
-    rhi::Device::Impl& impl = *rhi::get_impl(device);
+    rhi::detail::DeviceImpl& impl = *rhi::get_impl(device);
     CHECK(impl.queue(rhi::QueueType::Graphics).last_submitted() == 0);
 
     auto first = impl.submit(rhi::QueueType::Graphics, {});
@@ -56,7 +56,7 @@ TEST_CASE_FIXTURE(DeviceFixture, "The timeline advances with every submission") 
 }
 
 TEST_CASE_FIXTURE(DeviceFixture, "Waiting times out while the GPU is blocked, then succeeds") {
-    rhi::Device::Impl& impl = *rhi::get_impl(device);
+    rhi::detail::DeviceImpl& impl = *rhi::get_impl(device);
     const VkSemaphore gate = create_timeline_semaphore(impl);
 
     // The submission cannot start until the CPU signals `gate`.
@@ -83,13 +83,13 @@ TEST_CASE_FIXTURE(DeviceFixture, "Waiting times out while the GPU is blocked, th
 }
 
 TEST_CASE_FIXTURE(DeviceFixture, "Retiring with no GPU work in flight destroys immediately") {
-    rhi::Device::Impl& impl = *rhi::get_impl(device);
+    rhi::detail::DeviceImpl& impl = *rhi::get_impl(device);
     impl.retire(retired(create_fence(impl)));
     CHECK(impl.retired_objects.size() == 0);
 }
 
 TEST_CASE_FIXTURE(DeviceFixture, "Retired objects wait for in-flight work") {
-    rhi::Device::Impl& impl = *rhi::get_impl(device);
+    rhi::detail::DeviceImpl& impl = *rhi::get_impl(device);
     const VkSemaphore gate = create_timeline_semaphore(impl);
     const VkSemaphoreSubmitInfo wait_for_gate{.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
                                               .semaphore = gate,
@@ -112,7 +112,7 @@ TEST_CASE_FIXTURE(DeviceFixture, "Retired objects wait for in-flight work") {
 }
 
 TEST_CASE_FIXTURE(DeviceFixture, "wait_idle releases every retired object") {
-    rhi::Device::Impl& impl = *rhi::get_impl(device);
+    rhi::detail::DeviceImpl& impl = *rhi::get_impl(device);
     for (int i = 0; i < 4; ++i) {
         REQUIRE(impl.submit(rhi::QueueType::Graphics, {}).has_value());
         impl.retire(retired(create_fence(impl)));
@@ -127,7 +127,7 @@ TEST_CASE_FIXTURE(GpuFixture, "Destroying a device releases objects that are sti
     auto device = instance->create_device({.debug_name = "Short-lived"});
     REQUIRE(device.has_value());
 
-    rhi::Device::Impl& impl = *rhi::get_impl(*device);
+    rhi::detail::DeviceImpl& impl = *rhi::get_impl(*device);
     const VkSemaphore gate = create_timeline_semaphore(impl);
     const VkSemaphoreSubmitInfo wait_for_gate{.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
                                               .semaphore = gate,
@@ -146,7 +146,7 @@ TEST_CASE_FIXTURE(GpuFixture, "Destroying a device releases objects that are sti
 }
 
 TEST_CASE_FIXTURE(DeviceFixture, "A lost device rejects submissions and waits") {
-    rhi::Device::Impl& impl = *rhi::get_impl(device);
+    rhi::detail::DeviceImpl& impl = *rhi::get_impl(device);
     static_cast<void>(impl.fail(VK_ERROR_DEVICE_LOST, "simulated call"));
     sink.clear(); // the loss is reported once, on purpose
 

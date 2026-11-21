@@ -5,11 +5,13 @@ if(BYTEE_RHI_BACKEND STREQUAL "Vulkan")
     set(backend_sources
         src/vulkan/vulkan_backend.cpp
         src/vulkan/vulkan_common.cpp
+        src/vulkan/vulkan_convert.cpp
         src/vulkan/vulkan_device.cpp
         src/vulkan/vulkan_instance.cpp
         src/vulkan/vulkan_loader.cpp
         src/vulkan/vulkan_queue.cpp
         src/vulkan/vulkan_requirements.cpp
+        src/vulkan/vulkan_resources.cpp
         src/vulkan/vulkan_vma.cpp
         src/vulkan/vulkan_volk.cpp
     )
