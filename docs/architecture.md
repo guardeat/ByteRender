@@ -219,6 +219,9 @@ list is a programmer error.
   - Instance-level function pointers are process-global in volk → **one live `Instance` per process**
     (creating a second returns an error). This is the only global state in the engine.
   - Loader search: next to the executable (shipped apps), then the system, `$VULKAN_SDK`, Homebrew (macOS).
+  - `Instance` creation: Vulkan 1.3 loader required; portability enumeration when exposed; `VK_KHR_surface` plus every
+    available platform surface extension (`Instance::is_presentation_supported()`); validation optional — a missing or
+    broken layer logs one warning and creation continues without it.
 - Memory: Vulkan Memory Allocator, one allocator per device.
 - Required adapter features: Vulkan 1.3, `dynamicRendering`, `synchronization2`, `timelineSemaphore`, the descriptor
   indexing set for bindless, `bufferDeviceAddress`, `scalarBlockLayout`, `samplerAnisotropy`; a queue family with
@@ -312,5 +315,5 @@ list is a programmer error.
 ## 17. Testing
 - `bytee_tests`: unit tests, no GPU.
 - `bytee_gpu_tests` (label `gpu`): public API on a real GPU, including headless image tests.
-- `bytee_vulkan_tests` (label `gpu`, static builds): white-box backend tests.
+- `bytee_vulkan_tests` (static builds): white-box backend tests; cases that need a GPU are labelled `gpu`.
 - Every GPU test fails if anything logs a warning or error. Sanitizer presets: `asan` (ASan+UBSan), `tsan`.

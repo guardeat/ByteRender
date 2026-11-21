@@ -37,6 +37,8 @@ multiple projects. **Performance is a primary goal.**
    timeline-based retire lists (architecture §6).
 8. No object may outlive its parent (`Device` → resources, `Instance` → `Device`). Leaks are reported by name.
 9. Binding model: bindless only.
+10. Opaque backend types nested in exported classes are declared `struct BYTEE_HIDDEN Impl;` so shared libraries
+    export only the public API (verify with `nm` on the `shared` preset).
 
 ## Performance rules
 - No heap allocation, exceptions, RTTI, virtual calls or locks on hot paths (command recording, per-draw work).

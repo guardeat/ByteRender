@@ -12,12 +12,30 @@ an API-agnostic RHI with a compile-time selected backend (Vulkan) and a render g
 - A C++20 compiler with `std::format`: GCC 13, Clang 17, MSVC 2022 or Apple Clang 15 (macOS 13.3+)
 - Optional: `clang-format` (23) for the `format` / `format_check` targets
 
+## Setup
+
+### macOS
+Install the [LunarG Vulkan SDK](https://vulkan.lunarg.com/sdk/home), or use Homebrew:
+
+```sh
+brew install cmake clang-format molten-vk vulkan-loader vulkan-headers vulkan-validationlayers vulkan-tools glslang
+./tools/macos/fix_homebrew_validation_layer.sh   # once, and again after upgrading vulkan-validationlayers
+vulkaninfo --summary                              # should list your GPU
+```
+
+Homebrew's validation-layer manifest names its library without a path, which the loader cannot resolve; the script
+rewrites it to the absolute path. Without validation Bytee still runs (it logs a warning and continues).
+
+### Windows / Linux
+Install the [LunarG Vulkan SDK](https://vulkan.lunarg.com/sdk/home), or on Linux your distribution's Vulkan loader,
+validation layers and glslang packages.
+
 ## Build
 
 ```sh
 cmake --preset debug            # configure (presets: debug, release, shared, asan, tsan)
 cmake --build --preset debug    # build
-ctest --preset debug            # run tests
+ctest --preset debug            # run tests (ctest --preset debug -LE gpu: skip GPU tests)
 ./build/debug/bin/00_device_info
 ```
 

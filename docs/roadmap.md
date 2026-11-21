@@ -14,7 +14,7 @@ Rendering features are validated **headless first** (image tests), presentation 
   `Pool<Value_, Tag_>`. Unit tests (generation checks, moves, release) + micro-benchmark of pool operations.
 
 ## Phase 1 — RHI + Vulkan, headless first
-- [ ] **Step 4 — Instance.** `InstanceFactory` → `Instance`; volk + loader search, Vulkan 1.3, portability,
+- [x] **Step 4 — Instance.** `InstanceFactory` → `Instance`; volk + loader search, Vulkan 1.3, portability,
   validation into the logger, adapter enumeration with requirement checks. Sample lists GPUs.
 - [ ] **Step 5 — Device.** Adapter selection, universal queue, `VolkDeviceTable`, VMA, leak tracking,
   debug names. GPU tests with the zero-noise fixture.

@@ -24,6 +24,32 @@ target_compile_definitions(bytee_tests PRIVATE
 bytee_configure_target(bytee_tests)
 add_test(NAME bytee_tests COMMAND bytee_tests)
 
+# GPU tests through the public API (label "gpu"; skip on machines without a GPU: ctest -LE gpu).
+add_executable(bytee_gpu_tests
+    main.cpp
+    rhi/test_instance.cpp
+)
+target_include_directories(bytee_gpu_tests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}")
+target_link_libraries(bytee_gpu_tests PRIVATE bytee::rhi bytee_doctest)
+bytee_configure_target(bytee_gpu_tests)
+add_test(NAME bytee_gpu_tests COMMAND bytee_gpu_tests)
+set_tests_properties(bytee_gpu_tests PROPERTIES LABELS gpu)
+
+# White-box backend tests: use backend internals, so only for static Vulkan builds (shared builds hide them).
+if(NOT BYTEE_BUILD_SHARED AND BYTEE_RHI_BACKEND STREQUAL "Vulkan")
+    add_executable(bytee_vulkan_tests
+        main.cpp
+        vulkan/test_vulkan_common.cpp
+    )
+    target_include_directories(bytee_vulkan_tests PRIVATE
+        "${CMAKE_CURRENT_SOURCE_DIR}"
+        "${PROJECT_SOURCE_DIR}/modules/rhi/src"
+    )
+    target_link_libraries(bytee_vulkan_tests PRIVATE bytee::rhi bytee_vulkan_dependencies bytee_doctest)
+    bytee_configure_target(bytee_vulkan_tests)
+    add_test(NAME bytee_vulkan_tests COMMAND bytee_vulkan_tests)
+endif()
+
 # Death tests: the program must abort with the expected report. CTest counts any crash as a failure, so they run
 # through expect_abort.cmake, which requires an abnormal exit and matches the output. Regex metacharacters are written
 # as bracket expressions ([(] rather than an escaped parenthesis): the pattern passes through several CMake parsing layers.
