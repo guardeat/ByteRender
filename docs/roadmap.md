@@ -8,7 +8,7 @@ Rendering features are validated **headless first** (image tests), presentation 
 - [x] **Step 1 — Build system.** Repo hygiene files, CMake presets (debug/release/asan/tsan/shared), options,
   warnings-as-errors, sanitizers, LTO, module skeletons with export macros, doctest harness,
   `00_device_info` sample printing the version.
-- [ ] **Step 2 — Core basics.** `Result<T_>`, `Error`, `BYTE_RENDER_ASSERT`, `LogSink`/`Logger`, `Flags<Enum_>`,
+- [x] **Step 2 — Core basics.** `Result<T_>`, `Error`, `BYTE_RENDER_ASSERT`, `LogSink`/`Logger`, `Flags<Enum_>`,
   `Extent2D/3D`, `Version`. Unit tests.
 - [ ] **Step 3 — Handles, resources, pools.** `Handle<Tag_>`, `Resource<Tag_, Deleter_>`, generational
   `Pool<Value_, Tag_>`. Unit tests (generation checks, moves, release) + micro-benchmark of pool operations.

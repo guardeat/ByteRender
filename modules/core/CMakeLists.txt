@@ -1,4 +1,6 @@
 add_library(byte_render_core ${BYTE_RENDER_LIBRARY_TYPE}
+    src/assert.cpp
+    src/log.cpp
     src/version.cpp
 )
 add_library(byte::core ALIAS byte_render_core)

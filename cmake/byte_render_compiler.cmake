@@ -19,6 +19,8 @@ function(byte_render_configure_target target)
             -Wnon-virtual-dtor -Woverloaded-virtual -Wold-style-cast
             -Wnull-dereference -Wimplicit-fallthrough -Wformat=2 -Wmisleading-indentation
         )
+        # Source locations (asserts, errors, logs) show paths relative to the source tree, never absolute ones.
+        target_compile_options(${target} PRIVATE "-fmacro-prefix-map=${PROJECT_SOURCE_DIR}/=")
         if(BYTE_RENDER_WARNINGS_AS_ERRORS)
             target_compile_options(${target} PRIVATE -Werror)
         endif()

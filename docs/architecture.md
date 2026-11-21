@@ -248,8 +248,11 @@ list is a programmer error.
 | Runtime failure (can happen in a correct program) | out of GPU memory, no supported adapter, device lost, timeout | `core::Result<T_>` returned to the caller | always active |
 | Programmer error (bug in the calling code) | empty object used, invalid handle, out-of-range index | `BYTE_RENDER_ASSERT(cond, "msg {}", args...)`: prints condition, message, location, then aborts | compiled out |
 
-- `Result<T_>` holds a value or an `Error {ErrorCode code; std::string message; std::source_location location;}`.
-  The message is only allocated on failure. `Result<void>` for operations without a value. `[[nodiscard]]`.
+- `Error` is 16 bytes: an inline `ErrorCode` plus a pointer to optional details (message, location).
+  `Error{ErrorCode::Timeout}` never allocates (cheap enough for polling loops); `make_error(code, "fmt {}", args...)`
+  allocates once, on the failure path only. Accessors: `code()`, `message()`, `location()`.
+- `Result<T_>` holds a value or an `Error` (`Result<uint64_t>` ≤ 24 bytes); `Result<void>` for operations without a
+  value. `[[nodiscard]]`. `BYTE_RENDER_TRY(expr)` returns a failed result's error from the enclosing function.
 - **Error locations are Debug-only**: `Error::location` always exists (stable layout across configurations) but is
   only filled when `BYTE_RENDER_ERROR_LOCATIONS` is on (default: Debug), so Release binaries contain no file names.
 - **The engine returns errors; it does not log them.** The caller decides how to report. The engine itself only
@@ -258,6 +261,9 @@ list is a programmer error.
   `ErrorCode::DeviceLost` immediately without touching the GPU. The application recovers by destroying and
   recreating the device.
 - Assert failures print and abort (no hookable global handler — no globals). A debugger stops at the failing line.
+  Disabled asserts evaluate neither the condition nor the message arguments (and cause no unused warnings).
+- Source locations (asserts, errors, logs) use paths relative to the source tree (`-fmacro-prefix-map`), so no
+  absolute build paths end up in binaries or output.
 
 ### Logging
 - `LogSink`: user-implementable, thread-safe destination (console, file, editor panel). `ConsoleLogSink` provided.
@@ -265,7 +271,9 @@ list is a programmer error.
   single atomic load; text is formatted with `std::format` only when the level is enabled; the caller's
   `std::source_location` is captured automatically.
 - **Compile-time stripping**: `BYTE_RENDER_LOG_LEVEL` (default `Debug` in Debug builds, `Info` otherwise). Calls
-  below it compile to nothing — no check, no format string in the binary.
+  below it compile to nothing (`if constexpr`): no runtime check, and optimized builds contain no format string
+  (verified). Argument expressions are still evaluated — keep expensive work out of trace/debug calls or guard it
+  with `core::is_log_level_compiled(level)`.
 - Graphics-API messages (validation layer, loader) are routed into the same logger.
 
 ## 16. Build, dependencies, options
