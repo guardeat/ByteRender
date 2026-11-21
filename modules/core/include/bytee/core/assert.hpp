@@ -1,17 +1,17 @@
 #pragma once
 
-#include <byte/core/export.hpp>
+#include <bytee/core/export.hpp>
 
 #include <format>
 #include <source_location>
 #include <string_view>
 #include <utility>
 
-namespace byte::core::detail {
+namespace bytee::core::detail {
 
 // Prints the failed condition, message and location to stderr, then aborts.
-[[noreturn]] BYTE_RENDER_CORE_API void assert_failed(std::string_view expression, std::string_view message,
-                                                     const std::source_location& location) noexcept;
+[[noreturn]] BYTEE_CORE_API void assert_failed(std::string_view expression, std::string_view message,
+                                               const std::source_location& location) noexcept;
 
 template <class... Args_>
 [[noreturn]] void assert_failed(std::string_view expression, const std::source_location& location,
@@ -24,23 +24,23 @@ template <class... Args_>
 template <class... Args_>
 bool assert_operands(Args_&&... args) noexcept;
 
-} // namespace byte::core::detail
+} // namespace bytee::core::detail
 
-// BYTE_RENDER_ASSERT(condition, "message")
-// BYTE_RENDER_ASSERT(condition, "index {} out of range [0, {})", index, size)
+// BYTEE_ASSERT(condition, "message")
+// BYTEE_ASSERT(condition, "index {} out of range [0, {})", index, size)
 //
-// For programmer errors only (runtime failures return core::Result). Enabled in Debug (BYTE_RENDER_ASSERTS=AUTO)
-// or with BYTE_RENDER_ASSERTS=ON. When disabled, neither the condition nor the message arguments are evaluated.
-#if defined(BYTE_RENDER_ENABLE_ASSERTS)
-    #define BYTE_RENDER_ASSERT(condition, ...)                                                                         \
+// For programmer errors only (runtime failures return core::Result). Enabled in Debug (BYTEE_ASSERTS=AUTO)
+// or with BYTEE_ASSERTS=ON. When disabled, neither the condition nor the message arguments are evaluated.
+#if defined(BYTEE_ENABLE_ASSERTS)
+    #define BYTEE_ASSERT(condition, ...)                                                                               \
         do {                                                                                                           \
             if (!(condition)) [[unlikely]] {                                                                           \
-                ::byte::core::detail::assert_failed(#condition, std::source_location::current(), __VA_ARGS__);         \
+                ::bytee::core::detail::assert_failed(#condition, std::source_location::current(), __VA_ARGS__);        \
             }                                                                                                          \
         } while (false)
 #else
-    #define BYTE_RENDER_ASSERT(condition, ...)                                                                         \
+    #define BYTEE_ASSERT(condition, ...)                                                                               \
         do {                                                                                                           \
-            static_cast<void>(sizeof(::byte::core::detail::assert_operands((condition), __VA_ARGS__)));                \
+            static_cast<void>(sizeof(::bytee::core::detail::assert_operands((condition), __VA_ARGS__)));               \
         } while (false)
 #endif

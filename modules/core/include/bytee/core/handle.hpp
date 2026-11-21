@@ -6,7 +6,7 @@
 #include <limits>
 #include <type_traits>
 
-namespace byte::core {
+namespace bytee::core {
 
 inline constexpr uint32_t k_invalid_handle_index = std::numeric_limits<uint32_t>::max();
 
@@ -37,12 +37,11 @@ public:
     friend constexpr bool operator==(const Handle&, const Handle&) noexcept = default;
 };
 
-} // namespace byte::core
+} // namespace bytee::core
 
-// Inside namespace std, plain `byte` names std::byte: always spell ::byte here.
 template <class Tag_>
-struct std::hash<::byte::core::Handle<Tag_>> {
-    [[nodiscard]] std::size_t operator()(const ::byte::core::Handle<Tag_>& handle) const noexcept {
+struct std::hash<::bytee::core::Handle<Tag_>> {
+    [[nodiscard]] std::size_t operator()(const ::bytee::core::Handle<Tag_>& handle) const noexcept {
         return std::hash<uint64_t>{}((uint64_t{handle.generation()} << 32u) | handle.index());
     }
 };

@@ -1,4 +1,4 @@
-# ByteRender — Architecture
+# Bytee — Architecture
 
 Status: **agreed design, pre-implementation.** Change this document before changing a decision below.
 
@@ -16,15 +16,15 @@ Non-goals (v1): mobile, GPUs without descriptor indexing, runtime backend switch
 ```
  User projects
  ──────────────────────────────────────────────────────────────────────────────
- byte::render::graph   passes, transient resources, automatic barriers       (knows only the RHI)
+ bytee::render::graph   passes, transient resources, automatic barriers       (knows only the RHI)
  ──────────────────────────────────────────────────────────────────────────────
- byte::render::rhi     Instance, Device, CommandList, Swapchain   (objects)
+ bytee::render::rhi     Instance, Device, CommandList, Swapchain   (objects)
                        Texture, Buffer, ... = core::Resource<Tag_, Deleter_>   (RAII owners)
                        TextureHandle, ...   = core::Handle<Tag_>               (8-byte views)
  ──────────────────────────────────────────────────────────────────────────────
  Vulkan backend        pools, volk device tables, VMA, retire lists, bindless heap   (private)
  ──────────────────────────────────────────────────────────────────────────────
- byte::core            Result, assert, Logger, Flags, Handle, Resource, Pool          (no GPU code)
+ bytee::core            Result, assert, Logger, Flags, Handle, Resource, Pool          (no GPU code)
 ```
 
 Rule: nothing above the backend line sees a Vulkan type.
@@ -32,26 +32,26 @@ Rule: nothing above the backend line sees a Vulkan type.
 ## 3. Repository layout
 
 ```
-ByteRender/
+Bytee/
 ├── CMakeLists.txt  CMakePresets.json  CLAUDE.md  README.md
 ├── .clang-format  .clang-tidy  .editorconfig  .gitignore
 ├── cmake/
-│   ├── byte_render_options.cmake        BYTE_RENDER_* options
-│   ├── byte_render_compiler.cmake       warnings, sanitizers, LTO
-│   ├── byte_render_dependencies.cmake   pinned FetchContent dependencies
-│   └── byte_render_shaders.cmake        GLSL → SPIR-V
+│   ├── bytee_options.cmake        BYTEE_* options
+│   ├── bytee_compiler.cmake       warnings, sanitizers, LTO
+│   ├── bytee_dependencies.cmake   pinned FetchContent dependencies
+│   └── bytee_shaders.cmake        GLSL → SPIR-V
 ├── docs/            architecture.md  roadmap.md
 ├── modules/
 │   ├── core/
-│   │   ├── include/byte/core/           public headers
+│   │   ├── include/bytee/core/           public headers
 │   │   └── src/
 │   ├── rhi/
-│   │   ├── include/byte/render/rhi/     public, API-agnostic headers
+│   │   ├── include/bytee/render/rhi/     public, API-agnostic headers
 │   │   └── src/
 │   │       ├── common/                  backend-agnostic internals
 │   │       └── vulkan/                  the only place that includes Vulkan / volk / VMA
 │   └── render_graph/
-│       ├── include/byte/render/graph/
+│       ├── include/bytee/render/graph/
 │       └── src/
 ├── shaders/         engine GLSL
 ├── samples/
@@ -69,12 +69,12 @@ ByteRender/
 ### CMake targets
 | Target (alias) | Links |
 |---|---|
-| `byte::core` | — |
-| `byte::rhi` | `byte::core` PUBLIC; volk, VMA, Vulkan headers **PRIVATE** |
-| `byte::render_graph` | `byte::rhi` PUBLIC |
+| `bytee::core` | — |
+| `bytee::rhi` | `bytee::core` PUBLIC; volk, VMA, Vulkan headers **PRIVATE** |
+| `bytee::render_graph` | `bytee::rhi` PUBLIC |
 
-Underlying names are `byte_render_<module>`. Each module has its own export macro
-(`BYTE_RENDER_CORE_API`, `BYTE_RENDER_RHI_API`, `BYTE_RENDER_GRAPH_API`) so shared builds import/export
+Underlying names are `bytee_<module>`. Each module has its own export macro
+(`BYTEE_CORE_API`, `BYTEE_RHI_API`, `BYTEE_GRAPH_API`) so shared builds import/export
 correctly across module boundaries.
 
 ## 4. Core building blocks
@@ -145,7 +145,7 @@ public inheritance is safe. **The deleter decides the destruction policy**:
   Benchmark: `benchmarks/pool_benchmark.cpp`.
 
 ### 4.4 Other core pieces
-`Result<T_>` / `Error` / `ErrorCode`, `BYTE_RENDER_ASSERT`, `Logger` + `LogSink` (an application-owned object,
+`Result<T_>` / `Error` / `ErrorCode`, `BYTEE_ASSERT`, `Logger` + `LogSink` (an application-owned object,
 not a global), `Flags<Enum_>`, `Extent2D/3D`, `Version`.
 
 ## 5. RHI object model
@@ -256,15 +256,15 @@ list is a programmer error.
 | Kind | Example | Mechanism | Release builds |
 |---|---|---|---|
 | Runtime failure (can happen in a correct program) | out of GPU memory, no supported adapter, device lost, timeout | `core::Result<T_>` returned to the caller | always active |
-| Programmer error (bug in the calling code) | empty object used, invalid handle, out-of-range index | `BYTE_RENDER_ASSERT(cond, "msg {}", args...)`: prints condition, message, location, then aborts | compiled out |
+| Programmer error (bug in the calling code) | empty object used, invalid handle, out-of-range index | `BYTEE_ASSERT(cond, "msg {}", args...)`: prints condition, message, location, then aborts | compiled out |
 
 - `Error` is 16 bytes: an inline `ErrorCode` plus a pointer to optional details (message, location).
   `Error{ErrorCode::Timeout}` never allocates (cheap enough for polling loops); `make_error(code, "fmt {}", args...)`
   allocates once, on the failure path only. Accessors: `code()`, `message()`, `location()`.
 - `Result<T_>` holds a value or an `Error` (`Result<uint64_t>` ≤ 24 bytes); `Result<void>` for operations without a
-  value. `[[nodiscard]]`. `BYTE_RENDER_TRY(expr)` returns a failed result's error from the enclosing function.
+  value. `[[nodiscard]]`. `BYTEE_TRY(expr)` returns a failed result's error from the enclosing function.
 - **Error locations are Debug-only**: `Error::location` always exists (stable layout across configurations) but is
-  only filled when `BYTE_RENDER_ERROR_LOCATIONS` is on (default: Debug), so Release binaries contain no file names.
+  only filled when `BYTEE_ERROR_LOCATIONS` is on (default: Debug), so Release binaries contain no file names.
 - **The engine returns errors; it does not log them.** The caller decides how to report. The engine itself only
   logs fallback warnings (e.g. validation unavailable), leak reports and graphics-API validation messages.
 - **Device lost is sticky**: the first `DeviceLost` marks the device as lost; every later fallible call returns
@@ -280,7 +280,7 @@ list is a programmer error.
 - `Logger`: application-owned object (not a global), injected through `InstanceFactory`. Runtime level check is a
   single atomic load; text is formatted with `std::format` only when the level is enabled; the caller's
   `std::source_location` is captured automatically.
-- **Compile-time stripping**: `BYTE_RENDER_LOG_LEVEL` (default `Debug` in Debug builds, `Info` otherwise). Calls
+- **Compile-time stripping**: `BYTEE_LOG_LEVEL` (default `Debug` in Debug builds, `Info` otherwise). Calls
   below it compile to nothing (`if constexpr`): no runtime check, and optimized builds contain no format string
   (verified). Argument expressions are still evaluated — keep expensive work out of trace/debug calls or guard it
   with `core::is_log_level_compiled(level)`.
@@ -299,18 +299,18 @@ list is a programmer error.
 
 | Option | Default | Meaning |
 |---|---|---|
-| `BYTE_RENDER_RHI_BACKEND` | `Vulkan` | Compile-time backend |
-| `BYTE_RENDER_BUILD_SHARED` | `OFF` | Shared instead of static libraries |
-| `BYTE_RENDER_ASSERTS` | `AUTO` | `AUTO` = Debug only, `ON`, `OFF` |
-| `BYTE_RENDER_ERROR_LOCATIONS` | `AUTO` | Record where errors are created: `AUTO` = Debug only, `ON`, `OFF` |
-| `BYTE_RENDER_LOG_LEVEL` | `AUTO` | Compile-time minimum log level: `AUTO` = `Debug` in Debug, `Info` otherwise |
-| `BYTE_RENDER_SANITIZE` | empty | `address` (ASan+UBSan) or `thread` (TSan), top-level builds |
-| `BYTE_RENDER_WARNINGS_AS_ERRORS` | `ON` | Warnings are errors in ByteRender targets |
-| `BYTE_RENDER_LTO` | `ON` when top-level | Link-time optimization in Release (consumers opt in: GCC LTO static libraries contain only bitcode) |
-| `BYTE_RENDER_BUILD_SAMPLES` / `_TESTS` / `_BENCHMARKS` | `ON` when top-level | Samples / tests / benchmarks |
+| `BYTEE_RHI_BACKEND` | `Vulkan` | Compile-time backend |
+| `BYTEE_BUILD_SHARED` | `OFF` | Shared instead of static libraries |
+| `BYTEE_ASSERTS` | `AUTO` | `AUTO` = Debug only, `ON`, `OFF` |
+| `BYTEE_ERROR_LOCATIONS` | `AUTO` | Record where errors are created: `AUTO` = Debug only, `ON`, `OFF` |
+| `BYTEE_LOG_LEVEL` | `AUTO` | Compile-time minimum log level: `AUTO` = `Debug` in Debug, `Info` otherwise |
+| `BYTEE_SANITIZE` | empty | `address` (ASan+UBSan) or `thread` (TSan), top-level builds |
+| `BYTEE_WARNINGS_AS_ERRORS` | `ON` | Warnings are errors in Bytee targets |
+| `BYTEE_LTO` | `ON` when top-level | Link-time optimization in Release (consumers opt in: GCC LTO static libraries contain only bitcode) |
+| `BYTEE_BUILD_SAMPLES` / `_TESTS` / `_BENCHMARKS` | `ON` when top-level | Samples / tests / benchmarks |
 
 ## 17. Testing
-- `byte_render_tests`: unit tests, no GPU.
-- `byte_render_gpu_tests` (label `gpu`): public API on a real GPU, including headless image tests.
-- `byte_render_vulkan_tests` (label `gpu`, static builds): white-box backend tests.
+- `bytee_tests`: unit tests, no GPU.
+- `bytee_gpu_tests` (label `gpu`): public API on a real GPU, including headless image tests.
+- `bytee_vulkan_tests` (label `gpu`, static builds): white-box backend tests.
 - Every GPU test fails if anything logs a warning or error. Sanitizer presets: `asan` (ASan+UBSan), `tsan`.

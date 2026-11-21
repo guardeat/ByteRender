@@ -1,4 +1,4 @@
-# ByteRender — Roadmap
+# Bytee — Roadmap
 
 One step per prompt. Each step: plan → implement → from-scratch build, tests, run (zero noise) → one commit.
 Rendering features are validated **headless first** (image tests), presentation comes after.
@@ -8,7 +8,7 @@ Rendering features are validated **headless first** (image tests), presentation 
 - [x] **Step 1 — Build system.** Repo hygiene files, CMake presets (debug/release/asan/tsan/shared), options,
   warnings-as-errors, sanitizers, LTO, module skeletons with export macros, doctest harness,
   `00_device_info` sample printing the version.
-- [x] **Step 2 — Core basics.** `Result<T_>`, `Error`, `BYTE_RENDER_ASSERT`, `LogSink`/`Logger`, `Flags<Enum_>`,
+- [x] **Step 2 — Core basics.** `Result<T_>`, `Error`, `BYTEE_ASSERT`, `LogSink`/`Logger`, `Flags<Enum_>`,
   `Extent2D/3D`, `Version`. Unit tests.
 - [x] **Step 3 — Handles, resources, pools.** `Handle<Tag_>`, `Resource<Tag_, Deleter_>`, generational
   `Pool<Value_, Tag_>`. Unit tests (generation checks, moves, release) + micro-benchmark of pool operations.
@@ -42,7 +42,7 @@ Rendering features are validated **headless first** (image tests), presentation 
 ## Phase 3 — Usability & portability
 - [ ] **Step 17 — Debug tooling.** GPU markers/labels, optional ImGui integration sample.
 - [ ] **Step 18 — Windows & Linux.** Builds on all platforms; CI matrix with headless GPU tests (lavapipe).
-- [ ] **Step 19 — Packaging.** `install()` + CMake package config: `find_package(ByteRender)` / FetchContent.
+- [ ] **Step 19 — Packaging.** `install()` + CMake package config: `find_package(Bytee)` / FetchContent.
 
 ## Backlog
 - Null backend for GPU-less unit tests of RHI logic

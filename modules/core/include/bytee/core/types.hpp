@@ -2,7 +2,7 @@
 
 #include <cstdint>
 
-namespace byte::core {
+namespace bytee::core {
 
 struct Extent2D {
     uint32_t width = 0;
@@ -19,4 +19,4 @@ struct Extent3D {
     friend constexpr bool operator==(const Extent3D&, const Extent3D&) noexcept = default;
 };
 
-} // namespace byte::core
+} // namespace bytee::core

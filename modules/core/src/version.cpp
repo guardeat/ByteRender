@@ -1,17 +1,17 @@
-#include <byte/core/version.hpp>
+#include <bytee/core/version.hpp>
 
-namespace byte::core {
+namespace bytee::core {
 
 Version version() noexcept {
     return Version{
-        .major = BYTE_RENDER_VERSION_MAJOR,
-        .minor = BYTE_RENDER_VERSION_MINOR,
-        .patch = BYTE_RENDER_VERSION_PATCH,
+        .major = BYTEE_VERSION_MAJOR,
+        .minor = BYTEE_VERSION_MINOR,
+        .patch = BYTEE_VERSION_PATCH,
     };
 }
 
 std::string_view version_string() noexcept {
-    return BYTE_RENDER_VERSION_STRING;
+    return BYTEE_VERSION_STRING;
 }
 
-} // namespace byte::core
+} // namespace bytee::core

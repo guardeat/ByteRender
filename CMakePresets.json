@@ -24,19 +24,19 @@
       "name": "shared",
       "displayName": "Release, shared libraries",
       "inherits": "base",
-      "cacheVariables": { "CMAKE_BUILD_TYPE": "Release", "BYTE_RENDER_BUILD_SHARED": "ON" }
+      "cacheVariables": { "CMAKE_BUILD_TYPE": "Release", "BYTEE_BUILD_SHARED": "ON" }
     },
     {
       "name": "asan",
       "displayName": "Debug + AddressSanitizer + UndefinedBehaviorSanitizer",
       "inherits": "base",
-      "cacheVariables": { "CMAKE_BUILD_TYPE": "Debug", "BYTE_RENDER_SANITIZE": "address" }
+      "cacheVariables": { "CMAKE_BUILD_TYPE": "Debug", "BYTEE_SANITIZE": "address" }
     },
     {
       "name": "tsan",
       "displayName": "Debug + ThreadSanitizer",
       "inherits": "base",
-      "cacheVariables": { "CMAKE_BUILD_TYPE": "Debug", "BYTE_RENDER_SANITIZE": "thread" }
+      "cacheVariables": { "CMAKE_BUILD_TYPE": "Debug", "BYTEE_SANITIZE": "thread" }
     }
   ],
   "buildPresets": [

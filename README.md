@@ -1,4 +1,4 @@
-# ByteRender
+# Bytee
 
 Generic, high-performance, cross-platform (Windows / Linux / macOS) rendering engine in C++20:
 an API-agnostic RHI with a compile-time selected backend (Vulkan) and a render graph on top.
@@ -36,9 +36,9 @@ cmake --build --preset debug --target format        # rewrite sources
 cmake --build --preset debug --target format_check  # fail if anything is not formatted
 ```
 
-## Using ByteRender from another project
+## Using Bytee from another project
 
 ```cmake
-add_subdirectory(ByteRender)            # or FetchContent
-target_link_libraries(my_app PRIVATE byte::render_graph)
+add_subdirectory(Bytee)            # or FetchContent
+target_link_libraries(my_app PRIVATE bytee::render_graph)
 ```

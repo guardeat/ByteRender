@@ -1,8 +1,8 @@
 // Micro-benchmark of core::Pool against common alternatives. Run a Release build:
-//   cmake --preset release && cmake --build --preset release && ./build/release/bin/byte_render_pool_benchmark
+//   cmake --preset release && cmake --build --preset release && ./build/release/bin/bytee_pool_benchmark
 // Numbers are indicative (single machine, warm caches); compare relative, not absolute, values.
 
-#include <byte/core/pool.hpp>
+#include <bytee/core/pool.hpp>
 
 #include <algorithm>
 #include <chrono>
@@ -58,7 +58,7 @@ void report(std::string_view name, double pool, double map, double vector) {
 } // namespace
 
 int main() {
-    using Pool = byte::core::Pool<Record, BenchTag>;
+    using Pool = bytee::core::Pool<Record, BenchTag>;
 
     // Random lookup order, identical for every container.
     std::vector<uint32_t> order(k_count);

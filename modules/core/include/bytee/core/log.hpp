@@ -1,7 +1,7 @@
 #pragma once
 
-#include <byte/core/export.hpp>
-#include <byte/core/located_format.hpp>
+#include <bytee/core/export.hpp>
+#include <bytee/core/located_format.hpp>
 
 #include <atomic>
 #include <cstdint>
@@ -12,13 +12,13 @@
 #include <type_traits>
 #include <utility>
 
-#if !defined(BYTE_RENDER_LOG_LEVEL)
-    #error "BYTE_RENDER_LOG_LEVEL must be defined (set by the byte::core CMake target)"
+#if !defined(BYTEE_LOG_LEVEL)
+    #error "BYTEE_LOG_LEVEL must be defined (set by the bytee::core CMake target)"
 #endif
 
-namespace byte::core {
+namespace bytee::core {
 
-// Numeric values match BYTE_RENDER_LOG_LEVEL (see byte_render_options.cmake).
+// Numeric values match BYTEE_LOG_LEVEL (see bytee_options.cmake).
 enum class LogLevel : uint8_t {
     Trace = 0,
     Debug = 1,
@@ -42,14 +42,14 @@ enum class LogLevel : uint8_t {
 
 // Lowest level compiled into this build. Logging calls below it compile to nothing (their argument expressions are
 // still evaluated, so keep expensive computations out of trace/debug calls or guard them with is_log_level_compiled).
-inline constexpr LogLevel k_compiled_log_level = static_cast<LogLevel>(BYTE_RENDER_LOG_LEVEL);
+inline constexpr LogLevel k_compiled_log_level = static_cast<LogLevel>(BYTEE_LOG_LEVEL);
 
 [[nodiscard]] constexpr bool is_log_level_compiled(LogLevel level) noexcept {
     return level != LogLevel::Off && level >= k_compiled_log_level;
 }
 
 // Destination for log messages (console, file, editor panel, ...). Implementations must be thread-safe.
-class BYTE_RENDER_CORE_API LogSink {
+class BYTEE_CORE_API LogSink {
 public:
     virtual ~LogSink();
     virtual void write(LogLevel level, std::string_view message, const std::source_location& location) = 0;
@@ -61,7 +61,7 @@ protected:
 };
 
 // stdout for trace..info, stderr for warning and error (with the source location).
-class BYTE_RENDER_CORE_API ConsoleLogSink final : public LogSink {
+class BYTEE_CORE_API ConsoleLogSink final : public LogSink {
 private:
     std::mutex mutex_;
 
@@ -135,4 +135,4 @@ private:
     }
 };
 
-} // namespace byte::core
+} // namespace bytee::core

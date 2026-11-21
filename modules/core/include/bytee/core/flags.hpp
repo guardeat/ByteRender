@@ -3,19 +3,19 @@
 #include <concepts>
 #include <type_traits>
 
-namespace byte::core {
+namespace bytee::core {
 
-// An enum class opts into bit-flag behaviour with BYTE_RENDER_ENABLE_FLAGS(Enum), written in the same namespace as
+// An enum class opts into bit-flag behaviour with BYTEE_ENABLE_FLAGS(Enum), written in the same namespace as
 // the enum (found through argument-dependent lookup). The underlying type must be unsigned.
 template <class Enum_>
 concept FlagEnum = std::is_enum_v<Enum_> && std::is_unsigned_v<std::underlying_type_t<Enum_>> && requires(Enum_ bit) {
-    { byte_render_enable_flags(bit) } -> std::same_as<bool>;
+    { bytee_enable_flags(bit) } -> std::same_as<bool>;
 };
 
 // Type-safe set of bits from a flag enum:
 //
 //   enum class TextureUsage : uint32_t { Sampled = 1u << 0, Storage = 1u << 1, ColorAttachment = 1u << 2 };
-//   BYTE_RENDER_ENABLE_FLAGS(TextureUsage)
+//   BYTEE_ENABLE_FLAGS(TextureUsage)
 //
 //   Flags<TextureUsage> usage = TextureUsage::Sampled | TextureUsage::ColorAttachment;
 //   if (usage.has(TextureUsage::Sampled)) { ... }
@@ -67,16 +67,16 @@ public:
     friend constexpr bool operator==(Flags, Flags) noexcept = default;
 };
 
-} // namespace byte::core
+} // namespace bytee::core
 
 // Enables Flags<Enum> and `Enum | Enum`, `Enum & Enum`. Must be used in the namespace that declares `Enum`.
-#define BYTE_RENDER_ENABLE_FLAGS(Enum)                                                                                 \
-    [[maybe_unused]] constexpr bool byte_render_enable_flags(Enum) noexcept {                                          \
+#define BYTEE_ENABLE_FLAGS(Enum)                                                                                       \
+    [[maybe_unused]] constexpr bool bytee_enable_flags(Enum) noexcept {                                                \
         return true;                                                                                                   \
     }                                                                                                                  \
-    [[maybe_unused]] constexpr ::byte::core::Flags<Enum> operator|(Enum a, Enum b) noexcept {                          \
-        return ::byte::core::Flags<Enum>(a) | b;                                                                       \
+    [[maybe_unused]] constexpr ::bytee::core::Flags<Enum> operator|(Enum a, Enum b) noexcept {                         \
+        return ::bytee::core::Flags<Enum>(a) | b;                                                                      \
     }                                                                                                                  \
-    [[maybe_unused]] constexpr ::byte::core::Flags<Enum> operator&(Enum a, Enum b) noexcept {                          \
-        return ::byte::core::Flags<Enum>(a) & b;                                                                       \
+    [[maybe_unused]] constexpr ::bytee::core::Flags<Enum> operator&(Enum a, Enum b) noexcept {                         \
+        return ::bytee::core::Flags<Enum>(a) & b;                                                                      \
     }

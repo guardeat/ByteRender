@@ -1,7 +1,7 @@
 #pragma once
 
-#include <byte/core/assert.hpp>
-#include <byte/core/handle.hpp>
+#include <bytee/core/assert.hpp>
+#include <bytee/core/handle.hpp>
 
 #include <concepts>
 #include <cstddef>
@@ -12,7 +12,7 @@
 #include <utility>
 #include <vector>
 
-namespace byte::core {
+namespace bytee::core {
 
 namespace detail {
 // Pool slot generations are odd while the slot holds a value and even while it is free.
@@ -56,7 +56,7 @@ public:
     explicit Pool(uint32_t capacity)
         : chunks_(std::make_unique<std::unique_ptr<Chunk>[]>((capacity + k_chunk_size - 1) / k_chunk_size))
         , capacity_(capacity) {
-        BYTE_RENDER_ASSERT(capacity < k_invalid_handle_index, "pool capacity {} is too large", capacity);
+        BYTEE_ASSERT(capacity < k_invalid_handle_index, "pool capacity {} is too large", capacity);
     }
 
     ~Pool() { clear(); }
@@ -114,8 +114,8 @@ public:
     // Debug; returns false in Release).
     bool remove(HandleType handle) {
         if (!contains(handle)) {
-            BYTE_RENDER_ASSERT(false, "Pool::remove: stale or invalid handle (index {}, generation {})", handle.index(),
-                               handle.generation());
+            BYTEE_ASSERT(false, "Pool::remove: stale or invalid handle (index {}, generation {})", handle.index(),
+                         handle.generation());
             return false;
         }
         const uint32_t index = handle.index();
@@ -146,13 +146,13 @@ public:
 
     // Unchecked in Release: the handle must be alive.
     [[nodiscard]] Value_& get(HandleType handle) noexcept {
-        BYTE_RENDER_ASSERT(contains(handle), "Pool::get: stale or invalid handle (index {}, generation {})",
-                           handle.index(), handle.generation());
+        BYTEE_ASSERT(contains(handle), "Pool::get: stale or invalid handle (index {}, generation {})", handle.index(),
+                     handle.generation());
         return *value_pointer(handle.index());
     }
     [[nodiscard]] const Value_& get(HandleType handle) const noexcept {
-        BYTE_RENDER_ASSERT(contains(handle), "Pool::get: stale or invalid handle (index {}, generation {})",
-                           handle.index(), handle.generation());
+        BYTEE_ASSERT(contains(handle), "Pool::get: stale or invalid handle (index {}, generation {})", handle.index(),
+                     handle.generation());
         return *value_pointer(handle.index());
     }
 
@@ -197,4 +197,4 @@ private:
     }
 };
 
-} // namespace byte::core
+} // namespace bytee::core

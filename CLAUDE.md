@@ -1,6 +1,6 @@
-# ByteRender — Project Rules
+# Bytee — Project Rules
 
-ByteRender is a generic, reusable, cross-platform rendering engine in C++20, consumed as a library by
+Bytee is a generic, reusable, cross-platform rendering engine in C++20, consumed as a library by
 multiple projects. **Performance is a primary goal.**
 
 - Design: `docs/architecture.md`
@@ -25,7 +25,7 @@ multiple projects. **Performance is a primary goal.**
 1. Layering: `core` ← `render::rhi` ← `render::graph` ← user code. Lower layers never include higher ones.
 2. **No backend types above the backend.** No `Vk*`, `<vulkan/vulkan.h>`, `volk.h` or VMA in any public header
    or in the render graph. Backend dependencies are linked `PRIVATE`.
-3. The RHI is API-agnostic; the backend is selected at **compile time** (`BYTE_RENDER_RHI_BACKEND`). No virtual
+3. The RHI is API-agnostic; the backend is selected at **compile time** (`BYTEE_RHI_BACKEND`). No virtual
    dispatch in the RHI.
 4. **No static classes, no singletons, no global mutable state.** Every engine object is an instance.
    Sole exception: process-wide Vulkan loader state owned by volk, hidden in the backend (architecture §10).
@@ -47,7 +47,7 @@ multiple projects. **Performance is a primary goal.**
 ## Error handling
 - The engine never throws. Fallible operations return `core::Result<T>`; create errors with
   `core::make_error(ErrorCode::X, "message {}", args...)`.
-- Programmer errors: `BYTE_RENDER_ASSERT(condition, "message {}", args...)` — on in Debug, compiled out otherwise.
+- Programmer errors: `BYTEE_ASSERT(condition, "message {}", args...)` — on in Debug, compiled out otherwise.
 - No `dynamic_cast` / `typeid` in the engine.
 
 ## Code style
@@ -57,9 +57,9 @@ multiple projects. **Performance is a primary goal.**
   `template <size_t QueueCount_>`
 - Private members: trailing underscore — `impl_`, `entries_`. Public fields of plain structs: plain — `desc.extent`
 - Constants: `k_` prefix — `k_max_frames_in_flight`
-- Macros: `BYTE_RENDER_` prefix, `UPPER_SNAKE_CASE`
-- Namespaces: `byte::core`, `byte::render::rhi`, `byte::render::graph`. Inside namespace `std` (e.g. `std::hash`
-  specializations) and in macros, always write `::byte::...` — a plain `byte` there names `std::byte`.
+- Macros: `BYTEE_` prefix, `UPPER_SNAKE_CASE`
+- Namespaces (all lowercase): `bytee::core`, `bytee::render::rhi`, `bytee::render::graph`. Macros and code inside
+  namespace `std` (e.g. `std::hash` specializations) spell names fully qualified: `::bytee::...`.
 - Files: `snake_case.hpp` / `snake_case.cpp`, one main type per file. CMake modules: `snake_case.cmake`.
 - Formatting enforced by `.clang-format`. Warnings are errors in engine targets.
 
@@ -91,4 +91,4 @@ Plain-data structs list their fields first, then any functions.
 - Dependencies via `FetchContent`, pinned by version and SHA-256. Only manual install: the Vulkan SDK
   (or Homebrew Vulkan packages on macOS).
 - Shaders: GLSL, compiled to SPIR-V at build time.
-- Static libraries by default; `BYTE_RENDER_BUILD_SHARED=ON` builds shared libraries.
+- Static libraries by default; `BYTEE_BUILD_SHARED=ON` builds shared libraries.

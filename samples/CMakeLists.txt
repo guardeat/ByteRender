@@ -1,7 +1,7 @@
-function(byte_render_add_sample name)
+function(bytee_add_sample name)
     add_executable(${name} ${ARGN})
-    target_link_libraries(${name} PRIVATE byte::render_graph)
-    byte_render_configure_target(${name})
+    target_link_libraries(${name} PRIVATE bytee::render_graph)
+    bytee_configure_target(${name})
 endfunction()
 
 add_subdirectory(00_device_info)

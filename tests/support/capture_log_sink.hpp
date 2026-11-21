@@ -1,13 +1,13 @@
 #pragma once
 
-#include <byte/core/log.hpp>
+#include <bytee/core/log.hpp>
 
 #include <cstdint>
 #include <mutex>
 #include <string>
 #include <vector>
 
-namespace byte::tests {
+namespace bytee::tests {
 
 // Records every log message. GPU tests use problems() to enforce the zero-noise policy.
 class CaptureLogSink final : public core::LogSink {
@@ -47,4 +47,4 @@ public:
     }
 };
 
-} // namespace byte::tests
+} // namespace bytee::tests

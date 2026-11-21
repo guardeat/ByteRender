@@ -1,4 +1,4 @@
-#include <byte/core/assert.hpp>
+#include <bytee/core/assert.hpp>
 
 #include <doctest/doctest.h>
 
@@ -9,9 +9,9 @@ TEST_CASE("A passing assert has no effect") {
         ++evaluations;
         return true;
     };
-    BYTE_RENDER_ASSERT(passes(), "never shown {}", 42);
+    BYTEE_ASSERT(passes(), "never shown {}", 42);
 
-#if defined(BYTE_RENDER_ENABLE_ASSERTS)
+#if defined(BYTEE_ENABLE_ASSERTS)
     CHECK(evaluations == 1); // evaluated exactly once
 #else
     CHECK(evaluations == 0); // compiled out

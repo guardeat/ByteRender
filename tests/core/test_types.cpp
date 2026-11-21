@@ -1,8 +1,8 @@
-#include <byte/core/types.hpp>
+#include <bytee/core/types.hpp>
 
 #include <doctest/doctest.h>
 
-using namespace byte::core;
+using namespace bytee::core;
 
 TEST_CASE("Extents compare by value and default to a single layer") {
     CHECK(Extent2D{.width = 4, .height = 2} == Extent2D{.width = 4, .height = 2});

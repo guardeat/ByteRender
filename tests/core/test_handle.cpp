@@ -1,4 +1,4 @@
-#include <byte/core/handle.hpp>
+#include <bytee/core/handle.hpp>
 
 #include <doctest/doctest.h>
 
@@ -10,7 +10,7 @@ struct TextureTag;
 struct BufferTag;
 } // namespace
 
-using byte::core::Handle;
+using bytee::core::Handle;
 using TextureHandle = Handle<TextureTag>;
 using BufferHandle = Handle<BufferTag>;
 
@@ -22,7 +22,7 @@ static_assert(!std::is_constructible_v<BufferHandle, TextureHandle>, "different 
 TEST_CASE("A default handle is invalid") {
     constexpr TextureHandle handle;
     CHECK_FALSE(handle.is_valid());
-    CHECK(handle.index() == byte::core::k_invalid_handle_index);
+    CHECK(handle.index() == bytee::core::k_invalid_handle_index);
 }
 
 TEST_CASE("Handles compare index and generation") {

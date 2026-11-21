@@ -1,13 +1,13 @@
-// Prints the ByteRender version and the compiled-in RHI backend. Grows into a GPU listing in roadmap step 4.
+// Prints the Bytee version and the compiled-in RHI backend. Grows into a GPU listing in roadmap step 4.
 
-#include <byte/core/log.hpp>
-#include <byte/core/version.hpp>
-#include <byte/render/rhi/backend.hpp>
+#include <bytee/core/log.hpp>
+#include <bytee/core/version.hpp>
+#include <bytee/render/rhi/backend.hpp>
 
 int main() {
-    byte::core::ConsoleLogSink sink;
-    byte::core::Logger logger{sink, byte::core::LogLevel::Info};
+    bytee::core::ConsoleLogSink sink;
+    bytee::core::Logger logger{sink, bytee::core::LogLevel::Info};
 
-    logger.info("ByteRender {} | RHI backend: {}", byte::core::version_string(), byte::render::rhi::backend_name());
+    logger.info("Bytee {} | RHI backend: {}", bytee::core::version_string(), bytee::render::rhi::backend_name());
     return 0;
 }

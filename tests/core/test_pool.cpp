@@ -1,4 +1,4 @@
-#include <byte/core/pool.hpp>
+#include <bytee/core/pool.hpp>
 
 #include <doctest/doctest.h>
 
@@ -9,7 +9,7 @@
 namespace {
 
 struct ItemTag;
-using ItemPool = byte::core::Pool<std::string, ItemTag>;
+using ItemPool = bytee::core::Pool<std::string, ItemTag>;
 using ItemHandle = ItemPool::HandleType;
 
 // Counts live instances to verify construction/destruction pairing.
@@ -91,7 +91,7 @@ TEST_CASE("Values keep their address while the pool grows") {
 TEST_CASE("Values are destroyed on remove, clear and pool destruction") {
     int alive = 0;
     {
-        byte::core::Pool<Counted, ItemTag> pool{8};
+        bytee::core::Pool<Counted, ItemTag> pool{8};
         const auto a = pool.insert(&alive, 1);
         static_cast<void>(pool.insert(&alive, 2));
         static_cast<void>(pool.insert(&alive, 3));
@@ -111,7 +111,7 @@ TEST_CASE("Values are destroyed on remove, clear and pool destruction") {
 }
 
 TEST_CASE("Move-only values and moving pools") {
-    byte::core::Pool<std::unique_ptr<int>, ItemTag> pool{4};
+    bytee::core::Pool<std::unique_ptr<int>, ItemTag> pool{4};
     const auto handle = pool.insert(std::make_unique<int>(42));
     CHECK(*pool.get(handle) == 42);
 

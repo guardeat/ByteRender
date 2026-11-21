@@ -1,14 +1,14 @@
 #include "support/capture_log_sink.hpp"
 
-#include <byte/core/log.hpp>
+#include <bytee/core/log.hpp>
 
 #include <doctest/doctest.h>
 
 #include <string>
 #include <string_view>
 
-using namespace byte::core;
-using byte::tests::CaptureLogSink;
+using namespace bytee::core;
+using bytee::tests::CaptureLogSink;
 
 TEST_CASE("Logger formats messages and filters by runtime level") {
     CaptureLogSink sink;

@@ -1,43 +1,43 @@
-add_library(byte_render_core ${BYTE_RENDER_LIBRARY_TYPE}
+add_library(bytee_core ${BYTEE_LIBRARY_TYPE}
     src/assert.cpp
     src/log.cpp
     src/version.cpp
 )
-add_library(byte::core ALIAS byte_render_core)
+add_library(bytee::core ALIAS bytee_core)
 
-target_include_directories(byte_render_core PUBLIC
+target_include_directories(bytee_core PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
 )
 
-target_compile_definitions(byte_render_core PRIVATE
-    BYTE_RENDER_VERSION_MAJOR=${PROJECT_VERSION_MAJOR}
-    BYTE_RENDER_VERSION_MINOR=${PROJECT_VERSION_MINOR}
-    BYTE_RENDER_VERSION_PATCH=${PROJECT_VERSION_PATCH}
-    BYTE_RENDER_VERSION_STRING="${PROJECT_VERSION}"
+target_compile_definitions(bytee_core PRIVATE
+    BYTEE_VERSION_MAJOR=${PROJECT_VERSION_MAJOR}
+    BYTEE_VERSION_MINOR=${PROJECT_VERSION_MINOR}
+    BYTEE_VERSION_PATCH=${PROJECT_VERSION_PATCH}
+    BYTEE_VERSION_STRING="${PROJECT_VERSION}"
 )
 
-# Engine-wide configuration. PUBLIC: every target using ByteRender headers must agree on these.
+# Engine-wide configuration. PUBLIC: every target using Bytee headers must agree on these.
 set(debug_only $<CONFIG:Debug>)
 
-if(BYTE_RENDER_ASSERTS STREQUAL "AUTO")
-    target_compile_definitions(byte_render_core PUBLIC $<${debug_only}:BYTE_RENDER_ENABLE_ASSERTS=1>)
-elseif(BYTE_RENDER_ASSERTS STREQUAL "ON")
-    target_compile_definitions(byte_render_core PUBLIC BYTE_RENDER_ENABLE_ASSERTS=1)
+if(BYTEE_ASSERTS STREQUAL "AUTO")
+    target_compile_definitions(bytee_core PUBLIC $<${debug_only}:BYTEE_ENABLE_ASSERTS=1>)
+elseif(BYTEE_ASSERTS STREQUAL "ON")
+    target_compile_definitions(bytee_core PUBLIC BYTEE_ENABLE_ASSERTS=1)
 endif()
 
-if(BYTE_RENDER_ERROR_LOCATIONS STREQUAL "AUTO")
-    target_compile_definitions(byte_render_core PUBLIC $<${debug_only}:BYTE_RENDER_ENABLE_ERROR_LOCATIONS=1>)
-elseif(BYTE_RENDER_ERROR_LOCATIONS STREQUAL "ON")
-    target_compile_definitions(byte_render_core PUBLIC BYTE_RENDER_ENABLE_ERROR_LOCATIONS=1)
+if(BYTEE_ERROR_LOCATIONS STREQUAL "AUTO")
+    target_compile_definitions(bytee_core PUBLIC $<${debug_only}:BYTEE_ENABLE_ERROR_LOCATIONS=1>)
+elseif(BYTEE_ERROR_LOCATIONS STREQUAL "ON")
+    target_compile_definitions(bytee_core PUBLIC BYTEE_ENABLE_ERROR_LOCATIONS=1)
 endif()
 
 # Matches core::LogLevel: Trace=0, Debug=1, Info=2, Warning=3, Error=4, Off=5.
 set(log_levels Trace Debug Info Warning Error Off)
-if(BYTE_RENDER_LOG_LEVEL STREQUAL "AUTO")
-    target_compile_definitions(byte_render_core PUBLIC BYTE_RENDER_LOG_LEVEL=$<IF:${debug_only},1,2>)
+if(BYTEE_LOG_LEVEL STREQUAL "AUTO")
+    target_compile_definitions(bytee_core PUBLIC BYTEE_LOG_LEVEL=$<IF:${debug_only},1,2>)
 else()
-    list(FIND log_levels "${BYTE_RENDER_LOG_LEVEL}" log_level_value)
-    target_compile_definitions(byte_render_core PUBLIC BYTE_RENDER_LOG_LEVEL=${log_level_value})
+    list(FIND log_levels "${BYTEE_LOG_LEVEL}" log_level_value)
+    target_compile_definitions(bytee_core PUBLIC BYTEE_LOG_LEVEL=${log_level_value})
 endif()
 
-byte_render_configure_library(byte_render_core CORE)
+bytee_configure_library(bytee_core CORE)

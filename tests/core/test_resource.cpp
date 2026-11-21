@@ -1,4 +1,4 @@
-#include <byte/core/resource.hpp>
+#include <bytee/core/resource.hpp>
 
 #include <doctest/doctest.h>
 
@@ -9,14 +9,14 @@
 namespace {
 
 struct ThingTag;
-using ThingHandle = byte::core::Handle<ThingTag>;
+using ThingHandle = bytee::core::Handle<ThingTag>;
 
 // Records every deletion.
 struct RecordingDeleter {
     std::vector<ThingHandle>* deleted = nullptr;
     void operator()(ThingHandle handle) noexcept { deleted->push_back(handle); }
 };
-using Thing = byte::core::Resource<ThingTag, RecordingDeleter>;
+using Thing = bytee::core::Resource<ThingTag, RecordingDeleter>;
 
 struct EmptyDeleter {
     void operator()(ThingHandle) noexcept {}
@@ -32,13 +32,13 @@ uint32_t index_of(ThingHandle handle) {
 
 } // namespace
 
-static_assert(sizeof(byte::core::Resource<ThingTag, EmptyDeleter>) == sizeof(ThingHandle),
+static_assert(sizeof(bytee::core::Resource<ThingTag, EmptyDeleter>) == sizeof(ThingHandle),
               "an empty deleter must cost nothing");
 static_assert(sizeof(Thing) == 16);
 static_assert(!std::is_copy_constructible_v<Thing> && !std::is_copy_assignable_v<Thing>);
 static_assert(std::is_nothrow_move_constructible_v<Thing> && std::is_nothrow_move_assignable_v<Thing>);
-static_assert(byte::core::HandleDeleter<EmptyDeleter, ThingTag>);
-static_assert(!byte::core::HandleDeleter<ThrowingDeleter, ThingTag>, "deleters must be noexcept");
+static_assert(bytee::core::HandleDeleter<EmptyDeleter, ThingTag>);
+static_assert(!bytee::core::HandleDeleter<ThrowingDeleter, ThingTag>, "deleters must be noexcept");
 
 TEST_CASE("A resource deletes its handle exactly once when destroyed") {
     std::vector<ThingHandle> deleted;
@@ -94,6 +94,6 @@ TEST_CASE("release() gives up ownership, reset() deletes now") {
 }
 
 TEST_CASE("An empty resource deletes nothing") {
-    const byte::core::Resource<ThingTag, EmptyDeleter> empty;
+    const bytee::core::Resource<ThingTag, EmptyDeleter> empty;
     CHECK_FALSE(empty.is_valid());
 }

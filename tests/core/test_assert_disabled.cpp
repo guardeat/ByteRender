@@ -1,6 +1,6 @@
 // Compiled with asserts forced off, whatever the build configuration, to test the disabled form.
-#undef BYTE_RENDER_ENABLE_ASSERTS
-#include <byte/core/assert.hpp>
+#undef BYTEE_ENABLE_ASSERTS
+#include <bytee/core/assert.hpp>
 
 #include <doctest/doctest.h>
 
@@ -12,6 +12,6 @@ TEST_CASE("Disabled asserts evaluate neither the condition nor the message argum
     };
     // Only used inside the assert: must not trigger unused-variable warnings when asserts are off.
     const int only_in_message = 7;
-    BYTE_RENDER_ASSERT(count(), "value {} {}", only_in_message, count());
+    BYTEE_ASSERT(count(), "value {} {}", only_in_message, count());
     CHECK(evaluations == 0);
 }

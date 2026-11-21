@@ -1,4 +1,4 @@
-#include <byte/core/result.hpp>
+#include <bytee/core/result.hpp>
 
 #include <doctest/doctest.h>
 
@@ -7,7 +7,7 @@
 #include <string>
 #include <string_view>
 
-using namespace byte::core;
+using namespace bytee::core;
 
 namespace {
 
@@ -26,9 +26,9 @@ Result<void> check(bool ok) {
 }
 
 Result<int> doubled(int value) {
-    BYTE_RENDER_TRY(check(value != 13));
+    BYTEE_TRY(check(value != 13));
     auto parsed = parse_positive(value);
-    BYTE_RENDER_TRY(parsed);
+    BYTEE_TRY(parsed);
     return *parsed * 2;
 }
 
@@ -65,7 +65,7 @@ TEST_CASE("Errors without a message carry only a code") {
 TEST_CASE("Error locations are recorded only when enabled") {
     const auto expected_line = std::source_location::current().line() + 1;
     const Error error = make_error(ErrorCode::OutOfMemory, "out of memory");
-#if defined(BYTE_RENDER_ENABLE_ERROR_LOCATIONS)
+#if defined(BYTEE_ENABLE_ERROR_LOCATIONS)
     CHECK(error.location().line() == expected_line);
     // Paths are relative to the source tree (-fmacro-prefix-map), never absolute.
     CHECK(std::string_view{error.location().file_name()} == "tests/core/test_result.cpp");
@@ -107,7 +107,7 @@ TEST_CASE("Result<void>") {
     CHECK(failed.error().code() == ErrorCode::NotSupported);
 }
 
-TEST_CASE("BYTE_RENDER_TRY propagates errors and continues on success") {
+TEST_CASE("BYTEE_TRY propagates errors and continues on success") {
     CHECK(doubled(4).value() == 8);
     CHECK(doubled(13).error().code() == ErrorCode::NotSupported);
     CHECK(doubled(-1).error().code() == ErrorCode::InvalidArgument);

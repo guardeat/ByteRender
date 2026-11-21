@@ -1,13 +1,13 @@
 #pragma once
 
-#include <byte/core/compiler.hpp>
-#include <byte/core/handle.hpp>
+#include <bytee/core/compiler.hpp>
+#include <bytee/core/handle.hpp>
 
 #include <concepts>
 #include <type_traits>
 #include <utility>
 
-namespace byte::core {
+namespace bytee::core {
 
 // A deleter releases the object behind a handle. It must not throw (it runs in destructors) and must be cheap to
 // move. It decides the destruction policy: GPU resources retire to their device (deferred), others delete at once.
@@ -27,7 +27,7 @@ public:
     using HandleType = Handle<Tag_>;
 
 private:
-    BYTE_RENDER_NO_UNIQUE_ADDRESS Deleter_ deleter_;
+    BYTEE_NO_UNIQUE_ADDRESS Deleter_ deleter_;
 
 public:
     // Empty (invalid) resource.
@@ -75,4 +75,4 @@ public:
     }
 };
 
-} // namespace byte::core
+} // namespace bytee::core

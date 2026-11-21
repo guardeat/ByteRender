@@ -5,7 +5,7 @@
 #include <source_location>
 #include <string_view>
 
-namespace byte::core {
+namespace bytee::core {
 
 // A compile-time checked format string that also captures the caller's source location.
 // Used as a function parameter so call sites stay plain: `logger.info("loaded {} files", count);`
@@ -21,4 +21,4 @@ struct LocatedFormat {
         , location(caller) {}
 };
 
-} // namespace byte::core
+} // namespace bytee::core

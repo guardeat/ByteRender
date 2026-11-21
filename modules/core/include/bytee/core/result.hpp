@@ -1,7 +1,7 @@
 #pragma once
 
-#include <byte/core/assert.hpp>
-#include <byte/core/located_format.hpp>
+#include <bytee/core/assert.hpp>
+#include <bytee/core/located_format.hpp>
 
 #include <concepts>
 #include <cstdint>
@@ -15,7 +15,7 @@
 #include <utility>
 #include <variant>
 
-namespace byte::core {
+namespace bytee::core {
 
 enum class ErrorCode : uint32_t {
     Unknown,
@@ -42,7 +42,7 @@ enum class ErrorCode : uint32_t {
 
 // A runtime failure: a code plus optional details. 16 bytes; an error without a message never allocates
 // (`Error{ErrorCode::Timeout}`), so hot polling paths can fail cheaply. Messages are allocated only on failure.
-// The source location is recorded only when BYTE_RENDER_ENABLE_ERROR_LOCATIONS is defined (Debug by default).
+// The source location is recorded only when BYTEE_ENABLE_ERROR_LOCATIONS is defined (Debug by default).
 class Error {
 private:
     struct Details {
@@ -85,7 +85,7 @@ public:
     }
 };
 
-#if defined(BYTE_RENDER_ENABLE_ERROR_LOCATIONS)
+#if defined(BYTEE_ENABLE_ERROR_LOCATIONS)
 template <class... Args_>
 using ErrorFormat = LocatedFormat<Args_...>;
 #else
@@ -96,7 +96,7 @@ using ErrorFormat = std::format_string<Args_...>;
 // Creates an error with a formatted message: `return make_error(ErrorCode::OutOfMemory, "texture '{}'", name);`
 template <class... Args_>
 [[nodiscard]] Error make_error(ErrorCode code, ErrorFormat<std::type_identity_t<Args_>...> format, Args_&&... args) {
-#if defined(BYTE_RENDER_ENABLE_ERROR_LOCATIONS)
+#if defined(BYTEE_ENABLE_ERROR_LOCATIONS)
     return Error{code, std::format(format.format, std::forward<Args_>(args)...), format.location};
 #else
     return Error{code, std::format(format, std::forward<Args_>(args)...)};
@@ -133,24 +133,24 @@ public:
     constexpr explicit operator bool() const noexcept { return has_value(); }
 
     [[nodiscard]] constexpr Value_& value() & {
-        BYTE_RENDER_ASSERT(has_value(), "Result::value() called on an error: {}", error_message());
+        BYTEE_ASSERT(has_value(), "Result::value() called on an error: {}", error_message());
         return *std::get_if<0>(&storage_);
     }
     [[nodiscard]] constexpr const Value_& value() const& {
-        BYTE_RENDER_ASSERT(has_value(), "Result::value() called on an error: {}", error_message());
+        BYTEE_ASSERT(has_value(), "Result::value() called on an error: {}", error_message());
         return *std::get_if<0>(&storage_);
     }
     [[nodiscard]] constexpr Value_&& value() && {
-        BYTE_RENDER_ASSERT(has_value(), "Result::value() called on an error: {}", error_message());
+        BYTEE_ASSERT(has_value(), "Result::value() called on an error: {}", error_message());
         return std::move(*std::get_if<0>(&storage_));
     }
 
     [[nodiscard]] constexpr const Error& error() const& {
-        BYTE_RENDER_ASSERT(!has_value(), "Result::error() called on a value");
+        BYTEE_ASSERT(!has_value(), "Result::error() called on a value");
         return *std::get_if<1>(&storage_);
     }
     [[nodiscard]] constexpr Error&& error() && {
-        BYTE_RENDER_ASSERT(!has_value(), "Result::error() called on a value");
+        BYTEE_ASSERT(!has_value(), "Result::error() called on a value");
         return std::move(*std::get_if<1>(&storage_));
     }
 
@@ -192,27 +192,27 @@ public:
     constexpr explicit operator bool() const noexcept { return has_value(); }
 
     constexpr void value() const {
-        BYTE_RENDER_ASSERT(has_value(), "Result<void>::value() called on an error: {}", error_->message());
+        BYTEE_ASSERT(has_value(), "Result<void>::value() called on an error: {}", error_->message());
     }
 
     [[nodiscard]] constexpr const Error& error() const& {
-        BYTE_RENDER_ASSERT(!has_value(), "Result::error() called on a value");
+        BYTEE_ASSERT(!has_value(), "Result::error() called on a value");
         return *error_;
     }
     [[nodiscard]] constexpr Error&& error() && {
-        BYTE_RENDER_ASSERT(!has_value(), "Result::error() called on a value");
+        BYTEE_ASSERT(!has_value(), "Result::error() called on a value");
         return std::move(*error_);
     }
 };
 
-} // namespace byte::core
+} // namespace bytee::core
 
 // Returns the error of a failed Result from the enclosing function (whose return type must be a Result);
 // the value of a successful Result is discarded.
-//   BYTE_RENDER_TRY(queue.submit(...));
-#define BYTE_RENDER_TRY(expression)                                                                                    \
+//   BYTEE_TRY(queue.submit(...));
+#define BYTEE_TRY(expression)                                                                                          \
     do {                                                                                                               \
-        if (auto byte_render_try_result_ = (expression); !byte_render_try_result_) {                                   \
-            return std::move(byte_render_try_result_).error();                                                         \
+        if (auto bytee_try_result_ = (expression); !bytee_try_result_) {                                               \
+            return std::move(bytee_try_result_).error();                                                               \
         }                                                                                                              \
     } while (false)
