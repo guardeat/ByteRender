@@ -24,7 +24,7 @@ Rendering features are validated **headless first** (image tests), presentation 
   `info()` queries, CPU access to host-visible buffers. (Staging uploads moved to step 8: they need copy commands.)
 - [x] **Step 8 — Command lists & barriers.** Per-thread command pools, `CommandList`, resource-state barriers
   (batched sync2), `submit()` → `SyncPoint`, copies, staging uploads (buffer → buffer / texture).
-- [ ] **Step 9 — Headless clear & readback.** Dynamic rendering clear into a texture, readback, image-compare test
+- [x] **Step 9 — Headless clear & readback.** Dynamic rendering clear into a texture, readback, image-compare test
   helper. `01_headless_clear` sample writes a PNG-free raw/PPM image.
 - [ ] **Step 10 — Shaders & graphics pipeline.** CMake GLSL → SPIR-V, `GraphicsPipeline`, push constants.
   **Headless triangle** image test.
@@ -47,6 +47,7 @@ Rendering features are validated **headless first** (image tests), presentation 
 ## Backlog
 - Null backend for GPU-less unit tests of RHI logic
 - Transient memory aliasing, async compute and transfer queues
+- Rendering into mip levels / array layers other than 0 (attachment view cache)
 - Math library decision (own vs. glm)
 - Scene / mesh / material layer on top of the graph
 - Additional backends (Metal / D3D12)

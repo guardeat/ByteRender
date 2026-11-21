@@ -37,6 +37,7 @@ cmake --preset debug            # configure (presets: debug, release, shared, as
 cmake --build --preset debug    # build
 ctest --preset debug            # run tests (ctest --preset debug -LE gpu: skip GPU tests)
 ./build/debug/bin/00_device_info
+./build/debug/bin/01_headless_clear            # renders without a window, writes headless_clear.ppm
 ```
 
 | Preset | What |

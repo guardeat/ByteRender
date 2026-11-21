@@ -154,6 +154,7 @@ void detail::DeviceImpl::destroy_now(BufferHandle buffer) {
 void detail::DeviceImpl::destroy_now(TextureHandle texture) {
     const std::scoped_lock lock{resources_mutex};
     vulkan::TextureRecord& record = textures.get(texture);
+    vk.vkDestroyImageView(device, record.attachment_view, nullptr);
     vk.vkDestroyImageView(device, record.view, nullptr);
     vmaDestroyImage(allocator, record.image, record.allocation);
     live_objects.remove(record.tracker_id);
@@ -330,6 +331,31 @@ core::Result<Texture> Device::create_texture(const TextureDesc& desc) {
             return impl.fail(result, "vkCreateImageView");
         }
         vulkan::set_debug_name(impl.device, VK_OBJECT_TYPE_IMAGE_VIEW, record.view, std::format("{} view", name));
+    }
+
+    // Attachments need a single-mip view; it covers mip 0 / layer 0 (rendering into other mips or layers: backlog).
+    if (desc.usage.has_any(TextureUsage::ColorAttachment | TextureUsage::DepthStencilAttachment)) {
+        VkImageViewCreateInfo attachment_info = view_info;
+        attachment_info.viewType = VK_IMAGE_VIEW_TYPE_2D;
+        attachment_info.subresourceRange = {
+            .aspectMask = has_stencil(desc.format)
+                              ? VkImageAspectFlags{VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT}
+                              : vulkan::aspect_mask(desc.format),
+            .baseMipLevel = 0,
+            .levelCount = 1,
+            .baseArrayLayer = 0,
+            .layerCount = 1,
+        };
+        if (const VkResult result =
+                impl.vk.vkCreateImageView(impl.device, &attachment_info, nullptr, &record.attachment_view);
+            result != VK_SUCCESS) {
+            impl.vk.vkDestroyImageView(impl.device, record.attachment_view, nullptr);
+            impl.vk.vkDestroyImageView(impl.device, record.view, nullptr);
+            vmaDestroyImage(impl.allocator, record.image, record.allocation);
+            return impl.fail(result, "vkCreateImageView (attachment)");
+        }
+        vulkan::set_debug_name(impl.device, VK_OBJECT_TYPE_IMAGE_VIEW, record.attachment_view,
+                               std::format("{} attachment view", name));
     }
 
     record.info = TextureInfo{

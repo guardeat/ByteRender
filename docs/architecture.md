@@ -226,6 +226,12 @@ list is a programmer error.
   parallel without locks and without thread-local state; contexts are reused once their submission has completed, and
   a list destroyed without submitting simply returns its context. Commands: barriers, fill/copy buffer, buffer ↔
   texture copies (tightly packed texel data).
+- **Render passes** (dynamic rendering): `begin_render_pass({.colors, .depth})` / `end_render_pass()`; up to 8 color
+  attachments + depth(-stencil); `LoadOp` Load/Clear/DontCare, `StoreOp` Store/DontCare; depth clears to 0 by default
+  (reverse-Z). Attachments render into mip 0 / layer 0 through a dedicated single-mip attachment view (other mips and
+  layers: backlog). Barriers and copies inside a render pass assert.
+- **Downloads**: `Device::download(texture, data, {region, before, after})` reads a region back into caller memory
+  (blocking; screenshots, tests, tools).
 - **Uploads**: `Device::upload(buffer | texture, data, ...)` = RAII staging buffer + copy + barriers + submit; the
   staging buffer is freed by deferred destruction once the copy completes. Buffer uploads use conservative global
   barriers (later work on the queue needs no barrier); texture uploads take `before` / `after` states. Upload sizes and

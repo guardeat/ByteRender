@@ -6,6 +6,7 @@
 #include <bytee/render/rhi/handles.hpp>
 
 #include <cstdint>
+#include <optional>
 #include <span>
 #include <string_view>
 #include <utility>
@@ -87,6 +88,50 @@ struct TextureRegion {
     core::Extent3D extent{.width = 0, .height = 0, .depth = 0};
 };
 
+enum class LoadOp : uint8_t {
+    Load,     // keep the previous contents
+    Clear,    // clear to the attachment's clear value
+    DontCare, // contents are undefined (fastest when everything is overwritten)
+};
+
+enum class StoreOp : uint8_t {
+    Store,    // keep the rendered contents
+    DontCare, // contents may be discarded after the pass (e.g. depth used only during the pass)
+};
+
+struct ClearColor {
+    float r = 0.0f;
+    float g = 0.0f;
+    float b = 0.0f;
+    float a = 1.0f;
+};
+
+// A render target: mip level 0, array layer 0 of a texture with ColorAttachment usage, in ColorAttachment state.
+struct ColorAttachment {
+    TextureHandle texture;
+    LoadOp load = LoadOp::Clear;
+    StoreOp store = StoreOp::Store;
+    ClearColor clear;
+};
+
+// Depth (and stencil) target: mip 0, layer 0 of a texture with DepthStencilAttachment usage, in DepthWrite state.
+// Bytee uses reverse-Z (architecture §14): depth is cleared to 0 (far) and the depth test is GREATER.
+struct DepthAttachment {
+    TextureHandle texture;
+    LoadOp load = LoadOp::Clear;
+    StoreOp store = StoreOp::Store;
+    float clear_depth = 0.0f;
+    uint32_t clear_stencil = 0;
+};
+
+inline constexpr uint32_t k_max_color_attachments = 8;
+
+// All attachments must have the same size; the render area is the whole attachment.
+struct RenderPassDesc {
+    std::span<const ColorAttachment> colors;
+    std::optional<DepthAttachment> depth;
+};
+
 // Records GPU commands. Created by Device::begin_commands(), consumed by Device::submit(). Move-only.
 // A command list may be recorded on any thread (one thread at a time); different lists record in parallel without
 // locking. Destroying a list without submitting it discards its commands.
@@ -111,6 +156,10 @@ public:
 
     // Records all transitions as one batch.
     void barrier(std::span<const BufferBarrier> buffers, std::span<const TextureBarrier> textures);
+
+    // Dynamic rendering. Copies and barriers are not allowed between begin_render_pass() and end_render_pass().
+    void begin_render_pass(const RenderPassDesc& desc);
+    void end_render_pass();
 
     // `dst` must be in CopyDst, sources in CopySrc.
     void fill_buffer(BufferHandle dst, uint64_t offset, uint64_t size, uint32_t value);

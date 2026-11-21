@@ -14,6 +14,7 @@ add_executable(bytee_tests
     core/test_types.cpp
     core/test_version.cpp
     rhi/test_format.cpp
+    rhi/test_image_support.cpp
     rhi/test_live_object_tracker.cpp
     rhi/test_retire_list.cpp
 )
@@ -36,6 +37,7 @@ add_executable(bytee_gpu_tests
     rhi/test_commands.cpp
     rhi/test_device.cpp
     rhi/test_instance.cpp
+    rhi/test_rendering.cpp
     rhi/test_resources.cpp
     rhi/test_sync.cpp
 )

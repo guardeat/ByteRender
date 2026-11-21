@@ -48,6 +48,7 @@ struct BufferRecord {
 struct TextureRecord {
     VkImage image = VK_NULL_HANDLE;
     VkImageView view = VK_NULL_HANDLE; // default view (every mip level and layer); none for transfer-only textures
+    VkImageView attachment_view = VK_NULL_HANDLE; // mip 0, layer 0; only with an attachment usage
     VmaAllocation allocation = VK_NULL_HANDLE;
     detail::LiveObjectTracker::Id tracker_id = 0;
     TextureInfo info;
@@ -64,6 +65,7 @@ struct BYTEE_HIDDEN detail::CommandContext {
     VkCommandBuffer buffer = VK_NULL_HANDLE;
     QueueType queue = QueueType::Graphics;
     uint64_t last_submission = 0; // timeline value of its queue; 0 = never submitted
+    bool in_render_pass = false;  // recording state, for misuse asserts
 };
 
 struct BYTEE_HIDDEN detail::DeviceImpl {

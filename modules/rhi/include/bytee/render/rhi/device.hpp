@@ -26,6 +26,13 @@ struct DeviceLimits {
     uint32_t max_textures = 1u << 16;
 };
 
+// Which part of a texture to read back and which states the texture is in before and after.
+struct TextureDownloadDesc {
+    TextureRegion region;                          // zero extent: the whole mip level
+    ResourceState before = ResourceState::CopySrc; // the texture's current state
+    ResourceState after = ResourceState::CopySrc;  // state after the download
+};
+
 // Where texture upload data goes and which states the texture is in before and after.
 struct TextureUploadDesc {
     TextureRegion region;                            // zero extent: the whole mip level
@@ -106,6 +113,12 @@ public:
                                                  std::span<const std::byte> data);
     [[nodiscard]] core::Result<SyncPoint> upload(TextureHandle dst, std::span<const std::byte> data,
                                                  const TextureUploadDesc& desc);
+
+    // Reads a texture region back into `data` (tightly packed texels; its size must match the region). Blocks until
+    // the GPU has finished all work submitted before it — for screenshots, tests and tools, not per-frame use.
+    // The texture needs TransferSrc usage.
+    [[nodiscard]] core::Result<void> download(TextureHandle src, std::span<std::byte> data,
+                                              const TextureDownloadDesc& desc);
 
 private:
     friend class Instance;

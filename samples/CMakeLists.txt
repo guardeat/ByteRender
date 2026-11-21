@@ -5,3 +5,4 @@ function(bytee_add_sample name)
 endfunction()
 
 add_subdirectory(00_device_info)
+add_subdirectory(01_headless_clear)

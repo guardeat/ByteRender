@@ -148,6 +148,7 @@ core::Result<detail::CommandContext*> detail::DeviceImpl::acquire_context(QueueT
         contexts.push_back(std::move(created));
     }
 
+    context->in_render_pass = false;
     const VkCommandBufferBeginInfo begin_info{.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
                                               .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT};
     if (const VkResult result = vk.vkBeginCommandBuffer(context->buffer, &begin_info); result != VK_SUCCESS) {
@@ -202,6 +203,7 @@ CommandList& CommandList::operator=(CommandList&& other) noexcept {
 
 void CommandList::barrier(std::span<const BufferBarrier> buffers, std::span<const TextureBarrier> textures) {
     BYTEE_ASSERT(is_valid(), "CommandList is empty");
+    BYTEE_ASSERT(!context_->in_render_pass, "not allowed inside a render pass");
     const detail::DeviceImpl& impl = *device_;
 
     std::array<VkBufferMemoryBarrier2, k_barrier_batch> buffer_batch{};
@@ -278,6 +280,7 @@ void CommandList::barrier(std::span<const BufferBarrier> buffers, std::span<cons
 
 void CommandList::fill_buffer(BufferHandle dst, uint64_t offset, uint64_t size, uint32_t value) {
     BYTEE_ASSERT(is_valid(), "CommandList is empty");
+    BYTEE_ASSERT(!context_->in_render_pass, "not allowed inside a render pass");
     const vulkan::BufferRecord& record = device_->buffers.get(dst);
     BYTEE_ASSERT(offset % 4 == 0 && size % 4 == 0, "fill_buffer: offset and size must be multiples of 4");
     BYTEE_ASSERT(offset <= record.info.size && size <= record.info.size - offset,
@@ -289,6 +292,7 @@ void CommandList::fill_buffer(BufferHandle dst, uint64_t offset, uint64_t size, 
 void CommandList::copy_buffer(BufferHandle src, uint64_t src_offset, BufferHandle dst, uint64_t dst_offset,
                               uint64_t size) {
     BYTEE_ASSERT(is_valid(), "CommandList is empty");
+    BYTEE_ASSERT(!context_->in_render_pass, "copies are not allowed inside a render pass");
     const vulkan::BufferRecord& source = device_->buffers.get(src);
     const vulkan::BufferRecord& destination = device_->buffers.get(dst);
     BYTEE_ASSERT(src_offset <= source.info.size && size <= source.info.size - src_offset,
@@ -308,6 +312,7 @@ void CommandList::copy_buffer(BufferHandle src, uint64_t src_offset, BufferHandl
 void CommandList::copy_buffer_to_texture(BufferHandle src, uint64_t src_offset, TextureHandle dst,
                                          const TextureRegion& region) {
     BYTEE_ASSERT(is_valid(), "CommandList is empty");
+    BYTEE_ASSERT(!context_->in_render_pass, "copies are not allowed inside a render pass");
     const vulkan::BufferRecord& source = device_->buffers.get(src);
     const vulkan::TextureRecord& destination = device_->textures.get(dst);
     const core::Extent3D extent = resolve_extent(destination.info, region);
@@ -329,6 +334,7 @@ void CommandList::copy_buffer_to_texture(BufferHandle src, uint64_t src_offset, 
 void CommandList::copy_texture_to_buffer(TextureHandle src, const TextureRegion& region, BufferHandle dst,
                                          uint64_t dst_offset) {
     BYTEE_ASSERT(is_valid(), "CommandList is empty");
+    BYTEE_ASSERT(!context_->in_render_pass, "copies are not allowed inside a render pass");
     const vulkan::TextureRecord& source = device_->textures.get(src);
     const vulkan::BufferRecord& destination = device_->buffers.get(dst);
     const core::Extent3D extent = resolve_extent(source.info, region);
@@ -345,6 +351,94 @@ void CommandList::copy_texture_to_buffer(TextureHandle src, const TextureRegion&
                                         .regionCount = 1,
                                         .pRegions = &copy_region};
     device_->vk.vkCmdCopyImageToBuffer2(context_->buffer, &copy);
+}
+
+void CommandList::begin_render_pass(const RenderPassDesc& desc) {
+    BYTEE_ASSERT(is_valid(), "CommandList is empty");
+    BYTEE_ASSERT(!context_->in_render_pass, "render passes cannot be nested");
+    BYTEE_ASSERT(desc.colors.size() <= k_max_color_attachments, "{} color attachments, at most {}", desc.colors.size(),
+                 k_max_color_attachments);
+    BYTEE_ASSERT(!desc.colors.empty() || desc.depth.has_value(), "a render pass needs at least one attachment");
+    const detail::DeviceImpl& impl = *device_;
+
+    const auto to_load = [](LoadOp op) {
+        switch (op) {
+        case LoadOp::Load: return VK_ATTACHMENT_LOAD_OP_LOAD;
+        case LoadOp::Clear: return VK_ATTACHMENT_LOAD_OP_CLEAR;
+        case LoadOp::DontCare: return VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+        }
+        return VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+    };
+    const auto to_store = [](StoreOp op) {
+        return op == StoreOp::Store ? VK_ATTACHMENT_STORE_OP_STORE : VK_ATTACHMENT_STORE_OP_DONT_CARE;
+    };
+
+    core::Extent2D extent{};
+    const auto check_extent = [&extent](const TextureInfo& info) {
+        const core::Extent2D size{.width = info.extent.width, .height = info.extent.height};
+        if (extent.width == 0) {
+            extent = size;
+        }
+        BYTEE_ASSERT(size == extent, "attachment '{}' is {}x{}, other attachments are {}x{}", info.debug_name,
+                     size.width, size.height, extent.width, extent.height);
+    };
+
+    std::array<VkRenderingAttachmentInfo, k_max_color_attachments> colors{};
+    for (std::size_t index = 0; index < desc.colors.size(); ++index) {
+        const ColorAttachment& attachment = desc.colors[index];
+        const vulkan::TextureRecord& record = impl.textures.get(attachment.texture);
+        BYTEE_ASSERT(record.info.usage.has(TextureUsage::ColorAttachment), "texture '{}' lacks ColorAttachment usage",
+                     record.info.debug_name);
+        check_extent(record.info);
+        colors[index] = VkRenderingAttachmentInfo{
+            .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
+            .imageView = record.attachment_view,
+            .imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+            .loadOp = to_load(attachment.load),
+            .storeOp = to_store(attachment.store),
+            .clearValue = {.color = {.float32 = {attachment.clear.r, attachment.clear.g, attachment.clear.b,
+                                                 attachment.clear.a}}},
+        };
+    }
+
+    VkRenderingAttachmentInfo depth{};
+    VkRenderingAttachmentInfo stencil{};
+    bool uses_stencil = false;
+    if (desc.depth) {
+        const vulkan::TextureRecord& record = impl.textures.get(desc.depth->texture);
+        BYTEE_ASSERT(record.info.usage.has(TextureUsage::DepthStencilAttachment),
+                     "texture '{}' lacks DepthStencilAttachment usage", record.info.debug_name);
+        check_extent(record.info);
+        depth = VkRenderingAttachmentInfo{
+            .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
+            .imageView = record.attachment_view,
+            .imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+            .loadOp = to_load(desc.depth->load),
+            .storeOp = to_store(desc.depth->store),
+            .clearValue = {.depthStencil = {.depth = desc.depth->clear_depth, .stencil = desc.depth->clear_stencil}},
+        };
+        uses_stencil = has_stencil(record.info.format);
+        stencil = depth;
+    }
+
+    const VkRenderingInfo rendering{
+        .sType = VK_STRUCTURE_TYPE_RENDERING_INFO,
+        .renderArea = {.offset = {.x = 0, .y = 0}, .extent = {.width = extent.width, .height = extent.height}},
+        .layerCount = 1,
+        .colorAttachmentCount = static_cast<uint32_t>(desc.colors.size()),
+        .pColorAttachments = colors.data(),
+        .pDepthAttachment = desc.depth ? &depth : nullptr,
+        .pStencilAttachment = uses_stencil ? &stencil : nullptr,
+    };
+    impl.vk.vkCmdBeginRendering(context_->buffer, &rendering);
+    context_->in_render_pass = true;
+}
+
+void CommandList::end_render_pass() {
+    BYTEE_ASSERT(is_valid(), "CommandList is empty");
+    BYTEE_ASSERT(context_->in_render_pass, "end_render_pass without begin_render_pass");
+    device_->vk.vkCmdEndRendering(context_->buffer);
+    context_->in_render_pass = false;
 }
 
 // ----------------------------------------------------------------------------------------------------------------
@@ -367,6 +461,7 @@ core::Result<SyncPoint> Device::submit(CommandList&& commands) {
     BYTEE_ASSERT(is_valid(), "Device is empty");
     BYTEE_ASSERT(commands.is_valid(), "submitting an empty CommandList");
     BYTEE_ASSERT(commands.device_ == impl_, "CommandList belongs to another device");
+    BYTEE_ASSERT(!commands.context_->in_render_pass, "submitting a CommandList with an open render pass");
 
     // The list is consumed whatever happens next.
     detail::CommandContext* context = std::exchange(commands.context_, nullptr);
@@ -463,6 +558,57 @@ core::Result<SyncPoint> Device::upload(TextureHandle dst, std::span<const std::b
         .texture = dst, .before = ResourceState::CopyDst, .after = desc.after, .subresources = subresources};
     commands->barrier({}, std::span{&to_final, 1});
     return submit(std::move(*commands));
+}
+
+core::Result<void> Device::download(TextureHandle src, std::span<std::byte> data, const TextureDownloadDesc& desc) {
+    BYTEE_ASSERT(is_valid(), "Device is empty");
+    const TextureInfo& info = impl_->textures.get(src).info;
+    const core::Extent3D extent = resolve_extent(info, desc.region);
+    if (!region_fits(info, desc.region, extent)) {
+        return core::make_error(
+            core::ErrorCode::InvalidArgument, "download: region (mip {}, layers {}+{}) is outside texture '{}'",
+            desc.region.mip_level, desc.region.base_array_layer, desc.region.array_layer_count, info.debug_name);
+    }
+    if (const uint64_t expected = region_bytes(info, desc.region, extent); data.size() != expected) {
+        return core::make_error(core::ErrorCode::InvalidArgument,
+                                "download from texture '{}': {} bytes given, the region needs {}", info.debug_name,
+                                data.size(), expected);
+    }
+    BYTEE_ASSERT(info.usage.has(TextureUsage::TransferSrc), "download: texture '{}' lacks TransferSrc usage",
+                 info.debug_name);
+
+    core::Result<Buffer> staging = create_buffer({.size = data.size(),
+                                                  .usage = BufferUsage::TransferDst,
+                                                  .memory = MemoryLocation::Readback,
+                                                  .debug_name = "download staging"});
+    if (!staging) {
+        return std::move(staging).error();
+    }
+    core::Result<CommandList> commands = begin_commands();
+    if (!commands) {
+        return std::move(commands).error();
+    }
+    const TextureSubresources subresources{.base_mip_level = desc.region.mip_level,
+                                           .mip_level_count = 1,
+                                           .base_array_layer = desc.region.base_array_layer,
+                                           .array_layer_count = desc.region.array_layer_count};
+    if (desc.before != ResourceState::CopySrc) {
+        const TextureBarrier to_copy{
+            .texture = src, .before = desc.before, .after = ResourceState::CopySrc, .subresources = subresources};
+        commands->barrier({}, std::span{&to_copy, 1});
+    }
+    commands->copy_texture_to_buffer(src, desc.region, *staging, 0);
+    if (desc.after != ResourceState::CopySrc) {
+        const TextureBarrier to_final{
+            .texture = src, .before = ResourceState::CopySrc, .after = desc.after, .subresources = subresources};
+        commands->barrier({}, std::span{&to_final, 1});
+    }
+    core::Result<SyncPoint> done = submit(std::move(*commands));
+    if (!done) {
+        return std::move(done).error();
+    }
+    BYTEE_TRY(wait(*done));
+    return read(*staging, 0, data);
 }
 
 } // namespace bytee::render::rhi
