@@ -22,6 +22,7 @@ option(BYTE_RENDER_WARNINGS_AS_ERRORS "Treat warnings as errors in ByteRender ta
 option(BYTE_RENDER_LTO "Link-time optimization for Release builds" ${PROJECT_IS_TOP_LEVEL})
 option(BYTE_RENDER_BUILD_SAMPLES "Build ByteRender samples" ${PROJECT_IS_TOP_LEVEL})
 option(BYTE_RENDER_BUILD_TESTS "Build ByteRender tests" ${PROJECT_IS_TOP_LEVEL})
+option(BYTE_RENDER_BUILD_BENCHMARKS "Build ByteRender micro-benchmarks" ${PROJECT_IS_TOP_LEVEL})
 
 if(BYTE_RENDER_BUILD_SHARED)
     set(BYTE_RENDER_LIBRARY_TYPE SHARED)

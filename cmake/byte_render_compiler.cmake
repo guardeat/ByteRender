@@ -89,6 +89,7 @@ function(byte_render_add_format_targets)
         "${PROJECT_SOURCE_DIR}/modules/*.hpp" "${PROJECT_SOURCE_DIR}/modules/*.cpp"
         "${PROJECT_SOURCE_DIR}/samples/*.hpp" "${PROJECT_SOURCE_DIR}/samples/*.cpp"
         "${PROJECT_SOURCE_DIR}/tests/*.hpp" "${PROJECT_SOURCE_DIR}/tests/*.cpp"
+        "${PROJECT_SOURCE_DIR}/benchmarks/*.hpp" "${PROJECT_SOURCE_DIR}/benchmarks/*.cpp"
     )
     add_custom_target(format
         COMMAND "${BYTE_RENDER_CLANG_FORMAT}" -i ${sources}

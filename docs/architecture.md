@@ -57,6 +57,7 @@ ByteRender/
 ├── samples/
 │   ├── common/      sample framework (GLFW window, main loop) — not part of the library
 │   └── 00_device_info/  01_headless_clear/  02_triangle/  03_window/  ...
+├── benchmarks/      micro-benchmarks (built, not run as tests)
 ├── tests/
 │   ├── support/     capture log sink, GPU fixtures, image comparison
 │   ├── core/        unit tests (no GPU)
@@ -131,8 +132,17 @@ public inheritance is safe. **The deleter decides the destruction policy**:
   base classes) with immediate destruction, for long-lived objects destroyed while the device is idle.
 
 ### 4.3 Pools — `core::Pool<Value_, Tag_>`
-Dense array of slots + free list + per-slot generation. `insert()` returns a `Handle<Tag_>`, `remove()` bumps the
-generation, lookup is O(1) array indexing. No per-object heap allocation.
+- Fixed maximum capacity chosen at construction (fits bindless: the descriptor heap is fixed-size too). Storage is
+  allocated lazily in chunks of 256 slots and **never moves**: references from `get()` stay valid while other objects
+  are inserted.
+- Slot generation: odd = alive, even = free. `remove()` bumps it, so stale handles are rejected by `contains()` /
+  `try_get()`; `get()` asserts in Debug and is unchecked in Release. Freed slots are reused LIFO (cache-warm).
+- O(1) everything, no hashing, no per-object allocation; `insert()` returns an invalid handle when full.
+- Threading: `insert()`/`remove()` need external synchronization (the owner holds a lock); lookups may run
+  concurrently with insert/remove of other slots.
+- Measured (Apple M5 Pro, Release + LTO, 65 536 objects, random order): lookup 0.59 ns (raw `std::vector` 0.54 ns,
+  `std::unordered_map` 1.74 ns); insert + remove 1.48 ns per operation (`unordered_map` 7.66 ns).
+  Benchmark: `benchmarks/pool_benchmark.cpp`.
 
 ### 4.4 Other core pieces
 `Result<T_>` / `Error` / `ErrorCode`, `BYTE_RENDER_ASSERT`, `Logger` + `LogSink` (an application-owned object,
@@ -297,7 +307,7 @@ list is a programmer error.
 | `BYTE_RENDER_SANITIZE` | empty | `address` (ASan+UBSan) or `thread` (TSan), top-level builds |
 | `BYTE_RENDER_WARNINGS_AS_ERRORS` | `ON` | Warnings are errors in ByteRender targets |
 | `BYTE_RENDER_LTO` | `ON` when top-level | Link-time optimization in Release (consumers opt in: GCC LTO static libraries contain only bitcode) |
-| `BYTE_RENDER_BUILD_SAMPLES` / `_TESTS` | `ON` when top-level | Samples / tests |
+| `BYTE_RENDER_BUILD_SAMPLES` / `_TESTS` / `_BENCHMARKS` | `ON` when top-level | Samples / tests / benchmarks |
 
 ## 17. Testing
 - `byte_render_tests`: unit tests, no GPU.

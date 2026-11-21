@@ -38,6 +38,10 @@ if(BYTE_RENDER_BUILD_SAMPLES)
     add_subdirectory(samples)
 endif()
 
+if(BYTE_RENDER_BUILD_BENCHMARKS)
+    add_subdirectory(benchmarks)
+endif()
+
 if(BYTE_RENDER_BUILD_TESTS)
     enable_testing()
     add_subdirectory(tests)

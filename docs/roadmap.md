@@ -10,7 +10,7 @@ Rendering features are validated **headless first** (image tests), presentation 
   `00_device_info` sample printing the version.
 - [x] **Step 2 — Core basics.** `Result<T_>`, `Error`, `BYTE_RENDER_ASSERT`, `LogSink`/`Logger`, `Flags<Enum_>`,
   `Extent2D/3D`, `Version`. Unit tests.
-- [ ] **Step 3 — Handles, resources, pools.** `Handle<Tag_>`, `Resource<Tag_, Deleter_>`, generational
+- [x] **Step 3 — Handles, resources, pools.** `Handle<Tag_>`, `Resource<Tag_, Deleter_>`, generational
   `Pool<Value_, Tag_>`. Unit tests (generation checks, moves, release) + micro-benchmark of pool operations.
 
 ## Phase 1 — RHI + Vulkan, headless first

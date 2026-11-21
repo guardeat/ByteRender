@@ -58,7 +58,8 @@ multiple projects. **Performance is a primary goal.**
 - Private members: trailing underscore — `impl_`, `entries_`. Public fields of plain structs: plain — `desc.extent`
 - Constants: `k_` prefix — `k_max_frames_in_flight`
 - Macros: `BYTE_RENDER_` prefix, `UPPER_SNAKE_CASE`
-- Namespaces: `byte::core`, `byte::render::rhi`, `byte::render::graph`
+- Namespaces: `byte::core`, `byte::render::rhi`, `byte::render::graph`. Inside namespace `std` (e.g. `std::hash`
+  specializations) and in macros, always write `::byte::...` — a plain `byte` there names `std::byte`.
 - Files: `snake_case.hpp` / `snake_case.cpp`, one main type per file. CMake modules: `snake_case.cmake`.
 - Formatting enforced by `.clang-format`. Warnings are errors in engine targets.
 
