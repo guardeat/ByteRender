@@ -33,6 +33,7 @@ add_test(NAME bytee_tests COMMAND bytee_tests)
 # GPU tests through the public API (label "gpu"; skip on machines without a GPU: ctest -LE gpu).
 add_executable(bytee_gpu_tests
     main.cpp
+    rhi/test_commands.cpp
     rhi/test_device.cpp
     rhi/test_instance.cpp
     rhi/test_resources.cpp
@@ -60,6 +61,7 @@ if(NOT BYTEE_BUILD_SHARED AND BYTEE_RHI_BACKEND STREQUAL "Vulkan")
 
     add_executable(bytee_vulkan_gpu_tests
         main.cpp
+        vulkan/test_vulkan_commands.cpp
         vulkan/test_vulkan_device.cpp
         vulkan/test_vulkan_queue.cpp
         vulkan/test_vulkan_resources.cpp
@@ -100,4 +102,7 @@ if(BYTEE_ASSERTS STREQUAL "ON" OR (BYTEE_ASSERTS STREQUAL "AUTO" AND CMAKE_BUILD
     bytee_add_death_test(bytee_texture_outlives_device death/texture_outlives_device.cpp bytee::rhi
         "Device 'Leaky Device' destroyed while Texture 'leaked' is still alive.*every resource must be destroyed before its Device")
     set_tests_properties(bytee_texture_outlives_device PROPERTIES LABELS gpu)
+    bytee_add_death_test(bytee_command_list_outlives_device death/command_list_outlives_device.cpp bytee::rhi
+        "Device 'Busy Device' destroyed while 1 CommandList[(]s[)] are alive.*every CommandList must be submitted")
+    set_tests_properties(bytee_command_list_outlives_device PROPERTIES LABELS gpu)
 endif()

@@ -22,7 +22,7 @@ Rendering features are validated **headless first** (image tests), presentation 
   `wait_idle`. Unit + white-box tests, sanitizer runs.
 - [x] **Step 7 — Buffers & textures.** Pools + handles + `Resource` deleters, VMA allocations, deferred release,
   `info()` queries, CPU access to host-visible buffers. (Staging uploads moved to step 8: they need copy commands.)
-- [ ] **Step 8 — Command lists & barriers.** Per-thread command pools, `CommandList`, resource-state barriers
+- [x] **Step 8 — Command lists & barriers.** Per-thread command pools, `CommandList`, resource-state barriers
   (batched sync2), `submit()` → `SyncPoint`, copies, staging uploads (buffer → buffer / texture).
 - [ ] **Step 9 — Headless clear & readback.** Dynamic rendering clear into a texture, readback, image-compare test
   helper. `01_headless_clear` sample writes a PNG-free raw/PPM image.

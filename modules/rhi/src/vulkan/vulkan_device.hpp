@@ -16,10 +16,12 @@
 #include <atomic>
 #include <chrono>
 #include <cstddef>
+#include <deque>
 #include <memory>
 #include <mutex>
 #include <span>
 #include <string>
+#include <vector>
 
 namespace bytee::render::rhi {
 
@@ -45,7 +47,7 @@ struct BufferRecord {
 
 struct TextureRecord {
     VkImage image = VK_NULL_HANDLE;
-    VkImageView view = VK_NULL_HANDLE; // default view: every mip level and layer
+    VkImageView view = VK_NULL_HANDLE; // default view (every mip level and layer); none for transfer-only textures
     VmaAllocation allocation = VK_NULL_HANDLE;
     detail::LiveObjectTracker::Id tracker_id = 0;
     TextureInfo info;
@@ -54,6 +56,15 @@ struct TextureRecord {
 [[nodiscard]] uint64_t to_timeout_nanoseconds(std::chrono::nanoseconds timeout) noexcept;
 
 } // namespace vulkan
+
+// Backing store of a CommandList: its own command pool (so lists record on any thread without locks) and one primary
+// command buffer. Recycled once the GPU has executed its last submission.
+struct BYTEE_HIDDEN detail::CommandContext {
+    VkCommandPool pool = VK_NULL_HANDLE;
+    VkCommandBuffer buffer = VK_NULL_HANDLE;
+    QueueType queue = QueueType::Graphics;
+    uint64_t last_submission = 0; // timeline value of its queue; 0 = never submitted
+};
 
 struct BYTEE_HIDDEN detail::DeviceImpl {
     detail::InstanceImpl* instance = nullptr; // the creating instance; outlives the device
@@ -83,6 +94,14 @@ struct BYTEE_HIDDEN detail::DeviceImpl {
     detail::RetireList<BufferHandle, vulkan::k_queue_count> retired_buffers;
     detail::RetireList<TextureHandle, vulkan::k_queue_count> retired_textures;
     detail::LiveObjectTracker live_objects; // child resources, for leak reports
+
+    // Command contexts. All are owned by `contexts`; each is in exactly one of: free, pending (submitted, maybe still
+    // executing; in submission order), or in use by a CommandList.
+    std::mutex contexts_mutex;
+    std::vector<std::unique_ptr<detail::CommandContext>> contexts;
+    std::vector<detail::CommandContext*> free_contexts;
+    std::deque<detail::CommandContext*> pending_contexts;
+    std::atomic<uint32_t> live_command_lists{0};
 
     explicit DeviceImpl(const DeviceLimits& limits);
     ~DeviceImpl();
@@ -127,7 +146,17 @@ struct BYTEE_HIDDEN detail::DeviceImpl {
 
     // Waits for the GPU and destroys everything still retired (used before the leak check at destruction).
     void finish_pending_work() noexcept;
+
+    // A command context ready for recording (begun), reusing one whose GPU work has completed when possible.
+    [[nodiscard]] core::Result<detail::CommandContext*> acquire_context(QueueType queue);
+    // Returns a context that was never submitted (its CommandList was discarded).
+    void discard_context(detail::CommandContext* context) noexcept;
+    // Marks a submitted context; it becomes reusable once `value` completes on its queue.
+    void retire_context(detail::CommandContext* context, uint64_t value) noexcept;
+    void destroy_contexts() noexcept;
 };
+
+[[nodiscard]] detail::CommandContext* get_context(const CommandList& list) noexcept;
 
 [[nodiscard]] detail::DeviceImpl* get_impl(const Device& device) noexcept;
 

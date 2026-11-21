@@ -84,6 +84,7 @@ detail::DeviceImpl::DeviceImpl(const DeviceLimits& limits)
 
 detail::DeviceImpl::~DeviceImpl() {
     finish_pending_work();
+    destroy_contexts();
     for (std::unique_ptr<vulkan::Queue>& queue_ptr : queues) {
         queue_ptr.reset();
     }
@@ -193,6 +194,11 @@ void destroy(detail::DeviceImpl* impl) noexcept {
         return;
     }
     impl->finish_pending_work(); // retired-but-pending resources are not leaks
+    if (const uint32_t lists = impl->live_command_lists.load(std::memory_order_acquire); lists > 0) {
+        impl->logger->error("Device '{}' destroyed while {} CommandList(s) are alive", impl->debug_name, lists);
+        BYTEE_ASSERT(false, "every CommandList must be submitted or destroyed before its Device");
+        return; // leaked on purpose: the command lists still use it
+    }
     if (impl->live_objects.count() > 0) {
         impl->live_objects.report_leaks(*impl->logger, std::format("Device '{}'", impl->debug_name));
         BYTEE_ASSERT(false, "every resource must be destroyed before its Device");

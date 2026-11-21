@@ -4,6 +4,21 @@
 
 namespace bytee::core {
 
+struct Offset2D {
+    int32_t x = 0;
+    int32_t y = 0;
+
+    friend constexpr bool operator==(const Offset2D&, const Offset2D&) noexcept = default;
+};
+
+struct Offset3D {
+    int32_t x = 0;
+    int32_t y = 0;
+    int32_t z = 0;
+
+    friend constexpr bool operator==(const Offset3D&, const Offset3D&) noexcept = default;
+};
+
 struct Extent2D {
     uint32_t width = 0;
     uint32_t height = 0;

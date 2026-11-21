@@ -4,6 +4,7 @@
 #include <bytee/core/result.hpp>
 #include <bytee/render/rhi/adapter.hpp>
 #include <bytee/render/rhi/buffer.hpp>
+#include <bytee/render/rhi/command_list.hpp>
 #include <bytee/render/rhi/export.hpp>
 #include <bytee/render/rhi/handles.hpp>
 #include <bytee/render/rhi/queue.hpp>
@@ -23,6 +24,13 @@ namespace bytee::render::rhi {
 struct DeviceLimits {
     uint32_t max_buffers = 1u << 16;
     uint32_t max_textures = 1u << 16;
+};
+
+// Where texture upload data goes and which states the texture is in before and after.
+struct TextureUploadDesc {
+    TextureRegion region;                            // zero extent: the whole mip level
+    ResourceState before = ResourceState::Undefined; // Undefined discards the previous contents
+    ResourceState after = ResourceState::ShaderRead;
 };
 
 struct DeviceDesc {
@@ -85,6 +93,19 @@ public:
     // inside the buffer.
     [[nodiscard]] core::Result<void> write(BufferHandle buffer, uint64_t offset, std::span<const std::byte> data);
     [[nodiscard]] core::Result<void> read(BufferHandle buffer, uint64_t offset, std::span<std::byte> data) const;
+
+    // Commands. Thread-safe. A command list's resources must stay alive until it is submitted.
+    [[nodiscard]] core::Result<CommandList> begin_commands(QueueType queue = QueueType::Graphics);
+    // Consumes the list; the returned SyncPoint completes when the GPU has executed it.
+    [[nodiscard]] core::Result<SyncPoint> submit(CommandList&& commands);
+
+    // Upload helpers: copy CPU data into GPU-local resources through a staging buffer (freed automatically once the
+    // copy has completed). The returned SyncPoint completes with the copy; later work on the same queue may use the
+    // data without waiting. Errors: InvalidArgument (size mismatch), plus resource-creation errors.
+    [[nodiscard]] core::Result<SyncPoint> upload(BufferHandle dst, uint64_t dst_offset,
+                                                 std::span<const std::byte> data);
+    [[nodiscard]] core::Result<SyncPoint> upload(TextureHandle dst, std::span<const std::byte> data,
+                                                 const TextureUploadDesc& desc);
 
 private:
     friend class Instance;

@@ -85,4 +85,71 @@ VkImageAspectFlags aspect_mask(Format format) noexcept {
     return is_depth_format(format) ? VK_IMAGE_ASPECT_DEPTH_BIT : VK_IMAGE_ASPECT_COLOR_BIT;
 }
 
+StateScope to_state_scope(ResourceState state) noexcept {
+    constexpr VkPipelineStageFlags2 k_shaders = VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT |
+                                                VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT |
+                                                VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT;
+    constexpr VkPipelineStageFlags2 k_depth_tests =
+        VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT;
+    switch (state) {
+    case ResourceState::Undefined: return {VK_PIPELINE_STAGE_2_NONE, VK_ACCESS_2_NONE, VK_IMAGE_LAYOUT_UNDEFINED};
+    case ResourceState::General:
+        return {VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT, VK_ACCESS_2_MEMORY_READ_BIT | VK_ACCESS_2_MEMORY_WRITE_BIT,
+                VK_IMAGE_LAYOUT_GENERAL};
+    case ResourceState::CopySrc:
+        return {VK_PIPELINE_STAGE_2_ALL_TRANSFER_BIT, VK_ACCESS_2_TRANSFER_READ_BIT,
+                VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL};
+    case ResourceState::CopyDst:
+        return {VK_PIPELINE_STAGE_2_ALL_TRANSFER_BIT, VK_ACCESS_2_TRANSFER_WRITE_BIT,
+                VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL};
+    case ResourceState::ShaderRead:
+        return {k_shaders, VK_ACCESS_2_SHADER_SAMPLED_READ_BIT | VK_ACCESS_2_SHADER_STORAGE_READ_BIT,
+                VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL};
+    case ResourceState::ShaderWrite:
+        return {k_shaders, VK_ACCESS_2_SHADER_STORAGE_READ_BIT | VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT,
+                VK_IMAGE_LAYOUT_GENERAL};
+    case ResourceState::ColorAttachment:
+        return {VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
+                VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT,
+                VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL};
+    case ResourceState::DepthWrite:
+        return {k_depth_tests,
+                VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
+                VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL};
+    case ResourceState::DepthRead:
+        return {k_depth_tests | k_shaders,
+                VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_2_SHADER_SAMPLED_READ_BIT,
+                VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL};
+    case ResourceState::VertexBuffer:
+        return {VK_PIPELINE_STAGE_2_VERTEX_ATTRIBUTE_INPUT_BIT, VK_ACCESS_2_VERTEX_ATTRIBUTE_READ_BIT,
+                VK_IMAGE_LAYOUT_UNDEFINED};
+    case ResourceState::IndexBuffer:
+        return {VK_PIPELINE_STAGE_2_INDEX_INPUT_BIT, VK_ACCESS_2_INDEX_READ_BIT, VK_IMAGE_LAYOUT_UNDEFINED};
+    case ResourceState::IndirectBuffer:
+        return {VK_PIPELINE_STAGE_2_DRAW_INDIRECT_BIT, VK_ACCESS_2_INDIRECT_COMMAND_READ_BIT,
+                VK_IMAGE_LAYOUT_UNDEFINED};
+    case ResourceState::UniformBuffer: return {k_shaders, VK_ACCESS_2_UNIFORM_READ_BIT, VK_IMAGE_LAYOUT_UNDEFINED};
+    }
+    return {};
+}
+
+bool is_buffer_state(ResourceState state) noexcept {
+    switch (state) {
+    case ResourceState::ColorAttachment:
+    case ResourceState::DepthWrite:
+    case ResourceState::DepthRead: return false;
+    default: return true;
+    }
+}
+
+bool is_texture_state(ResourceState state) noexcept {
+    switch (state) {
+    case ResourceState::VertexBuffer:
+    case ResourceState::IndexBuffer:
+    case ResourceState::IndirectBuffer:
+    case ResourceState::UniformBuffer: return false;
+    default: return true;
+    }
+}
+
 } // namespace bytee::render::rhi::vulkan

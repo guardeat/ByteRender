@@ -94,6 +94,11 @@ TEST_CASE_FIXTURE(DeviceFixture, "Textures of various kinds") {
          .format = Format::D32Float,
          .usage = TextureUsage::DepthStencilAttachment | TextureUsage::Sampled,
          .debug_name = "depth"},
+        // Regression: transfer-only textures must not get an image view (invalid in Vulkan).
+        {.extent = {.width = 8, .height = 8},
+         .format = Format::RGBA8Unorm,
+         .usage = TextureUsage::TransferSrc | TextureUsage::TransferDst,
+         .debug_name = "transfer-only"},
     };
     for (const rhi::TextureDesc& desc : descs) {
         auto texture = device.create_texture(desc);

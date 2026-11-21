@@ -4,6 +4,7 @@ if(BYTEE_RHI_BACKEND STREQUAL "Vulkan")
     bytee_fetch_vulkan()
     set(backend_sources
         src/vulkan/vulkan_backend.cpp
+        src/vulkan/vulkan_commands.cpp
         src/vulkan/vulkan_common.cpp
         src/vulkan/vulkan_convert.cpp
         src/vulkan/vulkan_device.cpp

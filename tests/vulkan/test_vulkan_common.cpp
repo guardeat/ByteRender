@@ -73,3 +73,20 @@ TEST_CASE("VkResult maps to error codes and names") {
     CHECK(std::string_view{error.location().file_name()} == "tests/vulkan/test_vulkan_common.cpp"); // the caller
 #endif
 }
+
+#include "vulkan/vulkan_convert.hpp"
+
+TEST_CASE("Resource states map to synchronization2 scopes and layouts") {
+    using bytee::render::rhi::ResourceState;
+    CHECK(vulkan::to_state_scope(ResourceState::CopyDst).layout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+    CHECK(vulkan::to_state_scope(ResourceState::ShaderRead).layout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+    CHECK(vulkan::to_state_scope(ResourceState::ShaderWrite).layout == VK_IMAGE_LAYOUT_GENERAL);
+    CHECK(vulkan::to_state_scope(ResourceState::DepthWrite).layout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
+    CHECK(vulkan::to_state_scope(ResourceState::Undefined).stages == VK_PIPELINE_STAGE_2_NONE);
+    CHECK((vulkan::to_state_scope(ResourceState::CopySrc).access & VK_ACCESS_2_TRANSFER_READ_BIT) != 0);
+
+    CHECK(vulkan::is_buffer_state(ResourceState::VertexBuffer));
+    CHECK_FALSE(vulkan::is_buffer_state(ResourceState::ColorAttachment));
+    CHECK(vulkan::is_texture_state(ResourceState::DepthRead));
+    CHECK_FALSE(vulkan::is_texture_state(ResourceState::IndexBuffer));
+}

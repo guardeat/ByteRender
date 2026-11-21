@@ -319,10 +319,17 @@ core::Result<Texture> Device::create_texture(const TextureDesc& desc) {
                              .baseArrayLayer = 0,
                              .layerCount = desc.array_layers},
     };
-    if (const VkResult result = impl.vk.vkCreateImageView(impl.device, &view_info, nullptr, &record.view);
-        result != VK_SUCCESS) {
-        vmaDestroyImage(impl.allocator, record.image, record.allocation);
-        return impl.fail(result, "vkCreateImageView");
+    // Views exist only for usages that read or write through one; transfer-only textures must not have a view.
+    constexpr core::Flags<TextureUsage> k_view_usages = TextureUsage::Sampled | TextureUsage::Storage |
+                                                        TextureUsage::ColorAttachment |
+                                                        TextureUsage::DepthStencilAttachment;
+    if (desc.usage.has_any(k_view_usages)) {
+        if (const VkResult result = impl.vk.vkCreateImageView(impl.device, &view_info, nullptr, &record.view);
+            result != VK_SUCCESS) {
+            vmaDestroyImage(impl.allocator, record.image, record.allocation);
+            return impl.fail(result, "vkCreateImageView");
+        }
+        vulkan::set_debug_name(impl.device, VK_OBJECT_TYPE_IMAGE_VIEW, record.view, std::format("{} view", name));
     }
 
     record.info = TextureInfo{
@@ -335,7 +342,6 @@ core::Result<Texture> Device::create_texture(const TextureDesc& desc) {
         .debug_name = std::string{name},
     };
     vulkan::set_debug_name(impl.device, VK_OBJECT_TYPE_IMAGE, record.image, name);
-    vulkan::set_debug_name(impl.device, VK_OBJECT_TYPE_IMAGE_VIEW, record.view, std::format("{} view", name));
 
     TextureHandle handle;
     {

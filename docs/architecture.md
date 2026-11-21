@@ -178,7 +178,7 @@ const rhi::TextureInfo& info = device->info(view);          // data lives in the
   types are declared at namespace scope (`detail::InstanceImpl`, `detail::DeviceImpl`) so public headers can name them.
 - Buffers: `MemoryLocation::Device | Upload | Readback`; every buffer has a GPU address (`info.device_address`);
   Upload/Readback buffers are persistently mapped and accessed with `Device::write()` / `read()`.
-- Textures: 2D (with array layers) and 3D, explicit mip count; a default image view; format/usage support is checked
+- Textures: 2D (with array layers) and 3D, explicit mip count; a default image view (only for usages that need one); format/usage support is checked
   against the GPU (`NotSupported`); invalid descriptions return `InvalidArgument`.
 - Pool capacities come from `DeviceDesc::limits`; a full pool returns `ErrorCode::LimitExceeded`.
 
@@ -217,8 +217,19 @@ list is a programmer error.
   cheap), `InvalidArgument` for a never-submitted point (instead of a deadlock), `DeviceLost`.
 - v1: one universal queue (`QueueType::Graphics`). Data structures are sized by queue count for later
   async compute / transfer queues.
-- Barriers are expressed as abstract **resource states** (`ShaderRead`, `ColorAttachment`, `DepthWrite`, `CopySrc`,
-  `CopyDst`, `Present`, ...); the backend maps them to synchronization2 stages/access/layouts and batches them.
+- Barriers are expressed as abstract **resource states** (`ShaderRead`, `ShaderWrite`, `ColorAttachment`, `DepthWrite`,
+  `DepthRead`, `CopySrc`, `CopyDst`, `VertexBuffer`, ...); one table maps them to synchronization2 stages, access and
+  layouts. The RHI does not track states: barriers name `before` and `after` explicitly (the render graph computes
+  them). `CommandList::barrier()` records one `vkCmdPipelineBarrier2` per 32 barriers from stack storage — no allocation.
+- **Command lists**: `Device::begin_commands()` → record → `Device::submit(std::move(list))` → `SyncPoint`. Each list
+  owns a recycled command context (its own command pool + primary command buffer), so lists record on any thread in
+  parallel without locks and without thread-local state; contexts are reused once their submission has completed, and
+  a list destroyed without submitting simply returns its context. Commands: barriers, fill/copy buffer, buffer ↔
+  texture copies (tightly packed texel data).
+- **Uploads**: `Device::upload(buffer | texture, data, ...)` = RAII staging buffer + copy + barriers + submit; the
+  staging buffer is freed by deferred destruction once the copy completes. Buffer uploads use conservative global
+  barriers (later work on the queue needs no barrier); texture uploads take `before` / `after` states. Upload sizes and
+  regions are validated at runtime (`InvalidArgument`); command-list copies only assert (hot path).
 - Dynamic rendering (no render-pass/framebuffer objects).
 - Frames in flight: 2 (configurable). Per-frame data uses persistently mapped ring buffers.
 
