@@ -9,6 +9,7 @@
 #include <bytee/render/rhi/handles.hpp>
 #include <bytee/render/rhi/pipeline.hpp>
 #include <bytee/render/rhi/queue.hpp>
+#include <bytee/render/rhi/sampler.hpp>
 #include <bytee/render/rhi/texture.hpp>
 
 #include <chrono>
@@ -22,9 +23,12 @@
 namespace bytee::render::rhi {
 
 // Fixed capacities of a device's resource pools (architecture §4.3). Creating more fails with LimitExceeded.
+// max_textures and max_samplers also size the bindless descriptor heap; if the GPU confirms fewer descriptors they are
+// reduced to what it supports (Device::limits() reports the effective values).
 struct DeviceLimits {
     uint32_t max_buffers = 1u << 16;
     uint32_t max_textures = 1u << 16;
+    uint32_t max_samplers = 1u << 12;
     uint32_t max_graphics_pipelines = 1u << 12;
 };
 
@@ -68,6 +72,8 @@ public:
 
     [[nodiscard]] bool is_valid() const noexcept { return impl_ != nullptr; }
     [[nodiscard]] const AdapterInfo& adapter() const noexcept;
+    // Effective limits: max_textures / max_samplers may be lower than requested if the GPU's bindless heap is smaller.
+    [[nodiscard]] const DeviceLimits& limits() const noexcept;
     // True if swapchains can be created (the instance supports presentation and so does the adapter).
     [[nodiscard]] bool is_presentation_supported() const noexcept;
 
@@ -92,7 +98,10 @@ public:
     // combination the GPU lacks), LimitExceeded (pool full), OutOfMemory, DeviceLost. Destroying the returned
     // resource retires it: the GPU object lives until the GPU has finished all work that could use it.
     [[nodiscard]] core::Result<Buffer> create_buffer(const BufferDesc& desc);
+    // Textures with Sampled / Storage usage are written into the bindless heap at bindless_index(texture). Sample them
+    // in the ShaderRead state (also depth textures); access storage textures in ShaderWrite (General layout).
     [[nodiscard]] core::Result<Texture> create_texture(const TextureDesc& desc);
+    [[nodiscard]] core::Result<Sampler> create_sampler(const SamplerDesc& desc);
     // Creating pipelines compiles shaders for the GPU: do it at load time, not per frame.
     [[nodiscard]] core::Result<GraphicsPipeline> create_graphics_pipeline(const GraphicsPipelineDesc& desc);
 

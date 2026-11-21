@@ -45,6 +45,21 @@ struct BufferRecord {
     BufferInfo info;
 };
 
+struct SamplerRecord {
+    VkSampler sampler = VK_NULL_HANDLE;
+    detail::LiveObjectTracker::Id tracker_id = 0;
+    std::string debug_name;
+};
+
+// Bindless descriptor sets, one per resource kind so each gets the full per-set budget (architecture §7). Each set has
+// one array at binding 0. Must match shaders/bytee/bindless.glsl.
+enum class BindlessSet : uint32_t {
+    SampledTextures = 0,
+    StorageTextures = 1,
+    Samplers = 2,
+};
+inline constexpr std::size_t k_bindless_set_count = 3;
+
 struct GraphicsPipelineRecord {
     VkPipeline pipeline = VK_NULL_HANDLE;
     detail::LiveObjectTracker::Id tracker_id = 0;
@@ -61,6 +76,22 @@ struct TextureRecord {
 };
 
 [[nodiscard]] uint64_t to_timeout_nanoseconds(std::chrono::nanoseconds timeout) noexcept;
+
+} // namespace vulkan
+
+namespace detail {
+struct DeviceImpl;
+} // namespace detail
+
+namespace vulkan {
+
+// Largest descriptor count <= min(requested, per_stage_limit) whose bindless set layout the GPU confirms
+// (vkGetDescriptorSetLayoutSupport), found by binary search.
+[[nodiscard]] uint32_t supported_bindless_count(const detail::DeviceImpl& impl, VkDescriptorType type,
+                                                uint32_t requested, uint32_t per_stage_limit);
+// One bindless set: a single update-after-bind, partially bound array of `count` descriptors at binding 0.
+[[nodiscard]] VkResult create_bindless_set(const detail::DeviceImpl& impl, VkDescriptorType type, uint32_t count,
+                                           VkDescriptorSetLayout& layout, VkDescriptorPool& pool, VkDescriptorSet& set);
 
 } // namespace vulkan
 
@@ -87,8 +118,13 @@ struct BYTEE_HIDDEN detail::DeviceImpl {
     VolkDeviceTable vk{}; // device-level functions for this device only: no loader dispatch, no globals
     VmaAllocator allocator = VK_NULL_HANDLE;
     VkPhysicalDeviceLimits device_limits{};
-    // One layout shared by every pipeline: push constants for all stages (the bindless descriptor set joins later).
+    // One layout shared by every pipeline: the bindless descriptor set (set 0) + push constants for all stages.
     VkPipelineLayout pipeline_layout = VK_NULL_HANDLE;
+    std::array<VkDescriptorSetLayout, vulkan::k_bindless_set_count> bindless_layouts{};
+    std::array<VkDescriptorPool, vulkan::k_bindless_set_count> bindless_pools{};
+    std::array<VkDescriptorSet, vulkan::k_bindless_set_count> bindless_sets{};
+    std::mutex bindless_mutex; // vkUpdateDescriptorSets needs external synchronization of the sets
+    DeviceLimits limits;       // effective (bindless capacities adapted to what the GPU confirms)
 
     // Indexed by QueueType. Destroyed explicitly before the VkDevice.
     std::array<std::unique_ptr<vulkan::Queue>, vulkan::k_queue_count> queues;
@@ -101,11 +137,13 @@ struct BYTEE_HIDDEN detail::DeviceImpl {
     core::Pool<vulkan::BufferRecord, BufferTag> buffers;
     core::Pool<vulkan::TextureRecord, TextureTag> textures;
     core::Pool<vulkan::GraphicsPipelineRecord, GraphicsPipelineTag> graphics_pipelines;
+    core::Pool<vulkan::SamplerRecord, SamplerTag> samplers;
 
     detail::RetireList<vulkan::RetiredObject, vulkan::k_queue_count> retired_objects;
     detail::RetireList<BufferHandle, vulkan::k_queue_count> retired_buffers;
     detail::RetireList<TextureHandle, vulkan::k_queue_count> retired_textures;
     detail::RetireList<GraphicsPipelineHandle, vulkan::k_queue_count> retired_graphics_pipelines;
+    detail::RetireList<SamplerHandle, vulkan::k_queue_count> retired_samplers;
     detail::LiveObjectTracker live_objects; // child resources, for leak reports
 
     // Command contexts. All are owned by `contexts`; each is in exactly one of: free, pending (submitted, maybe still
@@ -155,9 +193,16 @@ struct BYTEE_HIDDEN detail::DeviceImpl {
     void release(BufferHandle buffer);
     void release(TextureHandle texture);
     void release(GraphicsPipelineHandle pipeline);
+    void release(SamplerHandle sampler);
     void destroy_now(BufferHandle buffer);
     void destroy_now(TextureHandle texture);
     void destroy_now(GraphicsPipelineHandle pipeline);
+    void destroy_now(SamplerHandle sampler);
+
+    // Writes descriptors into the bindless set at the resource's pool index. Slots are only reused after deferred
+    // destruction, so pending GPU work never sees a slot change.
+    void write_bindless(TextureHandle texture, const vulkan::TextureRecord& record);
+    void write_bindless(SamplerHandle sampler, VkSampler handle);
 
     // Waits for the GPU and destroys everything still retired (used before the leak check at destruction).
     void finish_pending_work() noexcept;

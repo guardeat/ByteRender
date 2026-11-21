@@ -3,8 +3,9 @@
 #   bytee_add_shaders(my_target SOURCES shaders/triangle.vert shaders/solid.frag)
 #   #include "triangle.vert.hpp"   ->   shaders::triangle_vert   (std::array<std::uint32_t, N>)
 #
-# Stage from the extension (.vert, .frag, .comp). Debug builds embed debug info (-g). Includes are tracked through
-# glslang depfiles, so editing an included file recompiles its users.
+# Stage from the extension (.vert, .frag, .comp). Debug builds embed debug info (-g). Engine shader headers are on the
+# include path (`#include "bytee/bindless.glsl"`); includes are tracked through glslang depfiles, so editing an included
+# file recompiles its users.
 
 find_program(BYTEE_GLSLANG_VALIDATOR glslangValidator HINTS "$ENV{VULKAN_SDK}/bin" "$ENV{VULKAN_SDK}/Bin")
 
@@ -27,6 +28,7 @@ function(bytee_add_shaders target)
             OUTPUT "${header}"
             COMMAND "${CMAKE_COMMAND}" -E make_directory "${output_dir}"
             COMMAND "${BYTEE_GLSLANG_VALIDATOR}" -V --target-env vulkan1.3 --quiet $<$<CONFIG:Debug>:-g>
+                    "-I${PROJECT_SOURCE_DIR}/shaders"
                     --depfile "${depfile}" -o "${spirv}" "${source_path}"
             COMMAND "${CMAKE_COMMAND}" -DINPUT=${spirv} -DOUTPUT=${header} -DNAME=${variable_name}
                     -P "${PROJECT_SOURCE_DIR}/cmake/bytee_embed_spirv.cmake"

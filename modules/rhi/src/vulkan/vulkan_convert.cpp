@@ -215,6 +215,23 @@ VkIndexType to_vk_index_type(IndexType type) noexcept {
     return type == IndexType::Uint16 ? VK_INDEX_TYPE_UINT16 : VK_INDEX_TYPE_UINT32;
 }
 
+VkFilter to_vk_filter(Filter filter) noexcept {
+    return filter == Filter::Nearest ? VK_FILTER_NEAREST : VK_FILTER_LINEAR;
+}
+
+VkSamplerMipmapMode to_vk_mipmap_mode(MipmapMode mode) noexcept {
+    return mode == MipmapMode::Nearest ? VK_SAMPLER_MIPMAP_MODE_NEAREST : VK_SAMPLER_MIPMAP_MODE_LINEAR;
+}
+
+VkSamplerAddressMode to_vk_address_mode(AddressMode mode) noexcept {
+    switch (mode) {
+    case AddressMode::Repeat: return VK_SAMPLER_ADDRESS_MODE_REPEAT;
+    case AddressMode::MirroredRepeat: return VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT;
+    case AddressMode::ClampToEdge: return VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+    }
+    return VK_SAMPLER_ADDRESS_MODE_REPEAT;
+}
+
 bool is_texture_state(ResourceState state) noexcept {
     switch (state) {
     case ResourceState::VertexBuffer:

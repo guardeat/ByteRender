@@ -156,6 +156,11 @@ core::Result<detail::CommandContext*> detail::DeviceImpl::acquire_context(QueueT
         discard_context(context);
         return fail(result, "vkBeginCommandBuffer");
     }
+    // The bindless sets are bound once per list; they stay bound across pipeline changes (one shared layout).
+    for (const VkPipelineBindPoint bind_point : {VK_PIPELINE_BIND_POINT_GRAPHICS, VK_PIPELINE_BIND_POINT_COMPUTE}) {
+        vk.vkCmdBindDescriptorSets(context->buffer, bind_point, pipeline_layout, 0,
+                                   static_cast<uint32_t>(bindless_sets.size()), bindless_sets.data(), 0, nullptr);
+    }
     return context;
 }
 

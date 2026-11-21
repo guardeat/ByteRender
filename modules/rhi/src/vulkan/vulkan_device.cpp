@@ -6,6 +6,7 @@
 #include <bytee/render/rhi/instance.hpp>
 
 #include <algorithm>
+#include <array>
 #include <cstring>
 #include <format>
 #include <memory>
@@ -76,18 +77,110 @@ uint64_t to_timeout_nanoseconds(std::chrono::nanoseconds timeout) noexcept {
     return static_cast<uint64_t>(timeout.count());
 }
 
+namespace {
+
+VkDescriptorSetLayoutCreateInfo bindless_layout_info(const VkDescriptorSetLayoutBinding& binding,
+                                                     const VkDescriptorSetLayoutBindingFlagsCreateInfo& flags) {
+    return VkDescriptorSetLayoutCreateInfo{
+        .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
+        .pNext = &flags,
+        .flags = VK_DESCRIPTOR_SET_LAYOUT_CREATE_UPDATE_AFTER_BIND_POOL_BIT,
+        .bindingCount = 1,
+        .pBindings = &binding,
+    };
+}
+
+// Update-after-bind + partially bound: slots are written while sets are bound; unused slots stay empty.
+constexpr VkDescriptorBindingFlags k_bindless_binding_flags = VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT |
+                                                              VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT |
+                                                              VK_DESCRIPTOR_BINDING_UPDATE_UNUSED_WHILE_PENDING_BIT;
+
+bool is_layout_supported(const detail::DeviceImpl& impl, VkDescriptorType type, uint32_t count) {
+    const VkDescriptorSetLayoutBinding binding{
+        .binding = 0, .descriptorType = type, .descriptorCount = count, .stageFlags = VK_SHADER_STAGE_ALL};
+    const VkDescriptorSetLayoutBindingFlagsCreateInfo flags{
+        .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO,
+        .bindingCount = 1,
+        .pBindingFlags = &k_bindless_binding_flags,
+    };
+    const VkDescriptorSetLayoutCreateInfo info = bindless_layout_info(binding, flags);
+    VkDescriptorSetLayoutSupport support{.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_SUPPORT};
+    impl.vk.vkGetDescriptorSetLayoutSupport(impl.device, &info, &support);
+    return support.supported == VK_TRUE;
+}
+
+} // namespace
+
+uint32_t supported_bindless_count(const detail::DeviceImpl& impl, VkDescriptorType type, uint32_t requested,
+                                  uint32_t per_stage_limit) {
+    uint32_t high = std::min(requested, per_stage_limit);
+    if (high == 0 || is_layout_supported(impl, type, high)) {
+        return high;
+    }
+    uint32_t low = 0; // largest known-supported count
+    while (high - low > 1) {
+        const uint32_t middle = low + (high - low) / 2;
+        if (is_layout_supported(impl, type, middle)) {
+            low = middle;
+        } else {
+            high = middle;
+        }
+    }
+    return low;
+}
+
+VkResult create_bindless_set(const detail::DeviceImpl& impl, VkDescriptorType type, uint32_t count,
+                             VkDescriptorSetLayout& layout, VkDescriptorPool& pool, VkDescriptorSet& set) {
+    const VkDescriptorSetLayoutBinding binding{
+        .binding = 0, .descriptorType = type, .descriptorCount = count, .stageFlags = VK_SHADER_STAGE_ALL};
+    const VkDescriptorSetLayoutBindingFlagsCreateInfo flags{
+        .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO,
+        .bindingCount = 1,
+        .pBindingFlags = &k_bindless_binding_flags,
+    };
+    const VkDescriptorSetLayoutCreateInfo layout_info = bindless_layout_info(binding, flags);
+    if (const VkResult result = impl.vk.vkCreateDescriptorSetLayout(impl.device, &layout_info, nullptr, &layout);
+        result != VK_SUCCESS) {
+        return result;
+    }
+    const VkDescriptorPoolSize size{.type = type, .descriptorCount = count};
+    const VkDescriptorPoolCreateInfo pool_info{.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
+                                               .flags = VK_DESCRIPTOR_POOL_CREATE_UPDATE_AFTER_BIND_BIT,
+                                               .maxSets = 1,
+                                               .poolSizeCount = 1,
+                                               .pPoolSizes = &size};
+    if (const VkResult result = impl.vk.vkCreateDescriptorPool(impl.device, &pool_info, nullptr, &pool);
+        result != VK_SUCCESS) {
+        return result;
+    }
+    const VkDescriptorSetAllocateInfo set_info{.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
+                                               .descriptorPool = pool,
+                                               .descriptorSetCount = 1,
+                                               .pSetLayouts = &layout};
+    return impl.vk.vkAllocateDescriptorSets(impl.device, &set_info, &set);
+}
+
 } // namespace vulkan
 
 detail::DeviceImpl::DeviceImpl(const DeviceLimits& limits)
     : buffers(limits.max_buffers)
     , textures(limits.max_textures)
-    , graphics_pipelines(limits.max_graphics_pipelines) {}
+    , graphics_pipelines(limits.max_graphics_pipelines)
+    , samplers(limits.max_samplers) {}
 
 detail::DeviceImpl::~DeviceImpl() {
     finish_pending_work();
     destroy_contexts();
     if (pipeline_layout != VK_NULL_HANDLE) {
         vk.vkDestroyPipelineLayout(device, pipeline_layout, nullptr);
+    }
+    for (std::size_t index = 0; index < vulkan::k_bindless_set_count; ++index) {
+        if (bindless_pools[index] != VK_NULL_HANDLE) {
+            vk.vkDestroyDescriptorPool(device, bindless_pools[index], nullptr); // frees its set
+        }
+        if (bindless_layouts[index] != VK_NULL_HANDLE) {
+            vk.vkDestroyDescriptorSetLayout(device, bindless_layouts[index], nullptr);
+        }
     }
     for (std::unique_ptr<vulkan::Queue>& queue_ptr : queues) {
         queue_ptr.reset();
@@ -112,6 +205,7 @@ void detail::DeviceImpl::finish_pending_work() noexcept {
     retired_buffers.drain([this](BufferHandle buffer) { destroy_now(buffer); });
     retired_textures.drain([this](TextureHandle texture) { destroy_now(texture); });
     retired_graphics_pipelines.drain([this](GraphicsPipelineHandle pipeline) { destroy_now(pipeline); });
+    retired_samplers.drain([this](SamplerHandle sampler) { destroy_now(sampler); });
     retired_objects.drain([this](const vulkan::RetiredObject& object) { destroy_now(object); });
 }
 
@@ -177,6 +271,7 @@ core::Result<void> detail::DeviceImpl::collect() {
     retired_buffers.collect(completed, [this](BufferHandle buffer) { destroy_now(buffer); });
     retired_textures.collect(completed, [this](TextureHandle texture) { destroy_now(texture); });
     retired_graphics_pipelines.collect(completed, [this](GraphicsPipelineHandle pipeline) { destroy_now(pipeline); });
+    retired_samplers.collect(completed, [this](SamplerHandle sampler) { destroy_now(sampler); });
     retired_objects.collect(completed, [this](const vulkan::RetiredObject& object) { destroy_now(object); });
     return {};
 }
@@ -223,6 +318,11 @@ Device& Device::operator=(Device&& other) noexcept {
         impl_ = std::exchange(other.impl_, nullptr);
     }
     return *this;
+}
+
+const DeviceLimits& Device::limits() const noexcept {
+    BYTEE_ASSERT(is_valid(), "Device is empty");
+    return impl_->limits;
 }
 
 const AdapterInfo& Device::adapter() const noexcept {
@@ -293,7 +393,8 @@ core::Result<Device> Instance::create_device(const DeviceDesc& desc) {
     BYTEE_ASSERT(is_valid(), "Instance is empty");
     detail::InstanceImpl& instance = *impl_;
 
-    if (desc.limits.max_buffers == 0 || desc.limits.max_textures == 0 || desc.limits.max_graphics_pipelines == 0) {
+    if (desc.limits.max_buffers == 0 || desc.limits.max_textures == 0 || desc.limits.max_samplers == 0 ||
+        desc.limits.max_graphics_pipelines == 0) {
         return core::make_error(core::ErrorCode::InvalidArgument, "device '{}': resource limits must not be 0",
                                 desc.debug_name);
     }
@@ -395,6 +496,49 @@ core::Result<Device> Instance::create_device(const DeviceDesc& desc) {
         return vulkan::make_vk_error(result, "vmaCreateAllocator");
     }
 
+    // Bindless heap: one set per resource kind, each sized to min(requested, what the GPU confirms). MoltenVK, for
+    // example, confirms only ~1200 descriptors per set although it reports far larger update-after-bind limits.
+    VkPhysicalDeviceVulkan12Properties vulkan12{.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_PROPERTIES};
+    VkPhysicalDeviceProperties2 properties2{.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2,
+                                            .pNext = &vulkan12};
+    vkGetPhysicalDeviceProperties2(physical_device, &properties2);
+    const uint32_t texture_capacity =
+        std::min(vulkan::supported_bindless_count(*impl, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, desc.limits.max_textures,
+                                                  vulkan12.maxPerStageDescriptorUpdateAfterBindSampledImages),
+                 vulkan::supported_bindless_count(*impl, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, desc.limits.max_textures,
+                                                  vulkan12.maxPerStageDescriptorUpdateAfterBindStorageImages));
+    const uint32_t sampler_capacity = vulkan::supported_bindless_count(
+        *impl, VK_DESCRIPTOR_TYPE_SAMPLER,
+        std::min(desc.limits.max_samplers, impl->device_limits.maxSamplerAllocationCount),
+        vulkan12.maxPerStageDescriptorUpdateAfterBindSamplers);
+    if (texture_capacity == 0 || sampler_capacity == 0) {
+        return core::make_error(core::ErrorCode::NotSupported, "device '{}': the GPU supports no bindless descriptors",
+                                desc.debug_name);
+    }
+    impl->limits = desc.limits;
+    impl->limits.max_textures = texture_capacity;
+    impl->limits.max_samplers = sampler_capacity;
+    // Slot = pool index: the pools may hold at most as many objects as the heap has slots (pools are still empty).
+    impl->textures = core::Pool<vulkan::TextureRecord, TextureTag>{texture_capacity};
+    impl->samplers = core::Pool<vulkan::SamplerRecord, SamplerTag>{sampler_capacity};
+
+    const std::array<std::pair<VkDescriptorType, uint32_t>, vulkan::k_bindless_set_count> set_contents{{
+        {VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, texture_capacity},
+        {VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, texture_capacity},
+        {VK_DESCRIPTOR_TYPE_SAMPLER, sampler_capacity},
+    }};
+    for (std::size_t index = 0; index < vulkan::k_bindless_set_count; ++index) {
+        const auto [type, count] = set_contents[index];
+        if (const VkResult result =
+                vulkan::create_bindless_set(*impl, type, count, impl->bindless_layouts[index],
+                                            impl->bindless_pools[index], impl->bindless_sets[index]);
+            result != VK_SUCCESS) {
+            return vulkan::make_vk_error(result, "bindless descriptor set creation");
+        }
+    }
+    instance.logger->debug("device '{}' bindless heap: {} textures, {} samplers (requested {} / {})", desc.debug_name,
+                           texture_capacity, sampler_capacity, desc.limits.max_textures, desc.limits.max_samplers);
+
     const VkPushConstantRange push_constants{
         .stageFlags = VK_SHADER_STAGE_ALL,
         .offset = 0,
@@ -402,6 +546,8 @@ core::Result<Device> Instance::create_device(const DeviceDesc& desc) {
     };
     const VkPipelineLayoutCreateInfo layout_info{
         .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
+        .setLayoutCount = static_cast<uint32_t>(impl->bindless_layouts.size()),
+        .pSetLayouts = impl->bindless_layouts.data(),
         .pushConstantRangeCount = 1,
         .pPushConstantRanges = &push_constants,
     };
@@ -414,6 +560,12 @@ core::Result<Device> Instance::create_device(const DeviceDesc& desc) {
     vulkan::set_debug_name(impl->device, VK_OBJECT_TYPE_DEVICE, impl->device, desc.debug_name);
     vulkan::set_debug_name(impl->device, VK_OBJECT_TYPE_PIPELINE_LAYOUT, impl->pipeline_layout,
                            std::format("{} pipeline layout", desc.debug_name));
+    constexpr std::array<std::string_view, vulkan::k_bindless_set_count> k_set_names{"textures", "storage textures",
+                                                                                     "samplers"};
+    for (std::size_t index = 0; index < vulkan::k_bindless_set_count; ++index) {
+        vulkan::set_debug_name(impl->device, VK_OBJECT_TYPE_DESCRIPTOR_SET, impl->bindless_sets[index],
+                               std::format("{} bindless {}", desc.debug_name, k_set_names[index]));
+    }
 
     impl->tracker_id = instance.live_devices.add("Device", desc.debug_name);
     instance.logger->debug("device '{}' created on {} (queue family {}, presentation {})", desc.debug_name,

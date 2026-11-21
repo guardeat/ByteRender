@@ -38,8 +38,9 @@ int main() {
         logger.error("cannot create a device: {}", device.error().message());
         return 1;
     }
-    logger.info("device created on {} (presentation: {})", device->adapter().name,
-                device->is_presentation_supported() ? "yes" : "no");
+    logger.info("device created on {} (presentation: {}, bindless capacity: {} textures, {} samplers)",
+                device->adapter().name, device->is_presentation_supported() ? "yes" : "no",
+                device->limits().max_textures, device->limits().max_samplers);
 
     // Resources are RAII owners; they are retired (destroyed once the GPU is done) when they go out of scope.
     core::Result<rhi::Buffer> buffer = device->create_buffer({

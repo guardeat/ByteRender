@@ -34,6 +34,7 @@ add_test(NAME bytee_tests COMMAND bytee_tests)
 # GPU tests through the public API (label "gpu"; skip on machines without a GPU: ctest -LE gpu).
 add_executable(bytee_gpu_tests
     main.cpp
+    rhi/test_bindless.cpp
     rhi/test_commands.cpp
     rhi/test_device.cpp
     rhi/test_graphics.cpp
@@ -46,7 +47,9 @@ target_include_directories(bytee_gpu_tests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}"
 bytee_add_shaders(bytee_gpu_tests SOURCES
     shaders/color.frag
     shaders/fullscreen.vert
+    shaders/fullscreen_uv.vert
     shaders/pulled.vert
+    shaders/textured.frag
     shaders/triangle.vert
 )
 target_link_libraries(bytee_gpu_tests PRIVATE bytee::rhi bytee_doctest)

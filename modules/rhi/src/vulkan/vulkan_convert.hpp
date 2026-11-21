@@ -8,6 +8,7 @@
 #include <bytee/render/rhi/command_list.hpp>
 #include <bytee/render/rhi/format.hpp>
 #include <bytee/render/rhi/pipeline.hpp>
+#include <bytee/render/rhi/sampler.hpp>
 #include <bytee/render/rhi/texture.hpp>
 
 namespace bytee::render::rhi::vulkan {
@@ -36,5 +37,8 @@ struct StateScope {
 [[nodiscard]] VkCompareOp to_vk_compare_op(CompareOp op) noexcept;
 [[nodiscard]] VkPipelineColorBlendAttachmentState to_vk_blend(BlendMode mode) noexcept;
 [[nodiscard]] VkIndexType to_vk_index_type(IndexType type) noexcept;
+[[nodiscard]] VkFilter to_vk_filter(Filter filter) noexcept;
+[[nodiscard]] VkSamplerMipmapMode to_vk_mipmap_mode(MipmapMode mode) noexcept;
+[[nodiscard]] VkSamplerAddressMode to_vk_address_mode(AddressMode mode) noexcept;
 
 } // namespace bytee::render::rhi::vulkan

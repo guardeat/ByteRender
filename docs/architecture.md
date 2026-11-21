@@ -205,10 +205,20 @@ bindless, where shaders may read any slot. Destroying a resource still reference
 list is a programmer error.
 
 ## 7. Binding model — bindless only
-- One global descriptor heap per device: sampled textures, storage textures, storage buffers, samplers.
-- Resources are written into the heap once at creation; the slot equals the pool index.
-- Per-draw data via push constants; larger data via buffers (bindless index or buffer device address).
-- One global pipeline layout → no descriptor-set or layout management in the RHI.
+- **One descriptor set per resource kind**, each a single update-after-bind, partially bound array at binding 0:
+  set 0 sampled textures, set 1 storage textures, set 2 samplers. Buffers need no descriptors: shaders access them by
+  **buffer device address**.
+- **Adaptive capacity**: each set is sized to min(requested, the largest count the GPU confirms through
+  `vkGetDescriptorSetLayoutSupport`), also bounded by the per-stage update-after-bind limits. MoltenVK confirms ~1200
+  descriptors per set (Apple M5 Pro: 1211 textures, 1211 samplers) despite reporting 1M update-after-bind limits;
+  desktop drivers confirm the full defaults (65536 textures, 4096 samplers). The texture/sampler pools shrink to match
+  (slot = pool index); `Device::limits()` reports the effective capacities.
+- Resources are written into their set once at creation (`rhi::bindless_index(handle)` = pool index); slots are reused
+  only after deferred destruction, so pending GPU work never sees a slot change.
+- Shaders: `#include "bytee/bindless.glsl"` → `bytee_sample_2d(texture_index, sampler_index, uv)` and friends.
+  Sample textures in the `ShaderRead` state (also depth textures). UV (0, 0) is the top-left texel (row 0 of the data).
+- The sets are bound once per command list (graphics and compute) and stay bound: one global pipeline layout
+  (3 sets + 128 bytes of push constants) → no descriptor management in the RHI.
 
 ## 8. Synchronization & submission
 - `SyncPoint {queue, value}` names a point in a queue's submission stream; `submit()` returns one.

@@ -5,6 +5,7 @@
 
 #include <bytee/core/assert.hpp>
 
+#include <array>
 #include <cstring>
 #include <format>
 #include <string>
@@ -141,6 +142,34 @@ void detail::DeviceImpl::release(BufferHandle buffer) {
 
 void detail::DeviceImpl::release(TextureHandle texture) {
     retire_resource(*this, retired_textures, texture, [this](TextureHandle handle) { destroy_now(handle); });
+}
+
+void detail::DeviceImpl::write_bindless(TextureHandle texture, const vulkan::TextureRecord& record) {
+    std::array<VkDescriptorImageInfo, 2> images{};
+    std::array<VkWriteDescriptorSet, 2> writes{};
+    uint32_t count = 0;
+    const auto add = [&](vulkan::BindlessSet set, VkDescriptorType type, VkImageLayout layout) {
+        images[count] = VkDescriptorImageInfo{.imageView = record.view, .imageLayout = layout};
+        writes[count] = VkWriteDescriptorSet{.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+                                             .dstSet = bindless_sets[static_cast<std::size_t>(set)],
+                                             .dstBinding = 0,
+                                             .dstArrayElement = texture.index(),
+                                             .descriptorCount = 1,
+                                             .descriptorType = type,
+                                             .pImageInfo = &images[count]};
+        ++count;
+    };
+    if (record.info.usage.has(TextureUsage::Sampled)) {
+        add(vulkan::BindlessSet::SampledTextures, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
+            VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+    }
+    if (record.info.usage.has(TextureUsage::Storage)) {
+        add(vulkan::BindlessSet::StorageTextures, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_IMAGE_LAYOUT_GENERAL);
+    }
+    if (count > 0) {
+        const std::scoped_lock lock{bindless_mutex};
+        vk.vkUpdateDescriptorSets(device, count, writes.data(), 0, nullptr);
+    }
 }
 
 void detail::DeviceImpl::destroy_now(BufferHandle buffer) {
@@ -349,7 +378,6 @@ core::Result<Texture> Device::create_texture(const TextureDesc& desc) {
         if (const VkResult result =
                 impl.vk.vkCreateImageView(impl.device, &attachment_info, nullptr, &record.attachment_view);
             result != VK_SUCCESS) {
-            impl.vk.vkDestroyImageView(impl.device, record.attachment_view, nullptr);
             impl.vk.vkDestroyImageView(impl.device, record.view, nullptr);
             vmaDestroyImage(impl.allocator, record.image, record.allocation);
             return impl.fail(result, "vkCreateImageView (attachment)");
@@ -378,7 +406,10 @@ core::Result<Texture> Device::create_texture(const TextureDesc& desc) {
             impl.live_objects.remove(record.tracker_id);
         }
     }
-    if (!handle.is_valid()) {
+    if (handle.is_valid()) {
+        impl.write_bindless(handle, impl.textures.get(handle));
+    } else {
+        impl.vk.vkDestroyImageView(impl.device, record.attachment_view, nullptr);
         impl.vk.vkDestroyImageView(impl.device, record.view, nullptr);
         vmaDestroyImage(impl.allocator, record.image, record.allocation);
         return core::make_error(core::ErrorCode::LimitExceeded,

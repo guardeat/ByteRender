@@ -28,7 +28,7 @@ Rendering features are validated **headless first** (image tests), presentation 
   helper. `01_headless_clear` sample writes a PNG-free raw/PPM image.
 - [x] **Step 10 — Shaders & graphics pipeline.** CMake GLSL → SPIR-V, `GraphicsPipeline`, push constants.
   **Headless triangle** image test.
-- [ ] **Step 11 — Bindless.** Global descriptor heap (slot = pool index), samplers. Textured quad image test.
+- [x] **Step 11 — Bindless.** Global descriptor heap (slot = pool index), samplers. Textured quad image test.
 - [ ] **Step 12 — Window & swapchain.** `NativeWindow`, `Swapchain`, frames in flight, resize, present.
   `03_window` sample (GLFW): **triangle on screen**.
 - [ ] **Step 13 — Compute.** `ComputePipeline`, dispatch, storage resources. Compute image test.
