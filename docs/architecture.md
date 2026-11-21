@@ -282,13 +282,23 @@ list is a programmer error.
 - Execute: record into RHI command lists.
 - Later: transient memory aliasing, async compute, multi-queue.
 
-## 13. Shaders
-- GLSL compiled to SPIR-V at build time (`glslangValidator`), embedded or loaded as files.
-- Bindless access via `GL_EXT_nonuniform_qualifier`; push constants with scalar layout.
+## 13. Shaders and pipelines
+- GLSL compiled to SPIR-V at build time: `bytee_add_shaders(target SOURCES a.vert b.frag)` runs `glslangValidator`
+  (silent, `-g` in Debug, includes tracked through depfiles) and embeds the result as
+  `shaders::a_vert` (`std::array<std::uint32_t, N>`) in a generated header — no shader files at runtime.
+- `GraphicsPipeline` = `core::Resource` (deferred destruction like every resource). Dynamic rendering formats, no
+  vertex input state (**vertex pulling**: shaders compute vertices or read them by buffer device address via
+  `GL_EXT_buffer_reference`), dynamic viewport/scissor, cull/front face, reverse-Z depth state, blend modes.
+- One global pipeline layout: 128 bytes of push constants visible to every stage (the bindless descriptor set joins it
+  in step 11). `CommandList::push_constants(value)` for any trivially copyable value.
+- Draws: `bind_pipeline`, `push_constants`, `set_viewport`/`set_scissor` (set automatically by `begin_render_pass`),
+  `bind_index_buffer`, `draw`, `draw_indexed`.
 
 ## 14. Conventions
 - Depth range [0, 1], **reverse-Z** by default (clear to 0, `GREATER` compare, infinite far plane supported).
-- Right-handed world space, Y-up. Clip-space conventions are fixed by the RHI so all backends match.
+- Right-handed world space, Y-up. Clip space is **Y-up** (like D3D/OpenGL): the Vulkan backend uses a negative-height
+  viewport, which also makes `FrontFace::CounterClockwise` mean counter-clockwise in Y-up clip space. Verified by image
+  tests (triangle orientation, culling with both windings).
 
 ## 15. Errors and logging
 

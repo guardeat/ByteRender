@@ -34,4 +34,11 @@ struct Extent3D {
     friend constexpr bool operator==(const Extent3D&, const Extent3D&) noexcept = default;
 };
 
+struct Rect2D {
+    Offset2D offset;
+    Extent2D extent;
+
+    friend constexpr bool operator==(const Rect2D&, const Rect2D&) noexcept = default;
+};
+
 } // namespace bytee::core

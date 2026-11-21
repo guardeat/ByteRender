@@ -1,5 +1,6 @@
 // GPU tests (label "gpu"): need a Vulkan 1.3 driver. The fixture fails any test that logs a warning or error.
 
+#include "support/error_text.hpp"
 #include "support/gpu_fixture.hpp"
 
 #include <doctest/doctest.h>
@@ -10,7 +11,7 @@ using bytee::tests::GpuFixture;
 
 TEST_CASE_FIXTURE(GpuFixture, "Instance with validation reports at least one supported adapter") {
     auto instance = create_instance();
-    REQUIRE_MESSAGE(instance.has_value(), instance.error().message());
+    REQUIRE_MESSAGE(instance.has_value(), bytee::tests::error_text(instance));
     CHECK(instance->is_valid());
     CHECK(instance->is_validation_enabled());
 
@@ -26,7 +27,7 @@ TEST_CASE_FIXTURE(GpuFixture, "Instance with validation reports at least one sup
 
 TEST_CASE_FIXTURE(GpuFixture, "Instance without validation") {
     auto instance = create_instance(false);
-    REQUIRE_MESSAGE(instance.has_value(), instance.error().message());
+    REQUIRE_MESSAGE(instance.has_value(), bytee::tests::error_text(instance));
     CHECK_FALSE(instance->is_validation_enabled());
     CHECK_FALSE(instance->adapters().empty());
 }
@@ -41,7 +42,7 @@ TEST_CASE_FIXTURE(GpuFixture, "Only one Instance may be alive at a time") {
 
     *first = rhi::Instance{}; // destroy the first instance
     auto third = create_instance();
-    CHECK_MESSAGE(third.has_value(), third.error().message());
+    CHECK_MESSAGE(third.has_value(), bytee::tests::error_text(third));
 }
 
 TEST_CASE_FIXTURE(GpuFixture, "Instances are move-only values") {

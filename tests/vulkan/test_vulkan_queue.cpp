@@ -1,6 +1,7 @@
 // White-box GPU tests of timeline queues and deferred destruction (static builds, label "gpu").
 // Real Vulkan objects are retired, so the validation layer reports any early or missing destruction.
 
+#include "support/error_text.hpp"
 #include "support/gpu_fixture.hpp"
 #include "vulkan/vulkan_device.hpp"
 
@@ -44,13 +45,13 @@ TEST_CASE_FIXTURE(DeviceFixture, "The timeline advances with every submission") 
 
     auto first = impl.submit(rhi::QueueType::Graphics, {});
     auto second = impl.submit(rhi::QueueType::Graphics, {});
-    REQUIRE_MESSAGE(first.has_value(), first.error().message());
+    REQUIRE_MESSAGE(first.has_value(), bytee::tests::error_text(first));
     REQUIRE(second.has_value());
     CHECK(first->value == 1);
     CHECK(second->value == 2);
 
     auto waited = device.wait(*second);
-    REQUIRE_MESSAGE(waited.has_value(), waited.error().message());
+    REQUIRE_MESSAGE(waited.has_value(), bytee::tests::error_text(waited));
     CHECK(device.is_complete(*first));
     CHECK(device.is_complete(*second));
 }
@@ -65,7 +66,7 @@ TEST_CASE_FIXTURE(DeviceFixture, "Waiting times out while the GPU is blocked, th
                                               .value = 1,
                                               .stageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT};
     auto blocked = impl.submit(rhi::QueueType::Graphics, {}, std::span{&wait_for_gate, 1});
-    REQUIRE_MESSAGE(blocked.has_value(), blocked.error().message());
+    REQUIRE_MESSAGE(blocked.has_value(), bytee::tests::error_text(blocked));
 
     CHECK_FALSE(device.is_complete(*blocked));
     auto timed_out = device.wait(*blocked, std::chrono::milliseconds{20});
@@ -78,7 +79,7 @@ TEST_CASE_FIXTURE(DeviceFixture, "Waiting times out while the GPU is blocked, th
     REQUIRE(impl.vk.vkSignalSemaphore(impl.device, &open_gate) == VK_SUCCESS);
 
     auto waited = device.wait(*blocked, std::chrono::seconds{5});
-    CHECK_MESSAGE(waited.has_value(), waited.error().message());
+    CHECK_MESSAGE(waited.has_value(), bytee::tests::error_text(waited));
     impl.vk.vkDestroySemaphore(impl.device, gate, nullptr);
 }
 

@@ -1,6 +1,7 @@
 // Headless rendering (GPU tests): render passes verified by reading the results back. The fixture fails on any
 // validation warning or error.
 
+#include "support/error_text.hpp"
 #include "support/gpu_fixture.hpp"
 #include "support/image.hpp"
 
@@ -32,7 +33,7 @@ rhi::Texture make_target(rhi::Device& device, std::string_view name) {
 
 void submit_and_wait(rhi::Device& device, rhi::CommandList&& commands) {
     auto done = device.submit(std::move(commands));
-    REQUIRE_MESSAGE(done.has_value(), done.error().message());
+    REQUIRE_MESSAGE(done.has_value(), bytee::tests::error_text(done));
     REQUIRE(device.wait(*done).has_value());
 }
 
@@ -111,7 +112,7 @@ TEST_CASE_FIXTURE(DeviceFixture, "Depth is cleared to the requested value") {
                                         .format = rhi::Format::D32Float,
                                         .usage = TextureUsage::DepthStencilAttachment | TextureUsage::TransferSrc,
                                         .debug_name = "depth"});
-    REQUIRE_MESSAGE(depth.has_value(), depth.error().message());
+    REQUIRE_MESSAGE(depth.has_value(), bytee::tests::error_text(depth));
     auto commands = device.begin_commands();
     REQUIRE(commands.has_value());
     const rhi::TextureBarrier to_depth{
@@ -124,7 +125,7 @@ TEST_CASE_FIXTURE(DeviceFixture, "Depth is cleared to the requested value") {
     std::array<float, 16 * 16> values{};
     auto downloaded = device.download(*depth, std::as_writable_bytes(std::span{values}),
                                       {.before = ResourceState::DepthWrite, .after = ResourceState::DepthWrite});
-    REQUIRE_MESSAGE(downloaded.has_value(), downloaded.error().message());
+    REQUIRE_MESSAGE(downloaded.has_value(), bytee::tests::error_text(downloaded));
     for (const float value : values) {
         CHECK(value == 0.25f);
     }

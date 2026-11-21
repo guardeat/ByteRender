@@ -149,6 +149,7 @@ core::Result<detail::CommandContext*> detail::DeviceImpl::acquire_context(QueueT
     }
 
     context->in_render_pass = false;
+    context->pipeline_bound = false;
     const VkCommandBufferBeginInfo begin_info{.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
                                               .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT};
     if (const VkResult result = vk.vkBeginCommandBuffer(context->buffer, &begin_info); result != VK_SUCCESS) {
@@ -432,6 +433,9 @@ void CommandList::begin_render_pass(const RenderPassDesc& desc) {
     };
     impl.vk.vkCmdBeginRendering(context_->buffer, &rendering);
     context_->in_render_pass = true;
+
+    set_viewport({.width = static_cast<float>(extent.width), .height = static_cast<float>(extent.height)});
+    set_scissor({.extent = extent});
 }
 
 void CommandList::end_render_pass() {
@@ -439,6 +443,65 @@ void CommandList::end_render_pass() {
     BYTEE_ASSERT(context_->in_render_pass, "end_render_pass without begin_render_pass");
     device_->vk.vkCmdEndRendering(context_->buffer);
     context_->in_render_pass = false;
+}
+
+void CommandList::bind_pipeline(GraphicsPipelineHandle pipeline) {
+    BYTEE_ASSERT(is_valid(), "CommandList is empty");
+    const VkPipeline handle = device_->graphics_pipelines.get(pipeline).pipeline;
+    device_->vk.vkCmdBindPipeline(context_->buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, handle);
+    context_->pipeline_bound = true;
+}
+
+void CommandList::set_viewport(const Viewport& viewport) {
+    BYTEE_ASSERT(is_valid(), "CommandList is empty");
+    // Negative height flips Vulkan's Y-down framebuffer convention into Bytee's Y-up clip space (architecture §14).
+    const VkViewport flipped{
+        .x = viewport.x,
+        .y = viewport.y + viewport.height,
+        .width = viewport.width,
+        .height = -viewport.height,
+        .minDepth = viewport.min_depth,
+        .maxDepth = viewport.max_depth,
+    };
+    device_->vk.vkCmdSetViewport(context_->buffer, 0, 1, &flipped);
+}
+
+void CommandList::set_scissor(const core::Rect2D& scissor) {
+    BYTEE_ASSERT(is_valid(), "CommandList is empty");
+    const VkRect2D rect{.offset = {.x = scissor.offset.x, .y = scissor.offset.y},
+                        .extent = {.width = scissor.extent.width, .height = scissor.extent.height}};
+    device_->vk.vkCmdSetScissor(context_->buffer, 0, 1, &rect);
+}
+
+void CommandList::push_constants(std::span<const std::byte> data, uint32_t offset) {
+    BYTEE_ASSERT(is_valid(), "CommandList is empty");
+    BYTEE_ASSERT(offset % 4 == 0 && data.size() % 4 == 0, "push constants: offset and size must be multiples of 4");
+    BYTEE_ASSERT(offset <= k_max_push_constant_bytes && data.size() <= k_max_push_constant_bytes - offset,
+                 "push constants: {} bytes at offset {} exceed {} bytes", data.size(), offset,
+                 k_max_push_constant_bytes);
+    device_->vk.vkCmdPushConstants(context_->buffer, device_->pipeline_layout, VK_SHADER_STAGE_ALL, offset,
+                                   static_cast<uint32_t>(data.size()), data.data());
+}
+
+void CommandList::bind_index_buffer(BufferHandle buffer, uint64_t offset, IndexType type) {
+    BYTEE_ASSERT(is_valid(), "CommandList is empty");
+    const vulkan::BufferRecord& record = device_->buffers.get(buffer);
+    BYTEE_ASSERT(record.info.usage.has(BufferUsage::Index), "buffer '{}' lacks Index usage", record.info.debug_name);
+    device_->vk.vkCmdBindIndexBuffer(context_->buffer, record.buffer, offset, vulkan::to_vk_index_type(type));
+}
+
+void CommandList::draw(uint32_t vertex_count, uint32_t instance_count, uint32_t first_vertex, uint32_t first_instance) {
+    BYTEE_ASSERT(is_valid(), "CommandList is empty");
+    BYTEE_ASSERT(context_->in_render_pass && context_->pipeline_bound, "draw needs a render pass and a pipeline");
+    device_->vk.vkCmdDraw(context_->buffer, vertex_count, instance_count, first_vertex, first_instance);
+}
+
+void CommandList::draw_indexed(uint32_t index_count, uint32_t instance_count, uint32_t first_index,
+                               int32_t vertex_offset, uint32_t first_instance) {
+    BYTEE_ASSERT(is_valid(), "CommandList is empty");
+    BYTEE_ASSERT(context_->in_render_pass && context_->pipeline_bound, "draw needs a render pass and a pipeline");
+    device_->vk.vkCmdDrawIndexed(context_->buffer, index_count, instance_count, first_index, vertex_offset,
+                                 first_instance);
 }
 
 // ----------------------------------------------------------------------------------------------------------------

@@ -5,10 +5,12 @@
 #include <bytee/render/rhi/export.hpp>
 #include <bytee/render/rhi/handles.hpp>
 
+#include <cstddef>
 #include <cstdint>
 #include <optional>
 #include <span>
 #include <string_view>
+#include <type_traits>
 #include <utility>
 
 namespace bytee::render::rhi {
@@ -126,6 +128,22 @@ struct DepthAttachment {
 
 inline constexpr uint32_t k_max_color_attachments = 8;
 
+enum class IndexType : uint8_t {
+    Uint16,
+    Uint32,
+};
+
+// In pixels, origin at the top-left of the render target. Bytee keeps clip space Y-up (architecture §14); the backend
+// flips the GPU viewport internally, so this is just the target rectangle.
+struct Viewport {
+    float x = 0.0f;
+    float y = 0.0f;
+    float width = 0.0f;
+    float height = 0.0f;
+    float min_depth = 0.0f;
+    float max_depth = 1.0f;
+};
+
 // All attachments must have the same size; the render area is the whole attachment.
 struct RenderPassDesc {
     std::span<const ColorAttachment> colors;
@@ -158,8 +176,26 @@ public:
     void barrier(std::span<const BufferBarrier> buffers, std::span<const TextureBarrier> textures);
 
     // Dynamic rendering. Copies and barriers are not allowed between begin_render_pass() and end_render_pass().
+    // begin_render_pass also sets the viewport and scissor to the whole render target.
     void begin_render_pass(const RenderPassDesc& desc);
     void end_render_pass();
+
+    // Drawing (inside a render pass). Push constants are visible to every stage; their contents persist across
+    // pipeline binds within the list.
+    void bind_pipeline(GraphicsPipelineHandle pipeline);
+    void set_viewport(const Viewport& viewport);
+    void set_scissor(const core::Rect2D& scissor);
+    void push_constants(std::span<const std::byte> data, uint32_t offset = 0);
+    template <class Value_>
+        requires std::is_trivially_copyable_v<Value_>
+    void push_constants(const Value_& value, uint32_t offset = 0) {
+        push_constants(std::as_bytes(std::span{&value, 1}), offset);
+    }
+    void bind_index_buffer(BufferHandle buffer, uint64_t offset, IndexType type);
+    void draw(uint32_t vertex_count, uint32_t instance_count = 1, uint32_t first_vertex = 0,
+              uint32_t first_instance = 0);
+    void draw_indexed(uint32_t index_count, uint32_t instance_count = 1, uint32_t first_index = 0,
+                      int32_t vertex_offset = 0, uint32_t first_instance = 0);
 
     // `dst` must be in CopyDst, sources in CopySrc.
     void fill_buffer(BufferHandle dst, uint64_t offset, uint64_t size, uint32_t value);

@@ -1,5 +1,6 @@
 // Buffers and textures through the public API (GPU tests). The fixtures fail any test that logs a warning or error.
 
+#include "support/error_text.hpp"
 #include "support/gpu_fixture.hpp"
 
 #include <doctest/doctest.h>
@@ -31,7 +32,7 @@ TEST_CASE_FIXTURE(DeviceFixture, "Buffers in every memory location") {
                                             .usage = BufferUsage::Storage | BufferUsage::TransferDst,
                                             .memory = memory,
                                             .debug_name = "b"});
-        REQUIRE_MESSAGE(buffer.has_value(), buffer.error().message());
+        REQUIRE_MESSAGE(buffer.has_value(), bytee::tests::error_text(buffer));
 
         const rhi::BufferInfo& info = device.info(*buffer); // an owner is usable as a handle
         CHECK(info.size == 1024);
@@ -102,7 +103,7 @@ TEST_CASE_FIXTURE(DeviceFixture, "Textures of various kinds") {
     };
     for (const rhi::TextureDesc& desc : descs) {
         auto texture = device.create_texture(desc);
-        REQUIRE_MESSAGE(texture.has_value(), texture.error().message());
+        REQUIRE_MESSAGE(texture.has_value(), bytee::tests::error_text(texture));
         const rhi::TextureInfo& info = device.info(*texture);
         CHECK(info.dimension == desc.dimension);
         CHECK(info.extent == desc.extent);
@@ -159,7 +160,7 @@ TEST_CASE_FIXTURE(GpuFixture, "Pool limits are enforced and freed slots are reus
 
     *first = rhi::Buffer{}; // no GPU work in flight: destroyed immediately, slot free again
     auto again = device->create_buffer(desc);
-    CHECK_MESSAGE(again.has_value(), again.error().message());
+    CHECK_MESSAGE(again.has_value(), bytee::tests::error_text(again));
 
     auto zero_limits = instance->create_device({.limits = {.max_buffers = 0}});
     REQUIRE_FALSE(zero_limits.has_value());

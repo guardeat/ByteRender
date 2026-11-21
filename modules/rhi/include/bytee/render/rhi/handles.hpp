@@ -14,10 +14,12 @@ struct BYTEE_HIDDEN DeviceImpl; // backend-defined, opaque
 // Tags: empty marker types that make handles to different resource kinds distinct types (architecture §4.1).
 struct BufferTag;
 struct TextureTag;
+struct GraphicsPipelineTag;
 
 // Non-owning 8-byte views, used by command recording and lookups.
 using BufferHandle = core::Handle<BufferTag>;
 using TextureHandle = core::Handle<TextureTag>;
+using GraphicsPipelineHandle = core::Handle<GraphicsPipelineTag>;
 
 // Deleter of every RHI resource: hands the handle back to its device, which destroys the GPU object once the GPU has
 // finished all work that could use it (deferred destruction, architecture §6). Thread-safe.
@@ -32,10 +34,12 @@ public:
 
     void operator()(BufferHandle buffer) const noexcept;
     void operator()(TextureHandle texture) const noexcept;
+    void operator()(GraphicsPipelineHandle pipeline) const noexcept;
 };
 
 // Owning, move-only RAII resources (handle + device pointer, 16 bytes). Usable wherever a handle is expected.
 using Buffer = core::Resource<BufferTag, ResourceReleaser>;
 using Texture = core::Resource<TextureTag, ResourceReleaser>;
+using GraphicsPipeline = core::Resource<GraphicsPipelineTag, ResourceReleaser>;
 
 } // namespace bytee::render::rhi

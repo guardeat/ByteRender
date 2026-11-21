@@ -80,11 +80,15 @@ uint64_t to_timeout_nanoseconds(std::chrono::nanoseconds timeout) noexcept {
 
 detail::DeviceImpl::DeviceImpl(const DeviceLimits& limits)
     : buffers(limits.max_buffers)
-    , textures(limits.max_textures) {}
+    , textures(limits.max_textures)
+    , graphics_pipelines(limits.max_graphics_pipelines) {}
 
 detail::DeviceImpl::~DeviceImpl() {
     finish_pending_work();
     destroy_contexts();
+    if (pipeline_layout != VK_NULL_HANDLE) {
+        vk.vkDestroyPipelineLayout(device, pipeline_layout, nullptr);
+    }
     for (std::unique_ptr<vulkan::Queue>& queue_ptr : queues) {
         queue_ptr.reset();
     }
@@ -107,6 +111,7 @@ void detail::DeviceImpl::finish_pending_work() noexcept {
     static_cast<void>(vk.vkDeviceWaitIdle(device));
     retired_buffers.drain([this](BufferHandle buffer) { destroy_now(buffer); });
     retired_textures.drain([this](TextureHandle texture) { destroy_now(texture); });
+    retired_graphics_pipelines.drain([this](GraphicsPipelineHandle pipeline) { destroy_now(pipeline); });
     retired_objects.drain([this](const vulkan::RetiredObject& object) { destroy_now(object); });
 }
 
@@ -171,6 +176,7 @@ core::Result<void> detail::DeviceImpl::collect() {
     }
     retired_buffers.collect(completed, [this](BufferHandle buffer) { destroy_now(buffer); });
     retired_textures.collect(completed, [this](TextureHandle texture) { destroy_now(texture); });
+    retired_graphics_pipelines.collect(completed, [this](GraphicsPipelineHandle pipeline) { destroy_now(pipeline); });
     retired_objects.collect(completed, [this](const vulkan::RetiredObject& object) { destroy_now(object); });
     return {};
 }
@@ -287,7 +293,7 @@ core::Result<Device> Instance::create_device(const DeviceDesc& desc) {
     BYTEE_ASSERT(is_valid(), "Instance is empty");
     detail::InstanceImpl& instance = *impl_;
 
-    if (desc.limits.max_buffers == 0 || desc.limits.max_textures == 0) {
+    if (desc.limits.max_buffers == 0 || desc.limits.max_textures == 0 || desc.limits.max_graphics_pipelines == 0) {
         return core::make_error(core::ErrorCode::InvalidArgument, "device '{}': resource limits must not be 0",
                                 desc.debug_name);
     }
@@ -389,7 +395,25 @@ core::Result<Device> Instance::create_device(const DeviceDesc& desc) {
         return vulkan::make_vk_error(result, "vmaCreateAllocator");
     }
 
+    const VkPushConstantRange push_constants{
+        .stageFlags = VK_SHADER_STAGE_ALL,
+        .offset = 0,
+        .size = k_max_push_constant_bytes,
+    };
+    const VkPipelineLayoutCreateInfo layout_info{
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
+        .pushConstantRangeCount = 1,
+        .pPushConstantRanges = &push_constants,
+    };
+    if (const VkResult result =
+            impl->vk.vkCreatePipelineLayout(impl->device, &layout_info, nullptr, &impl->pipeline_layout);
+        result != VK_SUCCESS) {
+        return vulkan::make_vk_error(result, "vkCreatePipelineLayout");
+    }
+
     vulkan::set_debug_name(impl->device, VK_OBJECT_TYPE_DEVICE, impl->device, desc.debug_name);
+    vulkan::set_debug_name(impl->device, VK_OBJECT_TYPE_PIPELINE_LAYOUT, impl->pipeline_layout,
+                           std::format("{} pipeline layout", desc.debug_name));
 
     impl->tracker_id = instance.live_devices.add("Device", desc.debug_name);
     instance.logger->debug("device '{}' created on {} (queue family {}, presentation {})", desc.debug_name,

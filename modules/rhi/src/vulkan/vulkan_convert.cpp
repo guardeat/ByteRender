@@ -142,6 +142,79 @@ bool is_buffer_state(ResourceState state) noexcept {
     }
 }
 
+VkPrimitiveTopology to_vk_topology(PrimitiveTopology topology) noexcept {
+    switch (topology) {
+    case PrimitiveTopology::TriangleList: return VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+    case PrimitiveTopology::TriangleStrip: return VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP;
+    case PrimitiveTopology::LineList: return VK_PRIMITIVE_TOPOLOGY_LINE_LIST;
+    case PrimitiveTopology::LineStrip: return VK_PRIMITIVE_TOPOLOGY_LINE_STRIP;
+    case PrimitiveTopology::PointList: return VK_PRIMITIVE_TOPOLOGY_POINT_LIST;
+    }
+    return VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+}
+
+VkCullModeFlags to_vk_cull_mode(CullMode mode) noexcept {
+    switch (mode) {
+    case CullMode::None: return VK_CULL_MODE_NONE;
+    case CullMode::Front: return VK_CULL_MODE_FRONT_BIT;
+    case CullMode::Back: return VK_CULL_MODE_BACK_BIT;
+    }
+    return VK_CULL_MODE_NONE;
+}
+
+VkFrontFace to_vk_front_face(FrontFace face) noexcept {
+    // The viewport is flipped (negative height) so clip space is Y-up; the flip also mirrors winding, which makes the
+    // Vulkan winding match the Y-up winding one to one (verified by the culling image test).
+    return face == FrontFace::CounterClockwise ? VK_FRONT_FACE_COUNTER_CLOCKWISE : VK_FRONT_FACE_CLOCKWISE;
+}
+
+VkCompareOp to_vk_compare_op(CompareOp op) noexcept {
+    switch (op) {
+    case CompareOp::Never: return VK_COMPARE_OP_NEVER;
+    case CompareOp::Less: return VK_COMPARE_OP_LESS;
+    case CompareOp::Equal: return VK_COMPARE_OP_EQUAL;
+    case CompareOp::LessOrEqual: return VK_COMPARE_OP_LESS_OR_EQUAL;
+    case CompareOp::Greater: return VK_COMPARE_OP_GREATER;
+    case CompareOp::NotEqual: return VK_COMPARE_OP_NOT_EQUAL;
+    case CompareOp::GreaterOrEqual: return VK_COMPARE_OP_GREATER_OR_EQUAL;
+    case CompareOp::Always: return VK_COMPARE_OP_ALWAYS;
+    }
+    return VK_COMPARE_OP_ALWAYS;
+}
+
+VkPipelineColorBlendAttachmentState to_vk_blend(BlendMode mode) noexcept {
+    constexpr VkColorComponentFlags k_all =
+        VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+    VkPipelineColorBlendAttachmentState state{.blendEnable = VK_TRUE,
+                                              .colorBlendOp = VK_BLEND_OP_ADD,
+                                              .srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE,
+                                              .dstAlphaBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
+                                              .alphaBlendOp = VK_BLEND_OP_ADD,
+                                              .colorWriteMask = k_all};
+    switch (mode) {
+    case BlendMode::Opaque:
+        return VkPipelineColorBlendAttachmentState{.blendEnable = VK_FALSE, .colorWriteMask = k_all};
+    case BlendMode::AlphaBlend:
+        state.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
+        state.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+        return state;
+    case BlendMode::Premultiplied:
+        state.srcColorBlendFactor = VK_BLEND_FACTOR_ONE;
+        state.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+        return state;
+    case BlendMode::Additive:
+        state.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
+        state.dstColorBlendFactor = VK_BLEND_FACTOR_ONE;
+        state.dstAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
+        return state;
+    }
+    return state;
+}
+
+VkIndexType to_vk_index_type(IndexType type) noexcept {
+    return type == IndexType::Uint16 ? VK_INDEX_TYPE_UINT16 : VK_INDEX_TYPE_UINT32;
+}
+
 bool is_texture_state(ResourceState state) noexcept {
     switch (state) {
     case ResourceState::VertexBuffer:

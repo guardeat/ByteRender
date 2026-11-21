@@ -7,6 +7,7 @@
 #include <bytee/render/rhi/buffer.hpp>
 #include <bytee/render/rhi/command_list.hpp>
 #include <bytee/render/rhi/format.hpp>
+#include <bytee/render/rhi/pipeline.hpp>
 #include <bytee/render/rhi/texture.hpp>
 
 namespace bytee::render::rhi::vulkan {
@@ -28,5 +29,12 @@ struct StateScope {
 [[nodiscard]] StateScope to_state_scope(ResourceState state) noexcept;
 [[nodiscard]] bool is_buffer_state(ResourceState state) noexcept;
 [[nodiscard]] bool is_texture_state(ResourceState state) noexcept;
+
+[[nodiscard]] VkPrimitiveTopology to_vk_topology(PrimitiveTopology topology) noexcept;
+[[nodiscard]] VkCullModeFlags to_vk_cull_mode(CullMode mode) noexcept;
+[[nodiscard]] VkFrontFace to_vk_front_face(FrontFace face) noexcept;
+[[nodiscard]] VkCompareOp to_vk_compare_op(CompareOp op) noexcept;
+[[nodiscard]] VkPipelineColorBlendAttachmentState to_vk_blend(BlendMode mode) noexcept;
+[[nodiscard]] VkIndexType to_vk_index_type(IndexType type) noexcept;
 
 } // namespace bytee::render::rhi::vulkan

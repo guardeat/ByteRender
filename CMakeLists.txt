@@ -16,6 +16,7 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 include(bytee_options)
 include(bytee_compiler)
 include(bytee_dependencies)
+include(bytee_shaders)
 
 if(PROJECT_IS_TOP_LEVEL)
     if(NOT CMAKE_CONFIGURATION_TYPES AND NOT CMAKE_BUILD_TYPE)

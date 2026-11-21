@@ -45,6 +45,12 @@ struct BufferRecord {
     BufferInfo info;
 };
 
+struct GraphicsPipelineRecord {
+    VkPipeline pipeline = VK_NULL_HANDLE;
+    detail::LiveObjectTracker::Id tracker_id = 0;
+    std::string debug_name;
+};
+
 struct TextureRecord {
     VkImage image = VK_NULL_HANDLE;
     VkImageView view = VK_NULL_HANDLE; // default view (every mip level and layer); none for transfer-only textures
@@ -66,6 +72,7 @@ struct BYTEE_HIDDEN detail::CommandContext {
     QueueType queue = QueueType::Graphics;
     uint64_t last_submission = 0; // timeline value of its queue; 0 = never submitted
     bool in_render_pass = false;  // recording state, for misuse asserts
+    bool pipeline_bound = false;
 };
 
 struct BYTEE_HIDDEN detail::DeviceImpl {
@@ -80,6 +87,8 @@ struct BYTEE_HIDDEN detail::DeviceImpl {
     VolkDeviceTable vk{}; // device-level functions for this device only: no loader dispatch, no globals
     VmaAllocator allocator = VK_NULL_HANDLE;
     VkPhysicalDeviceLimits device_limits{};
+    // One layout shared by every pipeline: push constants for all stages (the bindless descriptor set joins later).
+    VkPipelineLayout pipeline_layout = VK_NULL_HANDLE;
 
     // Indexed by QueueType. Destroyed explicitly before the VkDevice.
     std::array<std::unique_ptr<vulkan::Queue>, vulkan::k_queue_count> queues;
@@ -91,10 +100,12 @@ struct BYTEE_HIDDEN detail::DeviceImpl {
     std::mutex resources_mutex;
     core::Pool<vulkan::BufferRecord, BufferTag> buffers;
     core::Pool<vulkan::TextureRecord, TextureTag> textures;
+    core::Pool<vulkan::GraphicsPipelineRecord, GraphicsPipelineTag> graphics_pipelines;
 
     detail::RetireList<vulkan::RetiredObject, vulkan::k_queue_count> retired_objects;
     detail::RetireList<BufferHandle, vulkan::k_queue_count> retired_buffers;
     detail::RetireList<TextureHandle, vulkan::k_queue_count> retired_textures;
+    detail::RetireList<GraphicsPipelineHandle, vulkan::k_queue_count> retired_graphics_pipelines;
     detail::LiveObjectTracker live_objects; // child resources, for leak reports
 
     // Command contexts. All are owned by `contexts`; each is in exactly one of: free, pending (submitted, maybe still
@@ -143,8 +154,10 @@ struct BYTEE_HIDDEN detail::DeviceImpl {
     // Called by ResourceReleaser when the owning Resource is destroyed: retires the handle (deferred destruction).
     void release(BufferHandle buffer);
     void release(TextureHandle texture);
+    void release(GraphicsPipelineHandle pipeline);
     void destroy_now(BufferHandle buffer);
     void destroy_now(TextureHandle texture);
+    void destroy_now(GraphicsPipelineHandle pipeline);
 
     // Waits for the GPU and destroys everything still retired (used before the leak check at destruction).
     void finish_pending_work() noexcept;

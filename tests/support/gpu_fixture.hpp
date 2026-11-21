@@ -4,6 +4,7 @@
 // validation layer, driver) logged a warning or an error: the zero-noise policy, enforced.
 
 #include "support/capture_log_sink.hpp"
+#include "support/error_text.hpp"
 
 #include <bytee/render/rhi/instance_factory.hpp>
 
@@ -37,11 +38,11 @@ struct DeviceFixture : GpuFixture {
 
     DeviceFixture() {
         auto created_instance = create_instance();
-        REQUIRE_MESSAGE(created_instance.has_value(), created_instance.error().message());
+        REQUIRE_MESSAGE(created_instance.has_value(), bytee::tests::error_text(created_instance));
         instance = std::move(created_instance).value();
 
         auto created_device = instance.create_device({.debug_name = "Test Device"});
-        REQUIRE_MESSAGE(created_device.has_value(), created_device.error().message());
+        REQUIRE_MESSAGE(created_device.has_value(), bytee::tests::error_text(created_device));
         device = std::move(created_device).value();
     }
 };

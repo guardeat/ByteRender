@@ -1,6 +1,7 @@
 // Command lists, barriers, copies and uploads through the public API (GPU tests). Every test checks real data that
 // travelled through the GPU; the fixture fails on any validation warning or error.
 
+#include "support/error_text.hpp"
 #include "support/gpu_fixture.hpp"
 
 #include <doctest/doctest.h>
@@ -51,10 +52,10 @@ TEST_CASE_FIXTURE(DeviceFixture, "fill_buffer writes through the GPU") {
     rhi::Buffer readback = make_readback(device, 64);
 
     auto commands = device.begin_commands();
-    REQUIRE_MESSAGE(commands.has_value(), commands.error().message());
+    REQUIRE_MESSAGE(commands.has_value(), bytee::tests::error_text(commands));
     commands->fill_buffer(readback, 0, 64, 0xDEADBEEFu);
     auto done = device.submit(std::move(*commands));
-    REQUIRE_MESSAGE(done.has_value(), done.error().message());
+    REQUIRE_MESSAGE(done.has_value(), bytee::tests::error_text(done));
     REQUIRE(device.wait(*done).has_value());
 
     for (const uint32_t value : read_all<uint32_t>(device, readback, 16)) {
@@ -166,7 +167,7 @@ TEST_CASE_FIXTURE(DeviceFixture, "Command lists record and submit on several thr
         thread.join();
     }
     for (uint32_t i = 0; i < k_threads; ++i) {
-        REQUIRE_MESSAGE(results[i].has_value(), results[i].error().message());
+        REQUIRE_MESSAGE(results[i].has_value(), bytee::tests::error_text(results[i]));
         REQUIRE(device.wait(*results[i]).has_value());
         for (const uint32_t value : read_all<uint32_t>(device, targets[i], 256)) {
             CHECK(value == 0x1000u + i);

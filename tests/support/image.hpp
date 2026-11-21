@@ -2,6 +2,8 @@
 
 // RGBA8 images for rendering tests: comparison with tolerance and PPM output for inspecting failures.
 
+#include "support/error_text.hpp"
+
 #include <bytee/render/rhi/device.hpp>
 
 #include <doctest/doctest.h>
@@ -76,7 +78,7 @@ inline void write_ppm(const Rgba8Image& image, const std::filesystem::path& path
                      .pixels = std::vector<Rgba8>(std::size_t{info.extent.width} * info.extent.height)};
     auto downloaded =
         device.download(texture, std::as_writable_bytes(std::span{image.pixels}), {.before = state, .after = state});
-    REQUIRE_MESSAGE(downloaded.has_value(), downloaded.error().message());
+    REQUIRE_MESSAGE(downloaded.has_value(), bytee::tests::error_text(downloaded));
     return image;
 }
 

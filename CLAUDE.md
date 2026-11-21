@@ -10,7 +10,8 @@ multiple projects. **Performance is a primary goal.**
 1. One roadmap step at a time. Never implement beyond the current step.
 2. Plan the step before coding it; discuss design changes first, update `docs/architecture.md`, then implement.
 3. Every step ends with a from-scratch build of **every preset** (`debug`, `release`, `shared`, `asan`, `tsan`),
-   tests passing, samples run, `format_check` clean — then **one commit**.
+   tests passing, samples run, `format_check` clean — then **one commit**. Judge every stage by its **exit code**,
+   not only by searching logs for warnings (a failing custom command may print no "error:" line).
 4. If a step reveals a problem with an earlier decision, stop and raise it — never silently work around it.
 
 ## Zero-noise policy (100% clean)
@@ -19,6 +20,8 @@ multiple projects. **Performance is a primary goal.**
   Only intentional engine/sample log lines appear.
 - Fix root causes. Suppressing a message is only acceptable when it is provably harmless, and is documented where done.
 - GPU tests capture all log output and fail on any warning or error.
+- In doctest `*_MESSAGE` macros use `bytee::tests::error_text(result)`, never `result.error().message()` (doctest may
+  evaluate messages for passing checks; `error()` on a value asserts). Run suites with `-s` when adding test helpers.
 - Code touching concurrency or object lifetimes is verified under ASan+UBSan and TSan before committing.
 
 ## Architecture rules (non-negotiable)

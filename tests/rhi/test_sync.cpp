@@ -1,5 +1,6 @@
 // Public SyncPoint API (GPU tests). The fixture fails any test that logs a warning or error.
 
+#include "support/error_text.hpp"
 #include "support/gpu_fixture.hpp"
 
 #include <doctest/doctest.h>
@@ -13,7 +14,7 @@ using bytee::tests::DeviceFixture;
 TEST_CASE_FIXTURE(DeviceFixture, "A default SyncPoint is always complete") {
     CHECK(device.is_complete(rhi::SyncPoint{}));
     auto waited = device.wait(rhi::SyncPoint{});
-    CHECK_MESSAGE(waited.has_value(), waited.error().message());
+    CHECK_MESSAGE(waited.has_value(), bytee::tests::error_text(waited));
 }
 
 TEST_CASE_FIXTURE(DeviceFixture, "Waiting for a point that was never submitted fails instead of deadlocking") {
@@ -27,5 +28,5 @@ TEST_CASE_FIXTURE(DeviceFixture, "Waiting for a point that was never submitted f
 
 TEST_CASE_FIXTURE(DeviceFixture, "wait_idle succeeds on an idle device") {
     auto idle = device.wait_idle();
-    CHECK_MESSAGE(idle.has_value(), idle.error().message());
+    CHECK_MESSAGE(idle.has_value(), bytee::tests::error_text(idle));
 }

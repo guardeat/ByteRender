@@ -7,6 +7,7 @@
 #include <bytee/render/rhi/command_list.hpp>
 #include <bytee/render/rhi/export.hpp>
 #include <bytee/render/rhi/handles.hpp>
+#include <bytee/render/rhi/pipeline.hpp>
 #include <bytee/render/rhi/queue.hpp>
 #include <bytee/render/rhi/texture.hpp>
 
@@ -24,6 +25,7 @@ namespace bytee::render::rhi {
 struct DeviceLimits {
     uint32_t max_buffers = 1u << 16;
     uint32_t max_textures = 1u << 16;
+    uint32_t max_graphics_pipelines = 1u << 12;
 };
 
 // Which part of a texture to read back and which states the texture is in before and after.
@@ -91,6 +93,8 @@ public:
     // resource retires it: the GPU object lives until the GPU has finished all work that could use it.
     [[nodiscard]] core::Result<Buffer> create_buffer(const BufferDesc& desc);
     [[nodiscard]] core::Result<Texture> create_texture(const TextureDesc& desc);
+    // Creating pipelines compiles shaders for the GPU: do it at load time, not per frame.
+    [[nodiscard]] core::Result<GraphicsPipeline> create_graphics_pipeline(const GraphicsPipelineDesc& desc);
 
     // Description of a live resource. The reference stays valid until the resource is destroyed.
     [[nodiscard]] const BufferInfo& info(BufferHandle buffer) const noexcept;

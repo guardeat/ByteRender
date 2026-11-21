@@ -6,3 +6,4 @@ endfunction()
 
 add_subdirectory(00_device_info)
 add_subdirectory(01_headless_clear)
+add_subdirectory(02_triangle)

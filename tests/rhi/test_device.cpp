@@ -1,5 +1,6 @@
 // GPU tests (label "gpu"). The fixtures fail any test that logs a warning or error.
 
+#include "support/error_text.hpp"
 #include "support/gpu_fixture.hpp"
 
 #include <doctest/doctest.h>
@@ -18,7 +19,7 @@ TEST_CASE_FIXTURE(DeviceFixture, "A device on the best adapter is usable") {
     CHECK(device.is_presentation_supported() == instance.is_presentation_supported());
 
     auto idle = device.wait_idle();
-    CHECK_MESSAGE(idle.has_value(), idle.error().message());
+    CHECK_MESSAGE(idle.has_value(), bytee::tests::error_text(idle));
 }
 
 TEST_CASE_FIXTURE(GpuFixture, "Devices on explicit adapters; invalid indices are rejected") {
@@ -33,7 +34,7 @@ TEST_CASE_FIXTURE(GpuFixture, "Devices on explicit adapters; invalid indices are
     for (const rhi::AdapterInfo& adapter : adapters) {
         auto device = instance->create_device({.adapter_index = adapter.index});
         if (adapter.is_supported) {
-            REQUIRE_MESSAGE(device.has_value(), device.error().message());
+            REQUIRE_MESSAGE(device.has_value(), bytee::tests::error_text(device));
             CHECK(device->adapter().index == adapter.index);
         } else {
             REQUIRE_FALSE(device.has_value());
@@ -47,8 +48,8 @@ TEST_CASE_FIXTURE(GpuFixture, "Several devices can share one instance") {
     REQUIRE(instance.has_value());
     auto first = instance->create_device({.debug_name = "First"});
     auto second = instance->create_device({.debug_name = "Second"});
-    REQUIRE_MESSAGE(first.has_value(), first.error().message());
-    REQUIRE_MESSAGE(second.has_value(), second.error().message());
+    REQUIRE_MESSAGE(first.has_value(), bytee::tests::error_text(first));
+    REQUIRE_MESSAGE(second.has_value(), bytee::tests::error_text(second));
     CHECK(first->wait_idle().has_value());
     CHECK(second->wait_idle().has_value());
 }

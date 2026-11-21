@@ -36,12 +36,19 @@ add_executable(bytee_gpu_tests
     main.cpp
     rhi/test_commands.cpp
     rhi/test_device.cpp
+    rhi/test_graphics.cpp
     rhi/test_instance.cpp
     rhi/test_rendering.cpp
     rhi/test_resources.cpp
     rhi/test_sync.cpp
 )
 target_include_directories(bytee_gpu_tests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}")
+bytee_add_shaders(bytee_gpu_tests SOURCES
+    shaders/color.frag
+    shaders/fullscreen.vert
+    shaders/pulled.vert
+    shaders/triangle.vert
+)
 target_link_libraries(bytee_gpu_tests PRIVATE bytee::rhi bytee_doctest)
 bytee_configure_target(bytee_gpu_tests)
 add_test(NAME bytee_gpu_tests COMMAND bytee_gpu_tests)
