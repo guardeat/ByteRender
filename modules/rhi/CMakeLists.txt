@@ -15,6 +15,7 @@ if(BYTEE_RHI_BACKEND STREQUAL "Vulkan")
         src/vulkan/vulkan_requirements.cpp
         src/vulkan/vulkan_resources.cpp
         src/vulkan/vulkan_samplers.cpp
+        src/vulkan/vulkan_swapchain.cpp
         src/vulkan/vulkan_vma.cpp
         src/vulkan/vulkan_volk.cpp
     )

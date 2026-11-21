@@ -82,7 +82,9 @@ TEST_CASE("Resource states map to synchronization2 scopes and layouts") {
     CHECK(vulkan::to_state_scope(ResourceState::ShaderRead).layout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
     CHECK(vulkan::to_state_scope(ResourceState::ShaderWrite).layout == VK_IMAGE_LAYOUT_GENERAL);
     CHECK(vulkan::to_state_scope(ResourceState::DepthWrite).layout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
-    CHECK(vulkan::to_state_scope(ResourceState::Undefined).stages == VK_PIPELINE_STAGE_2_NONE);
+    CHECK(vulkan::to_state_scope(ResourceState::Undefined).stages == VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT);
+    CHECK(vulkan::to_state_scope(ResourceState::Undefined).access == VK_ACCESS_2_NONE);
+    CHECK(vulkan::to_state_scope(ResourceState::Present).layout == VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
     CHECK((vulkan::to_state_scope(ResourceState::CopySrc).access & VK_ACCESS_2_TRANSFER_READ_BIT) != 0);
 
     CHECK(vulkan::is_buffer_state(ResourceState::VertexBuffer));

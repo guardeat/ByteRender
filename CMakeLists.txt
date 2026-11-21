@@ -14,6 +14,11 @@ project(Bytee
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
 include(bytee_options)
+
+# Objective-C++ for the macOS sample window helper (attaches a CAMetalLayer); languages must be enabled at top level.
+if(APPLE AND BYTEE_BUILD_SAMPLES)
+    enable_language(OBJCXX)
+endif()
 include(bytee_compiler)
 include(bytee_dependencies)
 include(bytee_shaders)

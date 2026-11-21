@@ -92,7 +92,10 @@ StateScope to_state_scope(ResourceState state) noexcept {
     constexpr VkPipelineStageFlags2 k_depth_tests =
         VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT;
     switch (state) {
-    case ResourceState::Undefined: return {VK_PIPELINE_STAGE_2_NONE, VK_ACCESS_2_NONE, VK_IMAGE_LAYOUT_UNDEFINED};
+    // Undefined waits for all prior commands (execution only, no memory access): a transition out of Undefined right
+    // after a swapchain acquire must chain with the acquire semaphore wait (which uses ALL_COMMANDS).
+    case ResourceState::Undefined:
+        return {VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT, VK_ACCESS_2_NONE, VK_IMAGE_LAYOUT_UNDEFINED};
     case ResourceState::General:
         return {VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT, VK_ACCESS_2_MEMORY_READ_BIT | VK_ACCESS_2_MEMORY_WRITE_BIT,
                 VK_IMAGE_LAYOUT_GENERAL};
@@ -129,6 +132,8 @@ StateScope to_state_scope(ResourceState state) noexcept {
         return {VK_PIPELINE_STAGE_2_DRAW_INDIRECT_BIT, VK_ACCESS_2_INDIRECT_COMMAND_READ_BIT,
                 VK_IMAGE_LAYOUT_UNDEFINED};
     case ResourceState::UniformBuffer: return {k_shaders, VK_ACCESS_2_UNIFORM_READ_BIT, VK_IMAGE_LAYOUT_UNDEFINED};
+    // Presentation is ordered by the submission's semaphore signal (ALL_COMMANDS); no access after the transition.
+    case ResourceState::Present: return {VK_PIPELINE_STAGE_2_NONE, VK_ACCESS_2_NONE, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR};
     }
     return {};
 }
@@ -137,7 +142,8 @@ bool is_buffer_state(ResourceState state) noexcept {
     switch (state) {
     case ResourceState::ColorAttachment:
     case ResourceState::DepthWrite:
-    case ResourceState::DepthRead: return false;
+    case ResourceState::DepthRead:
+    case ResourceState::Present: return false;
     default: return true;
     }
 }

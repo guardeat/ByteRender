@@ -283,8 +283,15 @@ list is a programmer error.
 - A `Device` never requires a window. Rendering targets are textures; results are read back to CPU memory.
 - Headless image tests (render → read back → compare) validate every rendering feature, also in CI without a GPU
   display (Linux + lavapipe).
-- Presentation is an add-on: `Swapchain` created from an API-agnostic `NativeWindow` (HWND / X11 / Wayland /
-  `CAMetalLayer`). The engine never owns the window; samples use GLFW.
+- Presentation is an add-on: `Device::create_swapchain({.window = NativeWindow, .extent})`. `NativeWindow` describes a
+  window without window-system types (Metal layer, Win32, Xlib/Xcb/Wayland — Linux in step 18 — or **Headless**, which
+  makes swapchains testable without a display). The engine never owns windows; samples use GLFW via `samples/common`.
+- Frame loop: `swapchain.acquire()` (throttles to `frames_in_flight`, default 2; recreates on resize / out-of-date;
+  returns an invalid frame for a zero-size window) → record (image: Undefined → … → `Present`) →
+  `device.present(swapchain, std::move(list))` → `SyncPoint`. Swapchain images are external `TextureHandle`s (views
+  owned by Bytee, images by the swapchain). Acquire semaphores per frame slot, present semaphores per image.
+  Recreation waits for the device to idle (rare). `Undefined` as a barrier source waits for all prior commands so the
+  first transition chains with the acquire semaphore wait.
 
 ## 12. Render graph (v1 scope)
 - Passes declare reads/writes of transient or imported resources.

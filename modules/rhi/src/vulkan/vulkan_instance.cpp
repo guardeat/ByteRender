@@ -22,11 +22,12 @@ constexpr const char* k_validation_layer = "VK_LAYER_KHRONOS_validation";
 
 // Window-system surface extensions, enabled when available. Literal names: no platform headers needed.
 constexpr std::array k_platform_surface_extensions{
-    "VK_EXT_metal_surface",   // macOS (MoltenVK)
-    "VK_KHR_win32_surface",   // Windows
-    "VK_KHR_xlib_surface",    // Linux X11
-    "VK_KHR_xcb_surface",     // Linux X11 (XCB)
-    "VK_KHR_wayland_surface", // Linux Wayland
+    "VK_EXT_metal_surface",    // macOS (MoltenVK)
+    "VK_KHR_win32_surface",    // Windows
+    "VK_KHR_xlib_surface",     // Linux X11
+    "VK_KHR_xcb_surface",      // Linux X11 (XCB)
+    "VK_KHR_wayland_surface",  // Linux Wayland
+    "VK_EXT_headless_surface", // any platform: presentation without a window (tests, CI)
 };
 
 // volk's instance-level function pointers are process-global, so only one Instance may be alive (architecture §10).

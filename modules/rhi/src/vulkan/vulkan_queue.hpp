@@ -52,6 +52,9 @@ public:
                                   std::span<const VkSemaphoreSubmitInfo> waits,
                                   std::span<const VkSemaphoreSubmitInfo> signals, uint64_t& signalled);
 
+    // Presents a swapchain image after `wait` is signalled (serialized with submissions on this queue).
+    [[nodiscard]] VkResult present(VkSwapchainKHR swapchain, uint32_t image_index, VkSemaphore wait);
+
 private:
     friend VkResult create_queue(VkDevice device, const VolkDeviceTable& vk, uint32_t family, uint32_t index,
                                  std::string_view debug_name, std::unique_ptr<Queue>& queue);

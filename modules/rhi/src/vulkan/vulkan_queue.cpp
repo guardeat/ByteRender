@@ -99,6 +99,19 @@ VkResult Queue::submit(std::span<const VkCommandBufferSubmitInfo> command_buffer
     return result;
 }
 
+VkResult Queue::present(VkSwapchainKHR swapchain, uint32_t image_index, VkSemaphore wait) {
+    const std::scoped_lock lock{submit_mutex_};
+    const VkPresentInfoKHR info{
+        .sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
+        .waitSemaphoreCount = 1,
+        .pWaitSemaphores = &wait,
+        .swapchainCount = 1,
+        .pSwapchains = &swapchain,
+        .pImageIndices = &image_index,
+    };
+    return vk_->vkQueuePresentKHR(queue_, &info);
+}
+
 VkResult create_queue(VkDevice device, const VolkDeviceTable& vk, uint32_t family, uint32_t index,
                       std::string_view debug_name, std::unique_ptr<Queue>& queue) {
     VkQueue handle = VK_NULL_HANDLE;

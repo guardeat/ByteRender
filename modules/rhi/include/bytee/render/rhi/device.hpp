@@ -10,6 +10,7 @@
 #include <bytee/render/rhi/pipeline.hpp>
 #include <bytee/render/rhi/queue.hpp>
 #include <bytee/render/rhi/sampler.hpp>
+#include <bytee/render/rhi/swapchain.hpp>
 #include <bytee/render/rhi/texture.hpp>
 
 #include <chrono>
@@ -118,6 +119,13 @@ public:
     [[nodiscard]] core::Result<CommandList> begin_commands(QueueType queue = QueueType::Graphics);
     // Consumes the list; the returned SyncPoint completes when the GPU has executed it.
     [[nodiscard]] core::Result<SyncPoint> submit(CommandList&& commands);
+
+    // Presentation. Errors: NotSupported (no presentation support, unsupported window platform in this build),
+    // InvalidArgument, DeviceLost.
+    [[nodiscard]] core::Result<Swapchain> create_swapchain(const SwapchainDesc& desc);
+    // Submits `commands` (which must leave the acquired image in the Present state) and presents the image. The
+    // SyncPoint completes when the commands have executed. An out-of-date swapchain is recreated at the next acquire.
+    [[nodiscard]] core::Result<SyncPoint> present(Swapchain& swapchain, CommandList&& commands);
 
     // Upload helpers: copy CPU data into GPU-local resources through a staging buffer (freed automatically once the
     // copy has completed). The returned SyncPoint completes with the copy; later work on the same queue may use the

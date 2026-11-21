@@ -41,6 +41,7 @@ add_executable(bytee_gpu_tests
     rhi/test_instance.cpp
     rhi/test_rendering.cpp
     rhi/test_resources.cpp
+    rhi/test_swapchain.cpp
     rhi/test_sync.cpp
 )
 target_include_directories(bytee_gpu_tests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}")

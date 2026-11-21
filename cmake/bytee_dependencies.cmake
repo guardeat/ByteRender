@@ -57,4 +57,34 @@ function(bytee_fetch_vulkan)
         VMA_VULKAN_VERSION=1003000
     )
     target_link_libraries(bytee_vulkan_dependencies INTERFACE ${CMAKE_DL_LIBS})
+    # Window-system surface types and functions for this platform (Linux: roadmap step 18).
+    if(APPLE)
+        target_compile_definitions(bytee_vulkan_dependencies INTERFACE VK_USE_PLATFORM_METAL_EXT)
+    elseif(WIN32)
+        target_compile_definitions(bytee_vulkan_dependencies INTERFACE VK_USE_PLATFORM_WIN32_KHR WIN32_LEAN_AND_MEAN
+                                                                       NOMINMAX)
+    endif()
+endfunction()
+
+# GLFW: windowing for the samples only (the engine never owns windows). Built with its own CMake, without docs,
+# tests, examples or install rules; its sources compile without warnings output (third-party code).
+function(bytee_fetch_glfw)
+    if(TARGET glfw)
+        return()
+    endif()
+    set(GLFW_BUILD_DOCS OFF CACHE BOOL "" FORCE)
+    set(GLFW_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+    set(GLFW_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+    set(GLFW_INSTALL OFF CACHE BOOL "" FORCE)
+    FetchContent_Declare(glfw
+        URL https://github.com/glfw/glfw/archive/refs/tags/3.4.tar.gz
+        URL_HASH SHA256=c038d34200234d071fae9345bc455e4a8f2f544ab60150765d7704e08f3dac01
+        SYSTEM
+    )
+    FetchContent_MakeAvailable(glfw)
+    if(MSVC)
+        target_compile_options(glfw PRIVATE /W0)
+    else()
+        target_compile_options(glfw PRIVATE -w)
+    endif()
 endfunction()

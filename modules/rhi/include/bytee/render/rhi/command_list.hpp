@@ -35,6 +35,7 @@ enum class ResourceState : uint8_t {
     IndexBuffer,     // buffers
     IndirectBuffer,  // buffers
     UniformBuffer,   // buffers
+    Present,         // swapchain images handed to Device::present()
 };
 
 [[nodiscard]] constexpr std::string_view to_string(ResourceState state) noexcept {
@@ -52,6 +53,7 @@ enum class ResourceState : uint8_t {
     case ResourceState::IndexBuffer: return "IndexBuffer";
     case ResourceState::IndirectBuffer: return "IndirectBuffer";
     case ResourceState::UniformBuffer: return "UniformBuffer";
+    case ResourceState::Present: return "Present";
     }
     return "Unknown";
 }
@@ -206,6 +208,7 @@ public:
 private:
     friend class Device;
     friend detail::CommandContext* get_context(const CommandList& list) noexcept;
+    friend detail::CommandContext* take_context(CommandList& list) noexcept;
 
     CommandList(detail::DeviceImpl* device, detail::CommandContext* context) noexcept
         : device_(device)

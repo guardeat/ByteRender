@@ -525,30 +525,39 @@ core::Result<CommandList> Device::begin_commands(QueueType queue) {
     return CommandList{impl_, *context};
 }
 
+detail::CommandContext* take_context(CommandList& list) noexcept {
+    detail::CommandContext* context = std::exchange(list.context_, nullptr);
+    if (context != nullptr) {
+        list.device_->live_command_lists.fetch_sub(1, std::memory_order_acq_rel);
+    }
+    list.device_ = nullptr;
+    return context;
+}
+
+core::Result<SyncPoint> detail::DeviceImpl::submit_context(detail::CommandContext* context,
+                                                           std::span<const VkSemaphoreSubmitInfo> waits,
+                                                           std::span<const VkSemaphoreSubmitInfo> signals) {
+    BYTEE_ASSERT(!context->in_render_pass, "submitting a CommandList with an open render pass");
+    if (const VkResult result = vk.vkEndCommandBuffer(context->buffer); result != VK_SUCCESS) {
+        discard_context(context);
+        return fail(result, "vkEndCommandBuffer");
+    }
+    const VkCommandBufferSubmitInfo command_buffer{.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO,
+                                                   .commandBuffer = context->buffer};
+    core::Result<SyncPoint> submitted = submit(context->queue, std::span{&command_buffer, 1}, waits, signals);
+    if (!submitted) {
+        discard_context(context);
+        return submitted;
+    }
+    retire_context(context, submitted->value);
+    return submitted;
+}
+
 core::Result<SyncPoint> Device::submit(CommandList&& commands) {
     BYTEE_ASSERT(is_valid(), "Device is empty");
     BYTEE_ASSERT(commands.is_valid(), "submitting an empty CommandList");
     BYTEE_ASSERT(commands.device_ == impl_, "CommandList belongs to another device");
-    BYTEE_ASSERT(!commands.context_->in_render_pass, "submitting a CommandList with an open render pass");
-
-    // The list is consumed whatever happens next.
-    detail::CommandContext* context = std::exchange(commands.context_, nullptr);
-    commands.device_ = nullptr;
-    impl_->live_command_lists.fetch_sub(1, std::memory_order_acq_rel);
-
-    if (const VkResult result = impl_->vk.vkEndCommandBuffer(context->buffer); result != VK_SUCCESS) {
-        impl_->discard_context(context);
-        return impl_->fail(result, "vkEndCommandBuffer");
-    }
-    const VkCommandBufferSubmitInfo command_buffer{.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO,
-                                                   .commandBuffer = context->buffer};
-    core::Result<SyncPoint> submitted = impl_->submit(context->queue, std::span{&command_buffer, 1});
-    if (!submitted) {
-        impl_->discard_context(context);
-        return submitted;
-    }
-    impl_->retire_context(context, submitted->value);
-    return submitted;
+    return impl_->submit_context(take_context(commands), {}, {}); // the list is consumed whatever happens
 }
 
 core::Result<SyncPoint> Device::upload(BufferHandle dst, uint64_t dst_offset, std::span<const std::byte> data) {

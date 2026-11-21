@@ -69,7 +69,8 @@ struct GraphicsPipelineRecord {
 struct TextureRecord {
     VkImage image = VK_NULL_HANDLE;
     VkImageView view = VK_NULL_HANDLE; // default view (every mip level and layer); none for transfer-only textures
-    VkImageView attachment_view = VK_NULL_HANDLE; // mip 0, layer 0; only with an attachment usage
+    VkImageView attachment_view = VK_NULL_HANDLE; // mip 0, layer 0; only with an attachment usage (may equal `view`)
+    bool external = false; // image owned by a swapchain: views are ours, the image and its memory are not
     VmaAllocation allocation = VK_NULL_HANDLE;
     detail::LiveObjectTracker::Id tracker_id = 0;
     TextureInfo info;
@@ -214,9 +215,15 @@ struct BYTEE_HIDDEN detail::DeviceImpl {
     // Marks a submitted context; it becomes reusable once `value` completes on its queue.
     void retire_context(detail::CommandContext* context, uint64_t value) noexcept;
     void destroy_contexts() noexcept;
+    // Ends recording and submits a context (with optional semaphore waits/signals), recycling it either way.
+    [[nodiscard]] core::Result<SyncPoint> submit_context(detail::CommandContext* context,
+                                                         std::span<const VkSemaphoreSubmitInfo> waits,
+                                                         std::span<const VkSemaphoreSubmitInfo> signals);
 };
 
 [[nodiscard]] detail::CommandContext* get_context(const CommandList& list) noexcept;
+// Consumes a list: returns its context (still recording) and leaves the list empty.
+[[nodiscard]] detail::CommandContext* take_context(CommandList& list) noexcept;
 
 [[nodiscard]] detail::DeviceImpl* get_impl(const Device& device) noexcept;
 

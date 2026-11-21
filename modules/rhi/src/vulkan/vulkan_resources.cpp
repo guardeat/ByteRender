@@ -183,9 +183,13 @@ void detail::DeviceImpl::destroy_now(BufferHandle buffer) {
 void detail::DeviceImpl::destroy_now(TextureHandle texture) {
     const std::scoped_lock lock{resources_mutex};
     vulkan::TextureRecord& record = textures.get(texture);
-    vk.vkDestroyImageView(device, record.attachment_view, nullptr);
+    if (record.attachment_view != record.view) {
+        vk.vkDestroyImageView(device, record.attachment_view, nullptr);
+    }
     vk.vkDestroyImageView(device, record.view, nullptr);
-    vmaDestroyImage(allocator, record.image, record.allocation);
+    if (!record.external) {
+        vmaDestroyImage(allocator, record.image, record.allocation);
+    }
     live_objects.remove(record.tracker_id);
     textures.remove(texture);
 }
