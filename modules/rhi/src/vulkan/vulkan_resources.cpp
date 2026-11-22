@@ -20,17 +20,6 @@ std::string_view name_or_default(std::string_view name) noexcept {
     return name.empty() ? k_unnamed : name;
 }
 
-// Retires a pooled resource: destroyed now if the GPU is already past everything submitted, otherwise queued.
-template <class Handle_, class List_, class Destroy_>
-void retire_resource(detail::DeviceImpl& impl, List_& list, Handle_ handle, Destroy_&& destroy) {
-    const vulkan::DeviceQueueValues retire_after = impl.last_submitted();
-    if (detail::is_reached(retire_after, impl.cached_completed())) {
-        destroy(handle);
-        return;
-    }
-    list.push(retire_after, handle);
-}
-
 VmaAllocationCreateInfo allocation_info_for(MemoryLocation memory) noexcept {
     switch (memory) {
     case MemoryLocation::Device: return VmaAllocationCreateInfo{.usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE};
@@ -137,11 +126,11 @@ void ResourceReleaser::operator()(TextureHandle texture) const noexcept {
 // Deferred destruction
 
 void detail::DeviceImpl::release(BufferHandle buffer) {
-    retire_resource(*this, retired_buffers, buffer, [this](BufferHandle handle) { destroy_now(handle); });
+    retire_or_destroy(retired_buffers, buffer, [this](BufferHandle handle) { destroy_now(handle); });
 }
 
 void detail::DeviceImpl::release(TextureHandle texture) {
-    retire_resource(*this, retired_textures, texture, [this](TextureHandle handle) { destroy_now(handle); });
+    retire_or_destroy(retired_textures, texture, [this](TextureHandle handle) { destroy_now(handle); });
 }
 
 void detail::DeviceImpl::write_bindless(TextureHandle texture, const vulkan::TextureRecord& record) {
@@ -160,8 +149,7 @@ void detail::DeviceImpl::write_bindless(TextureHandle texture, const vulkan::Tex
         ++count;
     };
     if (record.info.usage.has(TextureUsage::Sampled)) {
-        add(vulkan::BindlessSet::SampledTextures, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
-            VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+        add(vulkan::BindlessSet::SampledTextures, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL);
     }
     if (record.info.usage.has(TextureUsage::Storage)) {
         add(vulkan::BindlessSet::StorageTextures, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_IMAGE_LAYOUT_GENERAL);
@@ -246,7 +234,7 @@ core::Result<Buffer> Device::create_buffer(const BufferDesc& desc) {
     if (!handle.is_valid()) {
         vmaDestroyBuffer(impl.allocator, record.buffer, record.allocation);
         return core::make_error(core::ErrorCode::LimitExceeded,
-                                "buffer '{}': the device's buffer limit ({}) is reached", name,
+                                "buffer '{}': the device's buffer capacity ({}) is reached", name,
                                 impl.buffers.capacity());
     }
     return Buffer{handle, ResourceReleaser{impl_}};
@@ -417,7 +405,7 @@ core::Result<Texture> Device::create_texture(const TextureDesc& desc) {
         impl.vk.vkDestroyImageView(impl.device, record.view, nullptr);
         vmaDestroyImage(impl.allocator, record.image, record.allocation);
         return core::make_error(core::ErrorCode::LimitExceeded,
-                                "texture '{}': the device's texture limit ({}) is reached", name,
+                                "texture '{}': the device's texture capacity ({}) is reached", name,
                                 impl.textures.capacity());
     }
     return Texture{handle, ResourceReleaser{impl_}};

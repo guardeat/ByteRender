@@ -22,12 +22,6 @@ namespace {
 
 constexpr const char* k_portability_subset_extension = "VK_KHR_portability_subset"; // not in vulkan_core.h
 
-bool has_extension(const std::vector<VkExtensionProperties>& extensions, const char* name) {
-    return std::ranges::any_of(extensions, [name](const VkExtensionProperties& extension) {
-        return std::strcmp(extension.extensionName, name) == 0;
-    });
-}
-
 int adapter_type_rank(AdapterType type) noexcept {
     switch (type) {
     case AdapterType::Discrete: return 3;
@@ -139,34 +133,44 @@ VkResult create_bindless_set(const detail::DeviceImpl& impl, VkDescriptorType ty
         .pBindingFlags = &k_bindless_binding_flags,
     };
     const VkDescriptorSetLayoutCreateInfo layout_info = bindless_layout_info(binding, flags);
-    if (const VkResult result = impl.vk.vkCreateDescriptorSetLayout(impl.device, &layout_info, nullptr, &layout);
+    VkDescriptorSetLayout created_layout = VK_NULL_HANDLE;
+    if (const VkResult result =
+            impl.vk.vkCreateDescriptorSetLayout(impl.device, &layout_info, nullptr, &created_layout);
         result != VK_SUCCESS) {
         return result;
     }
+    layout = created_layout;
     const VkDescriptorPoolSize size{.type = type, .descriptorCount = count};
     const VkDescriptorPoolCreateInfo pool_info{.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
                                                .flags = VK_DESCRIPTOR_POOL_CREATE_UPDATE_AFTER_BIND_BIT,
                                                .maxSets = 1,
                                                .poolSizeCount = 1,
                                                .pPoolSizes = &size};
-    if (const VkResult result = impl.vk.vkCreateDescriptorPool(impl.device, &pool_info, nullptr, &pool);
+    VkDescriptorPool created_pool = VK_NULL_HANDLE;
+    if (const VkResult result = impl.vk.vkCreateDescriptorPool(impl.device, &pool_info, nullptr, &created_pool);
         result != VK_SUCCESS) {
         return result;
     }
+    pool = created_pool;
     const VkDescriptorSetAllocateInfo set_info{.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
                                                .descriptorPool = pool,
                                                .descriptorSetCount = 1,
                                                .pSetLayouts = &layout};
-    return impl.vk.vkAllocateDescriptorSets(impl.device, &set_info, &set);
+    VkDescriptorSet created_set = VK_NULL_HANDLE; // freed with its pool
+    const VkResult result = impl.vk.vkAllocateDescriptorSets(impl.device, &set_info, &created_set);
+    if (result == VK_SUCCESS) {
+        set = created_set;
+    }
+    return result;
 }
 
 } // namespace vulkan
 
-detail::DeviceImpl::DeviceImpl(const DeviceLimits& limits)
-    : buffers(limits.max_buffers)
-    , textures(limits.max_textures)
-    , graphics_pipelines(limits.max_graphics_pipelines)
-    , samplers(limits.max_samplers) {}
+detail::DeviceImpl::DeviceImpl(const DeviceCapacities& requested)
+    : buffers(requested.max_buffers)
+    , textures(requested.max_textures)
+    , graphics_pipelines(requested.max_graphics_pipelines)
+    , samplers(requested.max_samplers) {}
 
 detail::DeviceImpl::~DeviceImpl() {
     finish_pending_work();
@@ -252,13 +256,7 @@ core::Result<SyncPoint> detail::DeviceImpl::submit(QueueType type,
 }
 
 void detail::DeviceImpl::retire(vulkan::RetiredObject object) {
-    const vulkan::DeviceQueueValues retire_after = last_submitted();
-    // Read after last_submitted(): completed values only grow, so this never over-reports progress.
-    if (detail::is_reached(retire_after, cached_completed())) {
-        destroy_now(object);
-        return;
-    }
-    retired_objects.push(retire_after, object);
+    retire_or_destroy(retired_objects, object, [this](const vulkan::RetiredObject& retired) { destroy_now(retired); });
 }
 
 core::Result<void> detail::DeviceImpl::collect() {
@@ -320,9 +318,9 @@ Device& Device::operator=(Device&& other) noexcept {
     return *this;
 }
 
-const DeviceLimits& Device::limits() const noexcept {
+const DeviceCapacities& Device::capacities() const noexcept {
     BYTEE_ASSERT(is_valid(), "Device is empty");
-    return impl_->limits;
+    return impl_->capacities;
 }
 
 const AdapterInfo& Device::adapter() const noexcept {
@@ -393,9 +391,9 @@ core::Result<Device> Instance::create_device(const DeviceDesc& desc) {
     BYTEE_ASSERT(is_valid(), "Instance is empty");
     detail::InstanceImpl& instance = *impl_;
 
-    if (desc.limits.max_buffers == 0 || desc.limits.max_textures == 0 || desc.limits.max_samplers == 0 ||
-        desc.limits.max_graphics_pipelines == 0) {
-        return core::make_error(core::ErrorCode::InvalidArgument, "device '{}': resource limits must not be 0",
+    if (desc.capacities.max_buffers == 0 || desc.capacities.max_textures == 0 || desc.capacities.max_samplers == 0 ||
+        desc.capacities.max_graphics_pipelines == 0) {
+        return core::make_error(core::ErrorCode::InvalidArgument, "device '{}': resource capacities must not be 0",
                                 desc.debug_name);
     }
 
@@ -426,12 +424,12 @@ core::Result<Device> Instance::create_device(const DeviceDesc& desc) {
         vulkan::enumerate<VkExtensionProperties>(vkEnumerateDeviceExtensionProperties, physical_device, nullptr);
     std::vector<const char*> enabled_extensions;
     // Mandatory whenever the implementation exposes it (MoltenVK does).
-    if (has_extension(extensions, k_portability_subset_extension)) {
+    if (vulkan::has_extension(extensions, k_portability_subset_extension)) {
         enabled_extensions.push_back(k_portability_subset_extension);
     }
     // Swapchains also need the instance's surface extensions.
     const bool presentation =
-        instance.presentation_supported && has_extension(extensions, VK_KHR_SWAPCHAIN_EXTENSION_NAME);
+        instance.presentation_supported && vulkan::has_extension(extensions, VK_KHR_SWAPCHAIN_EXTENSION_NAME);
     if (presentation) {
         enabled_extensions.push_back(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
     }
@@ -455,7 +453,7 @@ core::Result<Device> Instance::create_device(const DeviceDesc& desc) {
         .ppEnabledExtensionNames = enabled_extensions.data(),
     };
 
-    auto impl = std::make_unique<detail::DeviceImpl>(desc.limits);
+    auto impl = std::make_unique<detail::DeviceImpl>(desc.capacities);
     impl->instance = &instance;
     impl->logger = instance.logger;
     impl->debug_name = desc.debug_name;
@@ -463,10 +461,13 @@ core::Result<Device> Instance::create_device(const DeviceDesc& desc) {
     impl->physical_device = physical_device;
     impl->presentation_supported = presentation;
 
-    if (const VkResult result = vkCreateDevice(physical_device, &create_info, nullptr, &impl->device);
-        result != VK_SUCCESS) {
+    // Created into locals throughout: Vulkan leaves output handles undefined on failure, and the destructor of
+    // `impl` destroys whatever handles it holds.
+    VkDevice device = VK_NULL_HANDLE;
+    if (const VkResult result = vkCreateDevice(physical_device, &create_info, nullptr, &device); result != VK_SUCCESS) {
         return vulkan::make_vk_error(result, "vkCreateDevice");
     }
+    impl->device = device;
     volkLoadDeviceTable(&impl->vk, impl->device);
     VkPhysicalDeviceProperties properties{};
     vkGetPhysicalDeviceProperties(physical_device, &properties);
@@ -492,9 +493,11 @@ core::Result<Device> Instance::create_device(const DeviceDesc& desc) {
         .instance = instance.instance,
         .vulkanApiVersion = vulkan::k_required_api_version,
     };
-    if (const VkResult result = vmaCreateAllocator(&allocator_info, &impl->allocator); result != VK_SUCCESS) {
+    VmaAllocator allocator = VK_NULL_HANDLE;
+    if (const VkResult result = vmaCreateAllocator(&allocator_info, &allocator); result != VK_SUCCESS) {
         return vulkan::make_vk_error(result, "vmaCreateAllocator");
     }
+    impl->allocator = allocator;
 
     // Bindless heap: one set per resource kind, each sized to min(requested, what the GPU confirms). MoltenVK, for
     // example, confirms only ~1200 descriptors per set although it reports far larger update-after-bind limits.
@@ -503,21 +506,21 @@ core::Result<Device> Instance::create_device(const DeviceDesc& desc) {
                                             .pNext = &vulkan12};
     vkGetPhysicalDeviceProperties2(physical_device, &properties2);
     const uint32_t texture_capacity =
-        std::min(vulkan::supported_bindless_count(*impl, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, desc.limits.max_textures,
+        std::min(vulkan::supported_bindless_count(*impl, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, desc.capacities.max_textures,
                                                   vulkan12.maxPerStageDescriptorUpdateAfterBindSampledImages),
-                 vulkan::supported_bindless_count(*impl, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, desc.limits.max_textures,
+                 vulkan::supported_bindless_count(*impl, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, desc.capacities.max_textures,
                                                   vulkan12.maxPerStageDescriptorUpdateAfterBindStorageImages));
     const uint32_t sampler_capacity = vulkan::supported_bindless_count(
         *impl, VK_DESCRIPTOR_TYPE_SAMPLER,
-        std::min(desc.limits.max_samplers, impl->device_limits.maxSamplerAllocationCount),
+        std::min(desc.capacities.max_samplers, impl->device_limits.maxSamplerAllocationCount),
         vulkan12.maxPerStageDescriptorUpdateAfterBindSamplers);
     if (texture_capacity == 0 || sampler_capacity == 0) {
         return core::make_error(core::ErrorCode::NotSupported, "device '{}': the GPU supports no bindless descriptors",
                                 desc.debug_name);
     }
-    impl->limits = desc.limits;
-    impl->limits.max_textures = texture_capacity;
-    impl->limits.max_samplers = sampler_capacity;
+    impl->capacities = desc.capacities;
+    impl->capacities.max_textures = texture_capacity;
+    impl->capacities.max_samplers = sampler_capacity;
     // Slot = pool index: the pools may hold at most as many objects as the heap has slots (pools are still empty).
     impl->textures = core::Pool<vulkan::TextureRecord, TextureTag>{texture_capacity};
     impl->samplers = core::Pool<vulkan::SamplerRecord, SamplerTag>{sampler_capacity};
@@ -537,7 +540,8 @@ core::Result<Device> Instance::create_device(const DeviceDesc& desc) {
         }
     }
     instance.logger->debug("device '{}' bindless heap: {} textures, {} samplers (requested {} / {})", desc.debug_name,
-                           texture_capacity, sampler_capacity, desc.limits.max_textures, desc.limits.max_samplers);
+                           texture_capacity, sampler_capacity, desc.capacities.max_textures,
+                           desc.capacities.max_samplers);
 
     const VkPushConstantRange push_constants{
         .stageFlags = VK_SHADER_STAGE_ALL,
@@ -551,11 +555,12 @@ core::Result<Device> Instance::create_device(const DeviceDesc& desc) {
         .pushConstantRangeCount = 1,
         .pPushConstantRanges = &push_constants,
     };
-    if (const VkResult result =
-            impl->vk.vkCreatePipelineLayout(impl->device, &layout_info, nullptr, &impl->pipeline_layout);
+    VkPipelineLayout pipeline_layout = VK_NULL_HANDLE;
+    if (const VkResult result = impl->vk.vkCreatePipelineLayout(impl->device, &layout_info, nullptr, &pipeline_layout);
         result != VK_SUCCESS) {
         return vulkan::make_vk_error(result, "vkCreatePipelineLayout");
     }
+    impl->pipeline_layout = pipeline_layout;
 
     vulkan::set_debug_name(impl->device, VK_OBJECT_TYPE_DEVICE, impl->device, desc.debug_name);
     vulkan::set_debug_name(impl->device, VK_OBJECT_TYPE_PIPELINE_LAYOUT, impl->pipeline_layout,

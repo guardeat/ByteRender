@@ -124,8 +124,8 @@ struct BYTEE_HIDDEN detail::DeviceImpl {
     std::array<VkDescriptorSetLayout, vulkan::k_bindless_set_count> bindless_layouts{};
     std::array<VkDescriptorPool, vulkan::k_bindless_set_count> bindless_pools{};
     std::array<VkDescriptorSet, vulkan::k_bindless_set_count> bindless_sets{};
-    std::mutex bindless_mutex; // vkUpdateDescriptorSets needs external synchronization of the sets
-    DeviceLimits limits;       // effective (bindless capacities adapted to what the GPU confirms)
+    std::mutex bindless_mutex;   // vkUpdateDescriptorSets needs external synchronization of the sets
+    DeviceCapacities capacities; // effective (bindless capacities adapted to what the GPU confirms)
 
     // Indexed by QueueType. Destroyed explicitly before the VkDevice.
     std::array<std::unique_ptr<vulkan::Queue>, vulkan::k_queue_count> queues;
@@ -155,7 +155,7 @@ struct BYTEE_HIDDEN detail::DeviceImpl {
     std::deque<detail::CommandContext*> pending_contexts;
     std::atomic<uint32_t> live_command_lists{0};
 
-    explicit DeviceImpl(const DeviceLimits& limits);
+    explicit DeviceImpl(const DeviceCapacities& requested);
     ~DeviceImpl();
     DeviceImpl(const DeviceImpl&) = delete;
     DeviceImpl& operator=(const DeviceImpl&) = delete;
@@ -180,9 +180,22 @@ struct BYTEE_HIDDEN detail::DeviceImpl {
                                                  std::span<const VkSemaphoreSubmitInfo> waits = {},
                                                  std::span<const VkSemaphoreSubmitInfo> signals = {});
 
-    // Destroys `object` once all GPU work submitted so far has completed: immediately if the GPU is already past it,
-    // otherwise at a later collect(). Thread-safe. Retiring an object still referenced by an unsubmitted command
-    // list is a programmer error.
+    // Destroys `item` once all GPU work submitted so far has completed: immediately (through `destroy`) if the GPU is
+    // already past it, otherwise from `list` at a later collect(). Thread-safe. Retiring something still referenced by
+    // an unsubmitted command list is a programmer error.
+    template <class Item_, class Destroy_>
+        requires std::invocable<Destroy_&, Item_&>
+    void retire_or_destroy(detail::RetireList<Item_, vulkan::k_queue_count>& list, Item_ item, Destroy_&& destroy) {
+        const vulkan::DeviceQueueValues retire_after = last_submitted();
+        // Read after last_submitted(): completed values only grow, so this never over-reports progress.
+        if (detail::is_reached(retire_after, cached_completed())) {
+            destroy(item);
+            return;
+        }
+        list.push(retire_after, std::move(item));
+    }
+
+    // Retires a backend-internal Vulkan object (see retire_or_destroy).
     void retire(vulkan::RetiredObject object);
 
     // Queries GPU progress and destroys every retired object whose work has completed.

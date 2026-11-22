@@ -25,7 +25,7 @@ namespace {
 rhi::Buffer make_readback(rhi::Device& device, uint64_t size) {
     return device
         .create_buffer({.size = size,
-                        .usage = BufferUsage::TransferDst,
+                        .usage = BufferUsage::CopyDst,
                         .memory = rhi::MemoryLocation::Readback,
                         .debug_name = "readback"})
         .value();
@@ -66,9 +66,7 @@ TEST_CASE_FIXTURE(DeviceFixture, "fill_buffer writes through the GPU") {
 TEST_CASE_FIXTURE(DeviceFixture, "Buffer upload and copy with offsets") {
     const std::vector<std::byte> data = pattern(1000, 7);
     rhi::Buffer gpu =
-        device
-            .create_buffer(
-                {.size = 4096, .usage = BufferUsage::TransferDst | BufferUsage::TransferSrc, .debug_name = "gpu"})
+        device.create_buffer({.size = 4096, .usage = BufferUsage::CopyDst | BufferUsage::CopySrc, .debug_name = "gpu"})
             .value();
     rhi::Buffer readback = make_readback(device, 2048);
 
@@ -92,7 +90,7 @@ TEST_CASE_FIXTURE(DeviceFixture, "Texture uploads and readback of mip levels and
                                                 .mip_levels = 2,
                                                 .array_layers = 2,
                                                 .format = rhi::Format::RGBA8Unorm,
-                                                .usage = TextureUsage::TransferDst | TextureUsage::TransferSrc,
+                                                .usage = TextureUsage::CopyDst | TextureUsage::CopySrc,
                                                 .debug_name = "uploaded"})
                                .value();
     const std::vector<std::byte> mip0_layer0 = pattern(32 * 16 * 4, 1);
@@ -120,8 +118,7 @@ TEST_CASE_FIXTURE(DeviceFixture, "Texture uploads and readback of mip levels and
 }
 
 TEST_CASE_FIXTURE(DeviceFixture, "Explicit barriers between GPU writes and copies") {
-    rhi::Buffer gpu =
-        device.create_buffer({.size = 256, .usage = BufferUsage::TransferDst | BufferUsage::TransferSrc}).value();
+    rhi::Buffer gpu = device.create_buffer({.size = 256, .usage = BufferUsage::CopyDst | BufferUsage::CopySrc}).value();
     rhi::Buffer readback = make_readback(device, 256);
 
     auto commands = device.begin_commands();
@@ -198,7 +195,7 @@ TEST_CASE_FIXTURE(DeviceFixture, "Discarded and moved command lists") {
 }
 
 TEST_CASE_FIXTURE(DeviceFixture, "Upload size mismatches are rejected") {
-    rhi::Buffer buffer = device.create_buffer({.size = 64, .usage = BufferUsage::TransferDst}).value();
+    rhi::Buffer buffer = device.create_buffer({.size = 64, .usage = BufferUsage::CopyDst}).value();
     const std::vector<std::byte> too_big(65);
     auto overflow = device.upload(buffer, 0, too_big);
     REQUIRE_FALSE(overflow.has_value());
@@ -207,7 +204,7 @@ TEST_CASE_FIXTURE(DeviceFixture, "Upload size mismatches are rejected") {
     rhi::Texture texture = device
                                .create_texture({.extent = {.width = 4, .height = 4},
                                                 .format = rhi::Format::RGBA8Unorm,
-                                                .usage = TextureUsage::TransferDst | TextureUsage::Sampled})
+                                                .usage = TextureUsage::CopyDst | TextureUsage::Sampled})
                                .value();
     const std::vector<std::byte> wrong_size(10);
     auto mismatch = device.upload(texture, wrong_size, {});

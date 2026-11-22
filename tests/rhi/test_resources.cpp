@@ -28,10 +28,8 @@ static_assert(!std::is_copy_constructible_v<rhi::Texture>, "owners are move-only
 TEST_CASE_FIXTURE(DeviceFixture, "Buffers in every memory location") {
     for (const rhi::MemoryLocation memory :
          {rhi::MemoryLocation::Device, rhi::MemoryLocation::Upload, rhi::MemoryLocation::Readback}) {
-        auto buffer = device.create_buffer({.size = 1024,
-                                            .usage = BufferUsage::Storage | BufferUsage::TransferDst,
-                                            .memory = memory,
-                                            .debug_name = "b"});
+        auto buffer = device.create_buffer(
+            {.size = 1024, .usage = BufferUsage::Storage | BufferUsage::CopyDst, .memory = memory, .debug_name = "b"});
         REQUIRE_MESSAGE(buffer.has_value(), bytee::tests::error_text(buffer));
 
         const rhi::BufferInfo& info = device.info(*buffer); // an owner is usable as a handle
@@ -45,7 +43,7 @@ TEST_CASE_FIXTURE(DeviceFixture, "Buffers in every memory location") {
 
 TEST_CASE_FIXTURE(DeviceFixture, "CPU writes and reads of host-visible buffers") {
     for (const rhi::MemoryLocation memory : {rhi::MemoryLocation::Upload, rhi::MemoryLocation::Readback}) {
-        auto buffer = device.create_buffer({.size = 256, .usage = BufferUsage::TransferSrc, .memory = memory});
+        auto buffer = device.create_buffer({.size = 256, .usage = BufferUsage::CopySrc, .memory = memory});
         REQUIRE(buffer.has_value());
 
         std::array<std::byte, 64> pattern{};
@@ -79,7 +77,7 @@ TEST_CASE_FIXTURE(DeviceFixture, "Textures of various kinds") {
         {.extent = {.width = 256, .height = 256},
          .mip_levels = rhi::full_mip_count({.width = 256, .height = 256}),
          .format = Format::RGBA8Unorm,
-         .usage = TextureUsage::Sampled | TextureUsage::TransferDst | TextureUsage::TransferSrc,
+         .usage = TextureUsage::Sampled | TextureUsage::CopyDst | TextureUsage::CopySrc,
          .debug_name = "mipmapped"},
         {.extent = {.width = 16, .height = 16},
          .array_layers = 6,
@@ -98,7 +96,7 @@ TEST_CASE_FIXTURE(DeviceFixture, "Textures of various kinds") {
         // Regression: transfer-only textures must not get an image view (invalid in Vulkan).
         {.extent = {.width = 8, .height = 8},
          .format = Format::RGBA8Unorm,
-         .usage = TextureUsage::TransferSrc | TextureUsage::TransferDst,
+         .usage = TextureUsage::CopySrc | TextureUsage::CopyDst,
          .debug_name = "transfer-only"},
     };
     for (const rhi::TextureDesc& desc : descs) {
@@ -146,7 +144,7 @@ TEST_CASE_FIXTURE(DeviceFixture, "Invalid texture descriptions are rejected") {
 TEST_CASE_FIXTURE(GpuFixture, "Pool limits are enforced and freed slots are reused") {
     auto instance = create_instance();
     REQUIRE(instance.has_value());
-    auto device = instance->create_device({.limits = {.max_buffers = 2, .max_textures = 1}});
+    auto device = instance->create_device({.capacities = {.max_buffers = 2, .max_textures = 1}});
     REQUIRE(device.has_value());
 
     const rhi::BufferDesc desc{.size = 64, .usage = BufferUsage::Uniform};
@@ -162,7 +160,7 @@ TEST_CASE_FIXTURE(GpuFixture, "Pool limits are enforced and freed slots are reus
     auto again = device->create_buffer(desc);
     CHECK_MESSAGE(again.has_value(), bytee::tests::error_text(again));
 
-    auto zero_limits = instance->create_device({.limits = {.max_buffers = 0}});
+    auto zero_limits = instance->create_device({.capacities = {.max_buffers = 0}});
     REQUIRE_FALSE(zero_limits.has_value());
     CHECK(zero_limits.error().code() == core::ErrorCode::InvalidArgument);
 }

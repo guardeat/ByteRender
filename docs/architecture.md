@@ -180,7 +180,7 @@ const rhi::TextureInfo& info = device->info(view);          // data lives in the
   Upload/Readback buffers are persistently mapped and accessed with `Device::write()` / `read()`.
 - Textures: 2D (with array layers) and 3D, explicit mip count; a default image view (only for usages that need one); format/usage support is checked
   against the GPU (`NotSupported`); invalid descriptions return `InvalidArgument`.
-- Pool capacities come from `DeviceDesc::limits`; a full pool returns `ErrorCode::LimitExceeded`.
+- Pool capacities come from `DeviceDesc::capacities`; a full pool returns `ErrorCode::LimitExceeded`.
 
 ## 6. Lifetime: CPU ownership vs. GPU lifetime
 - **CPU lifetime**: the `Resource` object. Destroying it releases the handle to the device.
@@ -212,11 +212,12 @@ list is a programmer error.
   `vkGetDescriptorSetLayoutSupport`), also bounded by the per-stage update-after-bind limits. MoltenVK confirms ~1200
   descriptors per set (Apple M5 Pro: 1211 textures, 1211 samplers) despite reporting 1M update-after-bind limits;
   desktop drivers confirm the full defaults (65536 textures, 4096 samplers). The texture/sampler pools shrink to match
-  (slot = pool index); `Device::limits()` reports the effective capacities.
+  (slot = pool index); `Device::capacities()` reports the effective capacities.
 - Resources are written into their set once at creation (`rhi::bindless_index(handle)` = pool index); slots are reused
   only after deferred destruction, so pending GPU work never sees a slot change.
 - Shaders: `#include "bytee/bindless.glsl"` → `bytee_sample_2d(texture_index, sampler_index, uv)` and friends.
-  Sample textures in the `ShaderRead` state (also depth textures). UV (0, 0) is the top-left texel (row 0 of the data).
+  Sample textures in the `ShaderRead` or `DepthRead` state (both use the read-only layout the descriptors are written
+  with). UV (0, 0) is the top-left texel (row 0 of the data).
 - The sets are bound once per command list (graphics and compute) and stay bound: one global pipeline layout
   (3 sets + 128 bytes of push constants) → no descriptor management in the RHI.
 
@@ -264,6 +265,8 @@ list is a programmer error.
     available platform surface extension (`Instance::is_presentation_supported()`); validation optional — a missing or
     broken layer logs one warning and creation continues without it.
 - Memory: Vulkan Memory Allocator, one allocator per device (functions fetched through volk).
+- Vulkan objects are created into local handles and stored in their owner only on success (outputs are undefined
+  when a create call fails, and owners destroy whatever handles they hold).
 - `Device` creation: best supported adapter (discrete > integrated > virtual > others, then most device-local memory)
   or an explicit index; one universal queue; per-device `VolkDeviceTable`; `VK_KHR_swapchain` only when the instance
   supports presentation; several devices per instance allowed.

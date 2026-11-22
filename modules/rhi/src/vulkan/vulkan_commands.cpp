@@ -242,7 +242,8 @@ void CommandList::barrier(std::span<const BufferBarrier> buffers, std::span<cons
         uint32_t image_count = 0;
         for (; texture_index < textures.size() && image_count < k_barrier_batch; ++texture_index) {
             const TextureBarrier& barrier = textures[texture_index];
-            BYTEE_ASSERT(vulkan::is_texture_state(barrier.after), "texture barrier to {}: not a texture state",
+            BYTEE_ASSERT(vulkan::is_texture_state(barrier.before) && vulkan::is_texture_state(barrier.after),
+                         "texture barrier {} -> {}: not a texture state", to_string(barrier.before),
                          to_string(barrier.after));
             BYTEE_ASSERT(barrier.after != ResourceState::Undefined, "textures cannot transition to Undefined");
             const vulkan::TextureRecord& record = impl.textures.get(barrier.texture);
@@ -568,12 +569,11 @@ core::Result<SyncPoint> Device::upload(BufferHandle dst, uint64_t dst_offset, st
                                 "upload of {} bytes at offset {} does not fit buffer '{}' ({} bytes)", data.size(),
                                 dst_offset, info.debug_name, info.size);
     }
-    BYTEE_ASSERT(info.usage.has(BufferUsage::TransferDst), "upload: buffer '{}' lacks TransferDst usage",
-                 info.debug_name);
+    BYTEE_ASSERT(info.usage.has(BufferUsage::CopyDst), "upload: buffer '{}' lacks CopyDst usage", info.debug_name);
 
     // RAII staging buffer: retired when this function returns, freed once the copy below has completed.
     core::Result<Buffer> staging = create_buffer({.size = data.size(),
-                                                  .usage = BufferUsage::TransferSrc,
+                                                  .usage = BufferUsage::CopySrc,
                                                   .memory = MemoryLocation::Upload,
                                                   .debug_name = "upload staging"});
     if (!staging) {
@@ -602,8 +602,7 @@ core::Result<SyncPoint> Device::upload(TextureHandle dst, std::span<const std::b
                                 "upload: region (mip {}, layers {}+{}) is outside texture '{}'", desc.region.mip_level,
                                 desc.region.base_array_layer, desc.region.array_layer_count, info.debug_name);
     }
-    BYTEE_ASSERT(info.usage.has(TextureUsage::TransferDst), "upload: texture '{}' lacks TransferDst usage",
-                 info.debug_name);
+    BYTEE_ASSERT(info.usage.has(TextureUsage::CopyDst), "upload: texture '{}' lacks CopyDst usage", info.debug_name);
     if (const uint64_t expected = region_bytes(info, desc.region, extent); data.size() != expected) {
         return core::make_error(core::ErrorCode::InvalidArgument,
                                 "upload to texture '{}': {} bytes given, the region needs {}", info.debug_name,
@@ -611,7 +610,7 @@ core::Result<SyncPoint> Device::upload(TextureHandle dst, std::span<const std::b
     }
 
     core::Result<Buffer> staging = create_buffer({.size = data.size(),
-                                                  .usage = BufferUsage::TransferSrc,
+                                                  .usage = BufferUsage::CopySrc,
                                                   .memory = MemoryLocation::Upload,
                                                   .debug_name = "upload staging"});
     if (!staging) {
@@ -651,11 +650,10 @@ core::Result<void> Device::download(TextureHandle src, std::span<std::byte> data
                                 "download from texture '{}': {} bytes given, the region needs {}", info.debug_name,
                                 data.size(), expected);
     }
-    BYTEE_ASSERT(info.usage.has(TextureUsage::TransferSrc), "download: texture '{}' lacks TransferSrc usage",
-                 info.debug_name);
+    BYTEE_ASSERT(info.usage.has(TextureUsage::CopySrc), "download: texture '{}' lacks CopySrc usage", info.debug_name);
 
     core::Result<Buffer> staging = create_buffer({.size = data.size(),
-                                                  .usage = BufferUsage::TransferDst,
+                                                  .usage = BufferUsage::CopyDst,
                                                   .memory = MemoryLocation::Readback,
                                                   .debug_name = "download staging"});
     if (!staging) {

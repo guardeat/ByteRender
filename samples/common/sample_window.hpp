@@ -31,6 +31,7 @@ public:
     [[nodiscard]] core::Extent2D framebuffer_extent() const; // pixels (differs from points on HiDPI screens)
     [[nodiscard]] bool should_close() const;
     void poll_events() const;
+    void wait_events() const; // blocks until an event arrives (e.g. while minimized)
 
 private:
     friend core::Result<SampleWindow> create_sample_window(std::string_view title, core::Extent2D size);

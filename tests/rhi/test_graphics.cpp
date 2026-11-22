@@ -57,7 +57,7 @@ Rgba8Image render(rhi::Device& device, Record_&& record, rhi::TextureHandle dept
     rhi::Texture target = device
                               .create_texture({.extent = {.width = k_size, .height = k_size},
                                                .format = k_color_format,
-                                               .usage = TextureUsage::ColorAttachment | TextureUsage::TransferSrc,
+                                               .usage = TextureUsage::ColorAttachment | TextureUsage::CopySrc,
                                                .debug_name = "target"})
                               .value();
     auto commands = device.begin_commands();
@@ -178,12 +178,12 @@ TEST_CASE_FIXTURE(DeviceFixture, "Vertex pulling through a buffer device address
     const std::array<uint16_t, 6> indices{0, 1, 2, 2, 1, 3};
     rhi::Buffer positions = device
                                 .create_buffer({.size = sizeof(corners),
-                                                .usage = rhi::BufferUsage::Storage | rhi::BufferUsage::TransferDst,
+                                                .usage = rhi::BufferUsage::Storage | rhi::BufferUsage::CopyDst,
                                                 .debug_name = "positions"})
                                 .value();
     rhi::Buffer index_buffer = device
                                    .create_buffer({.size = sizeof(indices),
-                                                   .usage = rhi::BufferUsage::Index | rhi::BufferUsage::TransferDst,
+                                                   .usage = rhi::BufferUsage::Index | rhi::BufferUsage::CopyDst,
                                                    .debug_name = "indices"})
                                    .value();
     REQUIRE(device.upload(positions, 0, std::as_bytes(std::span{corners})).has_value());

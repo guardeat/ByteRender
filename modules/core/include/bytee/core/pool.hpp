@@ -3,6 +3,8 @@
 #include <bytee/core/assert.hpp>
 #include <bytee/core/handle.hpp>
 
+#include <algorithm>
+#include <atomic>
 #include <concepts>
 #include <cstddef>
 #include <cstdint>
@@ -29,8 +31,10 @@ namespace detail {
 // - Each slot has a generation: odd while alive, even while free. Removing an object bumps it, so stale handles are
 //   detected (contains()/try_get(); get() asserts in Debug and is unchecked in Release).
 // - Thread safety: not internally synchronized. insert()/remove()/clear() need external synchronization; lookups
-//   may run concurrently with insert()/remove() of *other* slots.
+//   (contains/get/try_get) may run concurrently with insert()/remove() of *other* slots. size() is only exact under
+//   the same synchronization as insert()/remove().
 template <class Value_, class Tag_>
+    requires std::is_nothrow_destructible_v<Value_> // values are destroyed in noexcept paths (remove, clear)
 class Pool {
 public:
     using HandleType = Handle<Tag_>;
@@ -47,19 +51,20 @@ private:
     };
 
     std::unique_ptr<std::unique_ptr<Chunk>[]> chunks_; // fixed-size table; entries allocated on demand
-    std::vector<uint32_t> free_indices_;               // LIFO: recently freed (cache-warm) slots are reused first
+    std::vector<uint32_t> free_indices_; // LIFO: recently freed (cache-warm) slots are reused first. Its capacity
+                                         // always covers every used slot, so remove()/clear() never allocate.
     uint32_t capacity_ = 0;
-    uint32_t high_water_ = 0; // slots [0, high_water_) have been used at least once
+    std::atomic<uint32_t> high_water_{0}; // slots [0, high_water_) have been used; read by lock-free lookups
     uint32_t size_ = 0;
 
 public:
     explicit Pool(uint32_t capacity)
-        : chunks_(std::make_unique<std::unique_ptr<Chunk>[]>((capacity + k_chunk_size - 1) / k_chunk_size))
+        : chunks_(std::make_unique<std::unique_ptr<Chunk>[]>((std::size_t{capacity} + k_chunk_size - 1) / k_chunk_size))
         , capacity_(capacity) {
         BYTEE_ASSERT(capacity < k_invalid_handle_index, "pool capacity {} is too large", capacity);
     }
 
-    ~Pool() { clear(); }
+    ~Pool() { destroy_values(); }
 
     Pool(const Pool&) = delete;
     Pool& operator=(const Pool&) = delete;
@@ -67,15 +72,15 @@ public:
         : chunks_(std::move(other.chunks_))
         , free_indices_(std::move(other.free_indices_))
         , capacity_(std::exchange(other.capacity_, 0))
-        , high_water_(std::exchange(other.high_water_, 0))
+        , high_water_(other.high_water_.exchange(0, std::memory_order_relaxed))
         , size_(std::exchange(other.size_, 0)) {}
     Pool& operator=(Pool&& other) noexcept {
         if (this != &other) {
-            clear();
+            destroy_values();
             chunks_ = std::move(other.chunks_);
             free_indices_ = std::move(other.free_indices_);
             capacity_ = std::exchange(other.capacity_, 0);
-            high_water_ = std::exchange(other.high_water_, 0);
+            high_water_.store(other.high_water_.exchange(0, std::memory_order_relaxed), std::memory_order_relaxed);
             size_ = std::exchange(other.size_, 0);
         }
         return *this;
@@ -90,14 +95,19 @@ public:
         requires std::constructible_from<Value_, Args_...>
     [[nodiscard]] HandleType insert(Args_&&... args) {
         uint32_t index = 0;
+        bool is_new_slot = false;
         if (!free_indices_.empty()) {
             index = free_indices_.back();
             free_indices_.pop_back();
-        } else if (high_water_ < capacity_) {
-            index = high_water_++;
+        } else if (const uint32_t used = high_water_.load(std::memory_order_relaxed); used < capacity_) {
+            index = used;
+            is_new_slot = true;
             std::unique_ptr<Chunk>& chunk = chunks_[index >> k_chunk_shift];
             if (!chunk) {
                 chunk = std::make_unique<Chunk>();
+            }
+            if (free_indices_.capacity() <= index) { // keep remove()/clear() allocation-free
+                free_indices_.reserve(std::min<std::size_t>(capacity_, std::size_t{index} * 2 + 64));
             }
         } else {
             return HandleType{};
@@ -107,12 +117,15 @@ public:
         uint32_t& generation = generation_ref(index);
         ++generation; // even -> odd: alive
         ++size_;
+        if (is_new_slot) {
+            high_water_.store(index + 1, std::memory_order_release); // publishes the slot to lock-free lookups
+        }
         return HandleType{index, generation};
     }
 
     // Destroys the value and frees its slot. Removing a stale or invalid handle is a programmer error (asserts in
     // Debug; returns false in Release).
-    bool remove(HandleType handle) {
+    bool remove(HandleType handle) noexcept {
         if (!contains(handle)) {
             BYTEE_ASSERT(false, "Pool::remove: stale or invalid handle (index {}, generation {})", handle.index(),
                          handle.generation());
@@ -128,7 +141,8 @@ public:
 
     // Destroys every value. Outstanding handles become stale.
     void clear() noexcept {
-        for (uint32_t index = 0; index < high_water_; ++index) {
+        const uint32_t used = high_water_.load(std::memory_order_acquire);
+        for (uint32_t index = 0; index < used; ++index) {
             uint32_t& generation = generation_ref(index);
             if (detail::is_alive_generation(generation)) {
                 std::destroy_at(value_pointer(index));
@@ -140,7 +154,8 @@ public:
     }
 
     [[nodiscard]] bool contains(HandleType handle) const noexcept {
-        return handle.index() < high_water_ && detail::is_alive_generation(handle.generation()) &&
+        return handle.index() < high_water_.load(std::memory_order_acquire) &&
+               detail::is_alive_generation(handle.generation()) &&
                generation_ref(handle.index()) == handle.generation();
     }
 
@@ -168,7 +183,8 @@ public:
     template <class Function_>
         requires std::invocable<Function_&, HandleType, Value_&>
     void for_each(Function_&& function) {
-        for (uint32_t index = 0; index < high_water_; ++index) {
+        const uint32_t used = high_water_.load(std::memory_order_acquire);
+        for (uint32_t index = 0; index < used; ++index) {
             const uint32_t generation = generation_ref(index);
             if (detail::is_alive_generation(generation)) {
                 function(HandleType{index, generation}, *value_pointer(index));
@@ -178,7 +194,8 @@ public:
     template <class Function_>
         requires std::invocable<Function_&, HandleType, const Value_&>
     void for_each(Function_&& function) const {
-        for (uint32_t index = 0; index < high_water_; ++index) {
+        const uint32_t used = high_water_.load(std::memory_order_acquire);
+        for (uint32_t index = 0; index < used; ++index) {
             const uint32_t generation = generation_ref(index);
             if (detail::is_alive_generation(generation)) {
                 function(HandleType{index, generation}, *value_pointer(index));
@@ -187,6 +204,19 @@ public:
     }
 
 private:
+    // Destroys live values without maintaining the free list (the pool is going away or being replaced).
+    void destroy_values() noexcept {
+        if (!chunks_) {
+            return; // moved from
+        }
+        const uint32_t used = high_water_.load(std::memory_order_acquire);
+        for (uint32_t index = 0; index < used; ++index) {
+            if (detail::is_alive_generation(generation_ref(index))) {
+                std::destroy_at(value_pointer(index));
+            }
+        }
+    }
+
     [[nodiscard]] uint32_t& generation_ref(uint32_t index) const noexcept {
         return chunks_[index >> k_chunk_shift]->generations[index & (k_chunk_size - 1)];
     }

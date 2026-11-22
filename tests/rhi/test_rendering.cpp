@@ -26,7 +26,7 @@ rhi::Texture make_target(rhi::Device& device, std::string_view name) {
     return device
         .create_texture({.extent = {.width = k_size, .height = k_size},
                          .format = rhi::Format::RGBA8Unorm,
-                         .usage = TextureUsage::ColorAttachment | TextureUsage::TransferSrc,
+                         .usage = TextureUsage::ColorAttachment | TextureUsage::CopySrc,
                          .debug_name = name})
         .value();
 }
@@ -110,7 +110,7 @@ TEST_CASE_FIXTURE(DeviceFixture, "LoadOp::Load keeps previous contents") {
 TEST_CASE_FIXTURE(DeviceFixture, "Depth is cleared to the requested value") {
     auto depth = device.create_texture({.extent = {.width = 16, .height = 16},
                                         .format = rhi::Format::D32Float,
-                                        .usage = TextureUsage::DepthStencilAttachment | TextureUsage::TransferSrc,
+                                        .usage = TextureUsage::DepthStencilAttachment | TextureUsage::CopySrc,
                                         .debug_name = "depth"});
     REQUIRE_MESSAGE(depth.has_value(), bytee::tests::error_text(depth));
     auto commands = device.begin_commands();

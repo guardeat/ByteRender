@@ -9,8 +9,8 @@
 namespace bytee::render::rhi {
 
 enum class BufferUsage : uint32_t {
-    TransferSrc = 1u << 0,
-    TransferDst = 1u << 1,
+    CopySrc = 1u << 0,
+    CopyDst = 1u << 1,
     Uniform = 1u << 2,
     Storage = 1u << 3,
     Index = 1u << 4,

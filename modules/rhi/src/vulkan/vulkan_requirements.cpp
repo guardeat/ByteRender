@@ -3,13 +3,18 @@
 #include <array>
 #include <format>
 #include <string_view>
+#include <type_traits>
 #include <vector>
 
 namespace bytee::render::rhi::vulkan {
 
 namespace {
 
+// A Vulkan feature struct (VkPhysicalDeviceFeatures, VkPhysicalDeviceVulkan12Features, ...).
 template <class Struct_>
+concept FeatureStruct = std::is_class_v<Struct_> && std::is_trivially_copyable_v<Struct_>;
+
+template <FeatureStruct Struct_>
 struct FeatureBit {
     std::string_view name;
     VkBool32 Struct_::* member;
@@ -51,7 +56,7 @@ constexpr std::array k_vulkan13_features{
 
 #undef BYTEE_VULKAN_FEATURE
 
-template <class Struct_, size_t Count_>
+template <FeatureStruct Struct_, size_t Count_>
 void collect_missing(const Struct_& supported, const std::array<FeatureBit<Struct_>, Count_>& required,
                      std::vector<std::string_view>& missing) {
     for (const FeatureBit<Struct_>& feature : required) {
@@ -61,7 +66,7 @@ void collect_missing(const Struct_& supported, const std::array<FeatureBit<Struc
     }
 }
 
-template <class Struct_, size_t Count_>
+template <FeatureStruct Struct_, size_t Count_>
 void enable(Struct_& features, const std::array<FeatureBit<Struct_>, Count_>& required) noexcept {
     for (const FeatureBit<Struct_>& feature : required) {
         features.*feature.member = VK_TRUE;

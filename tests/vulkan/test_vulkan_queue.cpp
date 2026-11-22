@@ -3,7 +3,7 @@
 
 #include "support/error_text.hpp"
 #include "support/gpu_fixture.hpp"
-#include "vulkan/vulkan_device.hpp"
+#include "support/vulkan_gpu_gate.hpp"
 
 #include <doctest/doctest.h>
 
@@ -14,6 +14,7 @@ namespace rhi = bytee::render::rhi;
 namespace vulkan = bytee::render::rhi::vulkan;
 using bytee::tests::DeviceFixture;
 using bytee::tests::GpuFixture;
+using bytee::tests::GpuGate;
 
 namespace {
 
@@ -22,15 +23,6 @@ VkFence create_fence(const rhi::detail::DeviceImpl& impl) {
     VkFence fence = VK_NULL_HANDLE;
     REQUIRE(impl.vk.vkCreateFence(impl.device, &info, nullptr, &fence) == VK_SUCCESS);
     return fence;
-}
-
-VkSemaphore create_timeline_semaphore(const rhi::detail::DeviceImpl& impl) {
-    const VkSemaphoreTypeCreateInfo type{.sType = VK_STRUCTURE_TYPE_SEMAPHORE_TYPE_CREATE_INFO,
-                                         .semaphoreType = VK_SEMAPHORE_TYPE_TIMELINE};
-    const VkSemaphoreCreateInfo info{.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO, .pNext = &type};
-    VkSemaphore semaphore = VK_NULL_HANDLE;
-    REQUIRE(impl.vk.vkCreateSemaphore(impl.device, &info, nullptr, &semaphore) == VK_SUCCESS);
-    return semaphore;
 }
 
 vulkan::RetiredObject retired(VkFence fence) {
@@ -58,29 +50,17 @@ TEST_CASE_FIXTURE(DeviceFixture, "The timeline advances with every submission") 
 
 TEST_CASE_FIXTURE(DeviceFixture, "Waiting times out while the GPU is blocked, then succeeds") {
     rhi::detail::DeviceImpl& impl = *rhi::get_impl(device);
-    const VkSemaphore gate = create_timeline_semaphore(impl);
+    GpuGate gate{impl}; // the queue cannot proceed until the gate opens
 
-    // The submission cannot start until the CPU signals `gate`.
-    const VkSemaphoreSubmitInfo wait_for_gate{.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
-                                              .semaphore = gate,
-                                              .value = 1,
-                                              .stageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT};
-    auto blocked = impl.submit(rhi::QueueType::Graphics, {}, std::span{&wait_for_gate, 1});
-    REQUIRE_MESSAGE(blocked.has_value(), bytee::tests::error_text(blocked));
-
-    CHECK_FALSE(device.is_complete(*blocked));
-    auto timed_out = device.wait(*blocked, std::chrono::milliseconds{20});
+    CHECK_FALSE(device.is_complete(gate.blocked()));
+    auto timed_out = device.wait(gate.blocked(), std::chrono::milliseconds{20});
     REQUIRE_FALSE(timed_out.has_value());
     CHECK(timed_out.error().code() == core::ErrorCode::Timeout);
     CHECK(timed_out.error().message().empty()); // allocation-free
 
-    const VkSemaphoreSignalInfo open_gate{
-        .sType = VK_STRUCTURE_TYPE_SEMAPHORE_SIGNAL_INFO, .semaphore = gate, .value = 1};
-    REQUIRE(impl.vk.vkSignalSemaphore(impl.device, &open_gate) == VK_SUCCESS);
-
-    auto waited = device.wait(*blocked, std::chrono::seconds{5});
+    gate.open();
+    auto waited = device.wait(gate.blocked(), std::chrono::seconds{5});
     CHECK_MESSAGE(waited.has_value(), bytee::tests::error_text(waited));
-    impl.vk.vkDestroySemaphore(impl.device, gate, nullptr);
 }
 
 TEST_CASE_FIXTURE(DeviceFixture, "Retiring with no GPU work in flight destroys immediately") {
@@ -91,25 +71,16 @@ TEST_CASE_FIXTURE(DeviceFixture, "Retiring with no GPU work in flight destroys i
 
 TEST_CASE_FIXTURE(DeviceFixture, "Retired objects wait for in-flight work") {
     rhi::detail::DeviceImpl& impl = *rhi::get_impl(device);
-    const VkSemaphore gate = create_timeline_semaphore(impl);
-    const VkSemaphoreSubmitInfo wait_for_gate{.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
-                                              .semaphore = gate,
-                                              .value = 1,
-                                              .stageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT};
-    auto blocked = impl.submit(rhi::QueueType::Graphics, {}, std::span{&wait_for_gate, 1});
-    REQUIRE(blocked.has_value());
+    GpuGate gate{impl};
 
     impl.retire(retired(create_fence(impl))); // the GPU is provably not done: must be deferred
     CHECK(impl.retired_objects.size() == 1);
     REQUIRE(impl.collect().has_value());
     CHECK(impl.retired_objects.size() == 1);
 
-    const VkSemaphoreSignalInfo open_gate{
-        .sType = VK_STRUCTURE_TYPE_SEMAPHORE_SIGNAL_INFO, .semaphore = gate, .value = 1};
-    REQUIRE(impl.vk.vkSignalSemaphore(impl.device, &open_gate) == VK_SUCCESS);
-    REQUIRE(device.wait(*blocked).has_value()); // wait() collects
+    gate.open();
+    REQUIRE(device.wait(gate.blocked()).has_value()); // wait() collects
     CHECK(impl.retired_objects.size() == 0);
-    impl.vk.vkDestroySemaphore(impl.device, gate, nullptr);
 }
 
 TEST_CASE_FIXTURE(DeviceFixture, "wait_idle releases every retired object") {
@@ -129,20 +100,11 @@ TEST_CASE_FIXTURE(GpuFixture, "Destroying a device releases objects that are sti
     REQUIRE(device.has_value());
 
     rhi::detail::DeviceImpl& impl = *rhi::get_impl(*device);
-    const VkSemaphore gate = create_timeline_semaphore(impl);
-    const VkSemaphoreSubmitInfo wait_for_gate{.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
-                                              .semaphore = gate,
-                                              .value = 1,
-                                              .stageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT};
-    REQUIRE(impl.submit(rhi::QueueType::Graphics, {}, std::span{&wait_for_gate, 1}).has_value());
-    impl.retire(retired(create_fence(impl)));
-    REQUIRE(impl.retired_objects.size() == 1);
-
-    // Unblock the GPU, then hand the gate itself to the retire list and destroy the device without waiting.
-    const VkSemaphoreSignalInfo open_gate{
-        .sType = VK_STRUCTURE_TYPE_SEMAPHORE_SIGNAL_INFO, .semaphore = gate, .value = 1};
-    REQUIRE(impl.vk.vkSignalSemaphore(impl.device, &open_gate) == VK_SUCCESS);
-    impl.retire({.type = VK_OBJECT_TYPE_SEMAPHORE, .handle = reinterpret_cast<uint64_t>(gate)});
+    {
+        GpuGate gate{impl};
+        impl.retire(retired(create_fence(impl)));
+        REQUIRE(impl.retired_objects.size() == 1);
+    } // the gate opens and retires its own semaphore: both are still pending when the device goes away
     *device = rhi::Device{}; // validation would report leaked or in-use objects
 }
 

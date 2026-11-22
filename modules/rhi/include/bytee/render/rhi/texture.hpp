@@ -15,8 +15,8 @@ enum class TextureUsage : uint32_t {
     Storage = 1u << 1,
     ColorAttachment = 1u << 2,
     DepthStencilAttachment = 1u << 3,
-    TransferSrc = 1u << 4,
-    TransferDst = 1u << 5,
+    CopySrc = 1u << 4,
+    CopyDst = 1u << 5,
 };
 BYTEE_ENABLE_FLAGS(TextureUsage)
 

@@ -30,9 +30,9 @@ VkFormat to_vk_format(Format format) noexcept {
 VkBufferUsageFlags to_vk_buffer_usage(core::Flags<BufferUsage> usage) noexcept {
     // Every buffer is addressable from shaders (bindless access through buffer device address).
     VkBufferUsageFlags flags = VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
-    if (usage.has(BufferUsage::TransferSrc))
+    if (usage.has(BufferUsage::CopySrc))
         flags |= VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
-    if (usage.has(BufferUsage::TransferDst))
+    if (usage.has(BufferUsage::CopyDst))
         flags |= VK_BUFFER_USAGE_TRANSFER_DST_BIT;
     if (usage.has(BufferUsage::Uniform))
         flags |= VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
@@ -57,9 +57,9 @@ VkImageUsageFlags to_vk_image_usage(core::Flags<TextureUsage> usage) noexcept {
         flags |= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
     if (usage.has(TextureUsage::DepthStencilAttachment))
         flags |= VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
-    if (usage.has(TextureUsage::TransferSrc))
+    if (usage.has(TextureUsage::CopySrc))
         flags |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
-    if (usage.has(TextureUsage::TransferDst))
+    if (usage.has(TextureUsage::CopyDst))
         flags |= VK_IMAGE_USAGE_TRANSFER_DST_BIT;
     return flags;
 }
@@ -74,9 +74,9 @@ VkFormatFeatureFlags required_format_features(core::Flags<TextureUsage> usage) n
         flags |= VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT;
     if (usage.has(TextureUsage::DepthStencilAttachment))
         flags |= VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT;
-    if (usage.has(TextureUsage::TransferSrc))
+    if (usage.has(TextureUsage::CopySrc))
         flags |= VK_FORMAT_FEATURE_TRANSFER_SRC_BIT;
-    if (usage.has(TextureUsage::TransferDst))
+    if (usage.has(TextureUsage::CopyDst))
         flags |= VK_FORMAT_FEATURE_TRANSFER_DST_BIT;
     return flags;
 }
@@ -85,6 +85,8 @@ VkImageAspectFlags aspect_mask(Format format) noexcept {
     return is_depth_format(format) ? VK_IMAGE_ASPECT_DEPTH_BIT : VK_IMAGE_ASPECT_COLOR_BIT;
 }
 
+// Read states (ShaderRead, DepthRead) share VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL (Vulkan 1.3), which bindless sampled
+// descriptors use too: a texture can be sampled in either state, depth textures included.
 StateScope to_state_scope(ResourceState state) noexcept {
     constexpr VkPipelineStageFlags2 k_shaders = VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT |
                                                 VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT |
@@ -107,7 +109,7 @@ StateScope to_state_scope(ResourceState state) noexcept {
                 VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL};
     case ResourceState::ShaderRead:
         return {k_shaders, VK_ACCESS_2_SHADER_SAMPLED_READ_BIT | VK_ACCESS_2_SHADER_STORAGE_READ_BIT,
-                VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL};
+                VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL};
     case ResourceState::ShaderWrite:
         return {k_shaders, VK_ACCESS_2_SHADER_STORAGE_READ_BIT | VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT,
                 VK_IMAGE_LAYOUT_GENERAL};
@@ -122,7 +124,7 @@ StateScope to_state_scope(ResourceState state) noexcept {
     case ResourceState::DepthRead:
         return {k_depth_tests | k_shaders,
                 VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_2_SHADER_SAMPLED_READ_BIT,
-                VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL};
+                VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL};
     case ResourceState::VertexBuffer:
         return {VK_PIPELINE_STAGE_2_VERTEX_ATTRIBUTE_INPUT_BIT, VK_ACCESS_2_VERTEX_ATTRIBUTE_READ_BIT,
                 VK_IMAGE_LAYOUT_UNDEFINED};

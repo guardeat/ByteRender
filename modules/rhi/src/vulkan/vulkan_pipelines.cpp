@@ -66,12 +66,8 @@ void ResourceReleaser::operator()(GraphicsPipelineHandle pipeline) const noexcep
 }
 
 void detail::DeviceImpl::release(GraphicsPipelineHandle pipeline) {
-    const vulkan::DeviceQueueValues retire_after = last_submitted();
-    if (detail::is_reached(retire_after, cached_completed())) {
-        destroy_now(pipeline);
-        return;
-    }
-    retired_graphics_pipelines.push(retire_after, pipeline);
+    retire_or_destroy(retired_graphics_pipelines, pipeline,
+                      [this](GraphicsPipelineHandle handle) { destroy_now(handle); });
 }
 
 void detail::DeviceImpl::destroy_now(GraphicsPipelineHandle pipeline) {
@@ -225,7 +221,7 @@ core::Result<GraphicsPipeline> Device::create_graphics_pipeline(const GraphicsPi
     if (!handle.is_valid()) {
         impl.vk.vkDestroyPipeline(impl.device, record.pipeline, nullptr);
         return core::make_error(core::ErrorCode::LimitExceeded,
-                                "pipeline '{}': the device's graphics pipeline limit ({}) is reached", name,
+                                "pipeline '{}': the device's graphics pipeline capacity ({}) is reached", name,
                                 impl.graphics_pipelines.capacity());
     }
     return GraphicsPipeline{handle, ResourceReleaser{impl_}};

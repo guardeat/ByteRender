@@ -1,9 +1,16 @@
 #include "vulkan/vulkan_common.hpp"
 
+#include <algorithm>
 #include <format>
 #include <string>
 
 namespace bytee::render::rhi::vulkan {
+
+bool has_extension(std::span<const VkExtensionProperties> extensions, std::string_view name) noexcept {
+    return std::ranges::any_of(extensions, [name](const VkExtensionProperties& extension) {
+        return std::string_view{extension.extensionName} == name;
+    });
+}
 
 std::string_view to_string(VkResult result) noexcept {
     switch (result) {

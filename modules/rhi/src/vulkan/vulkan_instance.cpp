@@ -39,12 +39,6 @@ bool has_layer(const std::vector<VkLayerProperties>& layers, const char* name) {
         layers, [name](const VkLayerProperties& layer) { return std::strcmp(layer.layerName, name) == 0; });
 }
 
-bool has_extension(const std::vector<VkExtensionProperties>& extensions, const char* name) {
-    return std::ranges::any_of(extensions, [name](const VkExtensionProperties& extension) {
-        return std::strcmp(extension.extensionName, name) == 0;
-    });
-}
-
 core::LogLevel to_log_level(VkDebugUtilsMessageSeverityFlagBitsEXT severity, VkDebugUtilsMessageTypeFlagsEXT types) {
     if ((severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT) != 0) {
         return core::LogLevel::Error;
@@ -220,15 +214,15 @@ core::Result<Instance> InstanceFactory::create_instance(const InstanceDesc& desc
     VkInstanceCreateFlags flags = 0;
 
     // Non-conformant implementations (MoltenVK) are only listed with portability enumeration.
-    if (has_extension(extensions, VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME)) {
+    if (vulkan::has_extension(extensions, VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME)) {
         enabled_extensions.push_back(VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME);
         flags |= VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR;
     }
 
     // Presentation: VK_KHR_surface plus every available platform surface extension.
-    if (has_extension(extensions, VK_KHR_SURFACE_EXTENSION_NAME)) {
+    if (vulkan::has_extension(extensions, VK_KHR_SURFACE_EXTENSION_NAME)) {
         for (const char* platform_extension : k_platform_surface_extensions) {
-            if (has_extension(extensions, platform_extension)) {
+            if (vulkan::has_extension(extensions, platform_extension)) {
                 enabled_extensions.push_back(platform_extension);
                 impl->presentation_supported = true;
             }
@@ -239,7 +233,8 @@ core::Result<Instance> InstanceFactory::create_instance(const InstanceDesc& desc
     }
 
     if (desc.enable_validation) {
-        if (has_layer(layers, k_validation_layer) && has_extension(extensions, VK_EXT_DEBUG_UTILS_EXTENSION_NAME)) {
+        if (has_layer(layers, k_validation_layer) &&
+            vulkan::has_extension(extensions, VK_EXT_DEBUG_UTILS_EXTENSION_NAME)) {
             enabled_layers.push_back(k_validation_layer);
             enabled_extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
             impl->validation_enabled = true;
@@ -275,7 +270,9 @@ core::Result<Instance> InstanceFactory::create_instance(const InstanceDesc& desc
         .ppEnabledExtensionNames = enabled_extensions.data(),
     };
 
-    VkResult result = vkCreateInstance(&create_info, nullptr, &impl->instance);
+    // Created into locals: Vulkan leaves output handles undefined on failure (and the guard checks impl->instance).
+    VkInstance instance = VK_NULL_HANDLE;
+    VkResult result = vkCreateInstance(&create_info, nullptr, &instance);
     if (result == VK_ERROR_LAYER_NOT_PRESENT && impl->validation_enabled) {
         // The layer is listed but its library failed to load (broken installation). Validation is optional.
         logger.warning("{} failed to load; continuing without validation", k_validation_layer);
@@ -287,18 +284,21 @@ core::Result<Instance> InstanceFactory::create_instance(const InstanceDesc& desc
         create_info.ppEnabledLayerNames = enabled_layers.data();
         create_info.enabledExtensionCount = static_cast<uint32_t>(enabled_extensions.size());
         create_info.ppEnabledExtensionNames = enabled_extensions.data();
-        result = vkCreateInstance(&create_info, nullptr, &impl->instance);
+        result = vkCreateInstance(&create_info, nullptr, &instance);
     }
     if (result != VK_SUCCESS) {
         return vulkan::make_vk_error(result, "vkCreateInstance");
     }
+    impl->instance = instance;
     volkLoadInstanceOnly(impl->instance);
 
     if (impl->validation_enabled) {
-        result = vkCreateDebugUtilsMessengerEXT(impl->instance, &messenger_info, nullptr, &impl->debug_messenger);
+        VkDebugUtilsMessengerEXT messenger = VK_NULL_HANDLE;
+        result = vkCreateDebugUtilsMessengerEXT(impl->instance, &messenger_info, nullptr, &messenger);
         if (result != VK_SUCCESS) {
             return vulkan::make_vk_error(result, "vkCreateDebugUtilsMessengerEXT");
         }
+        impl->debug_messenger = messenger;
     }
 
     impl->physical_devices = vulkan::enumerate<VkPhysicalDevice>(vkEnumeratePhysicalDevices, impl->instance);

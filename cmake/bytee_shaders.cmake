@@ -1,7 +1,11 @@
 # GLSL -> SPIR-V at build time, embedded into C++ as a constexpr array (no shader files needed at runtime).
 #
-#   bytee_add_shaders(my_target SOURCES shaders/triangle.vert shaders/solid.frag)
+#   bytee_add_shaders(my_target SOURCES shaders/triangle.vert shaders/solid.frag [NAMESPACE my_shaders])
 #   #include "triangle.vert.hpp"   ->   shaders::triangle_vert   (std::array<std::uint32_t, N>)
+#
+# Each target gets its own output folder. Pass a NAMESPACE (default: shaders) when targets that embed different
+# shaders with the same file name are linked together (e.g. a library and an application), so the arrays don't
+# collide.
 #
 # Stage from the extension (.vert, .frag, .comp). Debug builds embed debug info (-g). Engine shader headers are on the
 # include path (`#include "bytee/bindless.glsl"`); includes are tracked through glslang depfiles, so editing an included
@@ -10,12 +14,15 @@
 find_program(BYTEE_GLSLANG_VALIDATOR glslangValidator HINTS "$ENV{VULKAN_SDK}/bin" "$ENV{VULKAN_SDK}/Bin")
 
 function(bytee_add_shaders target)
-    cmake_parse_arguments(PARSE_ARGV 1 arg "" "" "SOURCES")
+    cmake_parse_arguments(PARSE_ARGV 1 arg "" "NAMESPACE" "SOURCES")
+    if(NOT arg_NAMESPACE)
+        set(arg_NAMESPACE shaders)
+    endif()
     if(NOT BYTEE_GLSLANG_VALIDATOR)
         message(FATAL_ERROR "glslangValidator not found (install the Vulkan SDK, or glslang via Homebrew on macOS)")
     endif()
 
-    set(output_dir "${CMAKE_CURRENT_BINARY_DIR}/bytee_shaders")
+    set(output_dir "${CMAKE_CURRENT_BINARY_DIR}/${target}_shaders")
     foreach(source IN LISTS arg_SOURCES)
         get_filename_component(source_path "${source}" ABSOLUTE)
         get_filename_component(file_name "${source}" NAME)
@@ -31,6 +38,7 @@ function(bytee_add_shaders target)
                     "-I${PROJECT_SOURCE_DIR}/shaders"
                     --depfile "${depfile}" -o "${spirv}" "${source_path}"
             COMMAND "${CMAKE_COMMAND}" -DINPUT=${spirv} -DOUTPUT=${header} -DNAME=${variable_name}
+                    -DNAMESPACE=${arg_NAMESPACE}
                     -P "${PROJECT_SOURCE_DIR}/cmake/bytee_embed_spirv.cmake"
             DEPENDS "${source_path}" "${PROJECT_SOURCE_DIR}/cmake/bytee_embed_spirv.cmake"
             DEPFILE "${depfile}"

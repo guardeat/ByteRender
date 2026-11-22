@@ -84,6 +84,7 @@ if(NOT BYTEE_BUILD_SHARED AND BYTEE_RHI_BACKEND STREQUAL "Vulkan")
         "${PROJECT_SOURCE_DIR}/modules/rhi/src"
     )
     target_link_libraries(bytee_vulkan_gpu_tests PRIVATE bytee::rhi bytee_vulkan_dependencies bytee_doctest)
+    bytee_add_shaders(bytee_vulkan_gpu_tests SOURCES shaders/color.frag shaders/triangle.vert)
     bytee_configure_target(bytee_vulkan_gpu_tests)
     add_test(NAME bytee_vulkan_gpu_tests COMMAND bytee_vulkan_gpu_tests)
     set_tests_properties(bytee_vulkan_gpu_tests PROPERTIES LABELS gpu)

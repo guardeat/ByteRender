@@ -1,13 +1,14 @@
 // Renders without a window: clears a texture with a render pass, reads it back and writes it to a PPM image.
 //   01_headless_clear [output.ppm]
 
+#include "ppm.hpp"
+
 #include <bytee/core/log.hpp>
 #include <bytee/render/rhi/instance_factory.hpp>
 
 #include <array>
 #include <cstddef>
 #include <cstdint>
-#include <fstream>
 #include <string>
 #include <vector>
 
@@ -19,21 +20,11 @@ namespace {
 constexpr uint32_t k_width = 256;
 constexpr uint32_t k_height = 256;
 
-// Binary PPM (RGB): dependency-free and viewable in most image viewers.
-bool write_ppm(const std::string& path, const std::vector<std::byte>& rgba) {
-    std::ofstream file{path, std::ios::binary};
-    file << "P6\n" << k_width << ' ' << k_height << "\n255\n";
-    for (std::size_t i = 0; i < rgba.size(); i += 4) {
-        file.write(reinterpret_cast<const char*>(&rgba[i]), 3); // drop alpha
-    }
-    return static_cast<bool>(file);
-}
-
 core::Result<std::vector<std::byte>> render(rhi::Device& device) {
     core::Result<rhi::Texture> target = device.create_texture({
         .extent = {.width = k_width, .height = k_height},
         .format = rhi::Format::RGBA8Srgb,
-        .usage = rhi::TextureUsage::ColorAttachment | rhi::TextureUsage::TransferSrc,
+        .usage = rhi::TextureUsage::ColorAttachment | rhi::TextureUsage::CopySrc,
         .debug_name = "headless target",
     });
     if (!target) {
@@ -50,9 +41,7 @@ core::Result<std::vector<std::byte>> render(rhi::Device& device) {
     const rhi::ColorAttachment color{.texture = *target, .clear = {0.10f, 0.35f, 0.80f, 1.0f}};
     commands->begin_render_pass({.colors = std::span{&color, 1}});
     commands->end_render_pass();
-    if (auto submitted = device.submit(std::move(*commands)); !submitted) {
-        return std::move(submitted).error();
-    }
+    BYTEE_TRY(device.submit(std::move(*commands)));
 
     std::vector<std::byte> pixels(std::size_t{k_width} * k_height * 4);
     BYTEE_TRY(device.download(*target, pixels, {.before = rhi::ResourceState::ColorAttachment}));
@@ -84,7 +73,7 @@ int main(int argc, char** argv) {
         logger.error("rendering failed: {}", pixels.error().message());
         return 1;
     }
-    if (!write_ppm(output, *pixels)) {
+    if (!bytee::samples::write_ppm(output, k_width, k_height, *pixels)) {
         logger.error("cannot write '{}'", output);
         return 1;
     }

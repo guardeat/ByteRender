@@ -157,13 +157,20 @@ public:
     }
 
     template <class Fallback_>
+        requires std::convertible_to<Fallback_&&, Value_>
     [[nodiscard]] constexpr Value_ value_or(Fallback_&& fallback) const& {
-        return has_value() ? *std::get_if<0>(&storage_) : static_cast<Value_>(std::forward<Fallback_>(fallback));
+        if (has_value()) {
+            return *std::get_if<0>(&storage_);
+        }
+        return std::forward<Fallback_>(fallback);
     }
     template <class Fallback_>
+        requires std::convertible_to<Fallback_&&, Value_>
     [[nodiscard]] constexpr Value_ value_or(Fallback_&& fallback) && {
-        return has_value() ? std::move(*std::get_if<0>(&storage_))
-                           : static_cast<Value_>(std::forward<Fallback_>(fallback));
+        if (has_value()) {
+            return std::move(*std::get_if<0>(&storage_));
+        }
+        return std::forward<Fallback_>(fallback);
     }
 
     constexpr Value_& operator*() & { return value(); }

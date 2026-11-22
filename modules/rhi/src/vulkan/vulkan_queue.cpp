@@ -125,10 +125,12 @@ VkResult create_queue(VkDevice device, const VolkDeviceTable& vk, uint32_t famil
         .initialValue = 0,
     };
     const VkSemaphoreCreateInfo semaphore_info{.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO, .pNext = &type_info};
-    if (const VkResult result = vk.vkCreateSemaphore(device, &semaphore_info, nullptr, &created->timeline_);
+    VkSemaphore timeline = VK_NULL_HANDLE; // created into a local: undefined on failure
+    if (const VkResult result = vk.vkCreateSemaphore(device, &semaphore_info, nullptr, &timeline);
         result != VK_SUCCESS) {
         return result;
     }
+    created->timeline_ = timeline;
     set_debug_name(device, VK_OBJECT_TYPE_QUEUE, handle, debug_name);
     set_debug_name(device, VK_OBJECT_TYPE_SEMAPHORE, created->timeline_, std::format("{} timeline", debug_name));
     queue = std::move(created);

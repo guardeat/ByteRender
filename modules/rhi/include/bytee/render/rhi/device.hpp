@@ -25,8 +25,8 @@ namespace bytee::render::rhi {
 
 // Fixed capacities of a device's resource pools (architecture §4.3). Creating more fails with LimitExceeded.
 // max_textures and max_samplers also size the bindless descriptor heap; if the GPU confirms fewer descriptors they are
-// reduced to what it supports (Device::limits() reports the effective values).
-struct DeviceLimits {
+// reduced to what it supports (Device::capacities() reports the effective values).
+struct DeviceCapacities {
     uint32_t max_buffers = 1u << 16;
     uint32_t max_textures = 1u << 16;
     uint32_t max_samplers = 1u << 12;
@@ -51,7 +51,7 @@ struct DeviceDesc {
     // AdapterInfo::index of the GPU to use. Empty: the best supported adapter (discrete > integrated > virtual >
     // others, then the most device-local memory).
     std::optional<uint32_t> adapter_index;
-    DeviceLimits limits;
+    DeviceCapacities capacities;
     std::string_view debug_name = "Device";
 };
 
@@ -73,8 +73,9 @@ public:
 
     [[nodiscard]] bool is_valid() const noexcept { return impl_ != nullptr; }
     [[nodiscard]] const AdapterInfo& adapter() const noexcept;
-    // Effective limits: max_textures / max_samplers may be lower than requested if the GPU's bindless heap is smaller.
-    [[nodiscard]] const DeviceLimits& limits() const noexcept;
+    // Effective capacities: max_textures / max_samplers may be lower than requested if the GPU's bindless heap is
+    // smaller.
+    [[nodiscard]] const DeviceCapacities& capacities() const noexcept;
     // True if swapchains can be created (the instance supports presentation and so does the adapter).
     [[nodiscard]] bool is_presentation_supported() const noexcept;
 
@@ -100,7 +101,7 @@ public:
     // resource retires it: the GPU object lives until the GPU has finished all work that could use it.
     [[nodiscard]] core::Result<Buffer> create_buffer(const BufferDesc& desc);
     // Textures with Sampled / Storage usage are written into the bindless heap at bindless_index(texture). Sample them
-    // in the ShaderRead state (also depth textures); access storage textures in ShaderWrite (General layout).
+    // in the ShaderRead or DepthRead state; access storage textures in ShaderWrite.
     [[nodiscard]] core::Result<Texture> create_texture(const TextureDesc& desc);
     [[nodiscard]] core::Result<Sampler> create_sampler(const SamplerDesc& desc);
     // Creating pipelines compiles shaders for the GPU: do it at load time, not per frame.
@@ -123,8 +124,9 @@ public:
     // Presentation. Errors: NotSupported (no presentation support, unsupported window platform in this build),
     // InvalidArgument, DeviceLost.
     [[nodiscard]] core::Result<Swapchain> create_swapchain(const SwapchainDesc& desc);
-    // Submits `commands` (which must leave the acquired image in the Present state) and presents the image. The
-    // SyncPoint completes when the commands have executed. An out-of-date swapchain is recreated at the next acquire.
+    // Submits `commands` (which must leave the acquired image in the Present state) and presents the image. Call it
+    // once per acquire() that returned a valid frame (otherwise: InvalidArgument). The SyncPoint completes when the
+    // commands have executed. An out-of-date swapchain is recreated at the next acquire.
     [[nodiscard]] core::Result<SyncPoint> present(Swapchain& swapchain, CommandList&& commands);
 
     // Upload helpers: copy CPU data into GPU-local resources through a staging buffer (freed automatically once the
@@ -137,7 +139,7 @@ public:
 
     // Reads a texture region back into `data` (tightly packed texels; its size must match the region). Blocks until
     // the GPU has finished all work submitted before it — for screenshots, tests and tools, not per-frame use.
-    // The texture needs TransferSrc usage.
+    // The texture needs CopySrc usage.
     [[nodiscard]] core::Result<void> download(TextureHandle src, std::span<std::byte> data,
                                               const TextureDownloadDesc& desc);
 

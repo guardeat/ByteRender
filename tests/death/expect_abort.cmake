@@ -8,8 +8,10 @@ execute_process(
     OUTPUT_VARIABLE output
     ERROR_VARIABLE output
 )
-if(result EQUAL 0)
-    message(FATAL_ERROR "expected '${EXECUTABLE}' to abort, but it exited normally. Output:\n${output}")
+# An abort is reported as a signal description on POSIX ("Subprocess aborted") and as exit code 3 on Windows; any
+# other exit (including a non-zero return) is not an abort.
+if(result MATCHES "^[0-9]+$" AND NOT (WIN32 AND result EQUAL 3))
+    message(FATAL_ERROR "expected '${EXECUTABLE}' to abort, but it exited with code ${result}. Output:\n${output}")
 endif()
 if(NOT output MATCHES "${EXPECTED}")
     message(FATAL_ERROR "unexpected output from '${EXECUTABLE}' (result: ${result}):\n${output}")

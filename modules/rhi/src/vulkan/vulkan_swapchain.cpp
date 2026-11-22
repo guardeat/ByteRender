@@ -229,10 +229,10 @@ core::Result<void> detail::SwapchainImpl::create_swapchain() {
     // Images become external textures (views only), so they work with barriers, render passes and copies.
     core::Flags<TextureUsage> texture_usage = TextureUsage::ColorAttachment;
     if ((usage & VK_IMAGE_USAGE_TRANSFER_DST_BIT) != 0) {
-        texture_usage |= TextureUsage::TransferDst;
+        texture_usage |= TextureUsage::CopyDst;
     }
     if ((usage & VK_IMAGE_USAGE_TRANSFER_SRC_BIT) != 0) {
-        texture_usage |= TextureUsage::TransferSrc;
+        texture_usage |= TextureUsage::CopySrc;
     }
     const auto vk_images = vulkan::enumerate<VkImage>(impl.vk.vkGetSwapchainImagesKHR, impl.device, swapchain);
     for (std::size_t index = 0; index < vk_images.size(); ++index) {
@@ -272,7 +272,7 @@ core::Result<void> detail::SwapchainImpl::create_swapchain() {
         if (!handle.is_valid()) {
             impl.vk.vkDestroyImageView(impl.device, view, nullptr);
             return core::make_error(core::ErrorCode::LimitExceeded,
-                                    "swapchain '{}': the device's texture limit ({}) is reached", debug_name,
+                                    "swapchain '{}': the device's texture capacity ({}) is reached", debug_name,
                                     impl.textures.capacity());
         }
         images.push_back(handle);
@@ -298,6 +298,7 @@ core::Result<void> detail::SwapchainImpl::recreate() {
     destroy_images_and_semaphores();
     std::ranges::fill(frame_points, SyncPoint{});
     acquired_image = std::numeric_limits<uint32_t>::max();
+    needs_recreate = true;     // stays set if creation fails halfway, so a later acquire() retries instead of using it
     return create_swapchain(); // keeps the format and present mode chosen at the first creation
 }
 
@@ -455,7 +456,10 @@ core::Result<SyncPoint> Device::present(Swapchain& swapchain, CommandList&& comm
     BYTEE_ASSERT(swapchain.is_valid() && commands.is_valid(), "present needs a swapchain and a command list");
     detail::SwapchainImpl& state = *get_impl(swapchain);
     BYTEE_ASSERT(state.device == impl_, "Swapchain belongs to another device");
-    BYTEE_ASSERT(state.acquired_image != std::numeric_limits<uint32_t>::max(), "present() without acquire()");
+    if (state.acquired_image == std::numeric_limits<uint32_t>::max()) {
+        return core::make_error(core::ErrorCode::InvalidArgument,
+                                "swapchain '{}': present() needs a valid frame from acquire() first", state.debug_name);
+    }
 
     const uint32_t image = std::exchange(state.acquired_image, std::numeric_limits<uint32_t>::max());
     const uint32_t slot = state.frame_slot;

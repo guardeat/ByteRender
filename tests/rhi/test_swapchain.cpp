@@ -66,14 +66,15 @@ TEST_CASE_FIXTURE(DeviceFixture, "Swapchain images can be read back before prese
     rhi::Swapchain swapchain = make_headless(device, {.width = 16, .height = 16});
     auto frame = swapchain.acquire();
     REQUIRE(frame.has_value());
-    if (!device.info(frame->texture).usage.has(rhi::TextureUsage::TransferSrc)) {
+    if (!device.info(frame->texture).usage.has(rhi::TextureUsage::CopySrc)) {
+        MESSAGE("skipped: this surface does not allow copies from its images");
         render_frame(device, swapchain, *frame, {});
-        return; // the surface does not allow copies from its images
+        return;
     }
     rhi::Buffer readback =
         device
             .create_buffer(
-                {.size = 16 * 16 * 4, .usage = rhi::BufferUsage::TransferDst, .memory = rhi::MemoryLocation::Readback})
+                {.size = 16 * 16 * 4, .usage = rhi::BufferUsage::CopyDst, .memory = rhi::MemoryLocation::Readback})
             .value();
     auto commands = device.begin_commands();
     REQUIRE(commands.has_value());
@@ -153,4 +154,15 @@ TEST_CASE_FIXTURE(DeviceFixture, "Invalid swapchain requests are rejected") {
     REQUIRE_FALSE(wrong_platform.has_value());
     CHECK(wrong_platform.error().code() == core::ErrorCode::NotSupported);
 #endif
+}
+
+TEST_CASE_FIXTURE(DeviceFixture, "present() without a valid acquired frame is rejected") {
+    rhi::Swapchain swapchain = make_headless(device, {.width = 0, .height = 0}); // minimized: frames are invalid
+    auto frame = swapchain.acquire();
+    REQUIRE(frame.has_value());
+    REQUIRE_FALSE(frame->is_valid());
+
+    auto presented = device.present(swapchain, device.begin_commands().value());
+    REQUIRE_FALSE(presented.has_value());
+    CHECK(presented.error().code() == core::ErrorCode::InvalidArgument);
 }

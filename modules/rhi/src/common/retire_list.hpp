@@ -92,6 +92,7 @@ public:
 
 private:
     template <class Predicate_>
+        requires std::predicate<Predicate_&, const Entry&>
     std::optional<Item_> pop_if(Predicate_&& predicate) {
         const std::scoped_lock lock{mutex_};
         if (entries_.empty() || !predicate(entries_.front())) {

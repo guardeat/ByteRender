@@ -4,6 +4,7 @@
 #include <bytee/core/types.hpp>
 #include <bytee/render/rhi/export.hpp>
 #include <bytee/render/rhi/handles.hpp>
+#include <bytee/render/rhi/pipeline.hpp>
 
 #include <cstddef>
 #include <cstdint>
@@ -189,7 +190,7 @@ public:
     void set_scissor(const core::Rect2D& scissor);
     void push_constants(std::span<const std::byte> data, uint32_t offset = 0);
     template <class Value_>
-        requires std::is_trivially_copyable_v<Value_>
+        requires(std::is_trivially_copyable_v<Value_> && sizeof(Value_) <= k_max_push_constant_bytes)
     void push_constants(const Value_& value, uint32_t offset = 0) {
         push_constants(std::as_bytes(std::span{&value, 1}), offset);
     }

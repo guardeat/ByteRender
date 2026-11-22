@@ -16,12 +16,7 @@ void ResourceReleaser::operator()(SamplerHandle sampler) const noexcept {
 }
 
 void detail::DeviceImpl::release(SamplerHandle sampler) {
-    const vulkan::DeviceQueueValues retire_after = last_submitted();
-    if (detail::is_reached(retire_after, cached_completed())) {
-        destroy_now(sampler);
-        return;
-    }
-    retired_samplers.push(retire_after, sampler);
+    retire_or_destroy(retired_samplers, sampler, [this](SamplerHandle handle) { destroy_now(handle); });
 }
 
 void detail::DeviceImpl::destroy_now(SamplerHandle sampler) {
@@ -98,7 +93,7 @@ core::Result<Sampler> Device::create_sampler(const SamplerDesc& desc) {
     if (!handle.is_valid()) {
         impl.vk.vkDestroySampler(impl.device, sampler, nullptr);
         return core::make_error(core::ErrorCode::LimitExceeded,
-                                "sampler '{}': the device's sampler limit ({}) is reached", name,
+                                "sampler '{}': the device's sampler capacity ({}) is reached", name,
                                 impl.samplers.capacity());
     }
     impl.write_bindless(handle, sampler);

@@ -1,5 +1,8 @@
+set(BYTEE_SAMPLES_COMMON_DIR "${CMAKE_CURRENT_SOURCE_DIR}/common")
+
 function(bytee_add_sample name)
     add_executable(${name} ${ARGN})
+    target_include_directories(${name} PRIVATE "${BYTEE_SAMPLES_COMMON_DIR}") # header-only helpers (ppm.hpp)
     target_link_libraries(${name} PRIVATE bytee::render_graph)
     bytee_configure_target(${name})
 endfunction()

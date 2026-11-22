@@ -79,7 +79,8 @@ TEST_CASE("VkResult maps to error codes and names") {
 TEST_CASE("Resource states map to synchronization2 scopes and layouts") {
     using bytee::render::rhi::ResourceState;
     CHECK(vulkan::to_state_scope(ResourceState::CopyDst).layout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-    CHECK(vulkan::to_state_scope(ResourceState::ShaderRead).layout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+    CHECK(vulkan::to_state_scope(ResourceState::ShaderRead).layout == VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL);
+    CHECK(vulkan::to_state_scope(ResourceState::DepthRead).layout == VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL);
     CHECK(vulkan::to_state_scope(ResourceState::ShaderWrite).layout == VK_IMAGE_LAYOUT_GENERAL);
     CHECK(vulkan::to_state_scope(ResourceState::DepthWrite).layout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
     CHECK(vulkan::to_state_scope(ResourceState::Undefined).stages == VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT);

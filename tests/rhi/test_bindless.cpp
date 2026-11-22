@@ -51,7 +51,7 @@ rhi::Texture make_texture(rhi::Device& device, uint32_t width, uint32_t height,
                                .create_texture({.extent = {.width = width, .height = height},
                                                 .mip_levels = static_cast<uint32_t>(mips.size()),
                                                 .format = k_format,
-                                                .usage = TextureUsage::Sampled | TextureUsage::TransferDst,
+                                                .usage = TextureUsage::Sampled | TextureUsage::CopyDst,
                                                 .debug_name = "sampled"})
                                .value();
     for (uint32_t mip = 0; mip < mips.size(); ++mip) {
@@ -67,7 +67,7 @@ Rgba8Image render(rhi::Device& device, Record_&& record) {
     rhi::Texture target = device
                               .create_texture({.extent = {.width = k_size, .height = k_size},
                                                .format = k_format,
-                                               .usage = TextureUsage::ColorAttachment | TextureUsage::TransferSrc})
+                                               .usage = TextureUsage::ColorAttachment | TextureUsage::CopySrc})
                               .value();
     auto commands = device.begin_commands();
     REQUIRE(commands.has_value());
@@ -200,15 +200,15 @@ TEST_CASE_FIXTURE(DeviceFixture, "A freed slot is reused by the next texture, wi
 TEST_CASE_FIXTURE(GpuFixture, "Bindless capacity adapts to the GPU and is enforced") {
     auto instance = create_instance();
     REQUIRE(instance.has_value());
-    auto huge = instance->create_device({.limits = {.max_textures = 1u << 30, .max_samplers = 1u << 30}});
+    auto huge = instance->create_device({.capacities = {.max_textures = 1u << 30, .max_samplers = 1u << 30}});
     REQUIRE_MESSAGE(huge.has_value(), bytee::tests::error_text(huge));
-    CHECK(huge->limits().max_textures >= 64);
-    CHECK(huge->limits().max_textures < (1u << 30));
-    CHECK(huge->limits().max_samplers >= 16);
+    CHECK(huge->capacities().max_textures >= 64);
+    CHECK(huge->capacities().max_textures < (1u << 30));
+    CHECK(huge->capacities().max_samplers >= 16);
 
-    auto small = instance->create_device({.limits = {.max_textures = 2}});
+    auto small = instance->create_device({.capacities = {.max_textures = 2}});
     REQUIRE(small.has_value());
-    CHECK(small->limits().max_textures == 2);
+    CHECK(small->capacities().max_textures == 2);
     const rhi::TextureDesc desc{
         .extent = {.width = 1, .height = 1}, .format = k_format, .usage = TextureUsage::Sampled};
     auto first = small->create_texture(desc);
@@ -235,7 +235,7 @@ TEST_CASE_FIXTURE(DeviceFixture, "Sampler descriptions are validated") {
 TEST_CASE_FIXTURE(GpuFixture, "Regression: a full texture pool frees every view of the rejected texture") {
     auto instance = create_instance();
     REQUIRE(instance.has_value());
-    auto device = instance->create_device({.limits = {.max_textures = 1}});
+    auto device = instance->create_device({.capacities = {.max_textures = 1}});
     REQUIRE(device.has_value());
     const rhi::TextureDesc desc{.extent = {.width = 4, .height = 4},
                                 .format = k_format,
@@ -246,4 +246,36 @@ TEST_CASE_FIXTURE(GpuFixture, "Regression: a full texture pool frees every view 
     REQUIRE_FALSE(rejected.has_value());
     CHECK(rejected.error().code() == core::ErrorCode::LimitExceeded);
     // Device destruction now: the validation layer reports any leaked image view (the fixture fails on it).
+}
+
+// Usage check only: the descriptor/state layout agreement behind this (both use the read-only layout) cannot be
+// verified here — validation cannot see which bindless descriptors a shader reads, and MoltenVK ignores layouts.
+TEST_CASE_FIXTURE(DeviceFixture, "Depth textures can be sampled in the DepthRead state") {
+    rhi::Texture depth = device
+                             .create_texture({.extent = {.width = 4, .height = 4},
+                                              .format = rhi::Format::D32Float,
+                                              .usage = TextureUsage::DepthStencilAttachment | TextureUsage::Sampled,
+                                              .debug_name = "sampled depth"})
+                             .value();
+    auto commands = device.begin_commands();
+    REQUIRE(commands.has_value());
+    const rhi::TextureBarrier to_depth{
+        .texture = depth, .before = ResourceState::Undefined, .after = ResourceState::DepthWrite};
+    commands->barrier({}, std::span{&to_depth, 1});
+    commands->begin_render_pass({.depth = rhi::DepthAttachment{.texture = depth, .clear_depth = 0.25f}});
+    commands->end_render_pass();
+    const rhi::TextureBarrier to_read{
+        .texture = depth, .before = ResourceState::DepthWrite, .after = ResourceState::DepthRead};
+    commands->barrier({}, std::span{&to_read, 1});
+    REQUIRE(device.submit(std::move(*commands)).has_value());
+
+    rhi::Sampler sampler = nearest_clamp(device);
+    rhi::GraphicsPipeline pipeline = make_pipeline(device);
+    const Rgba8Image image = render(device, [&](rhi::CommandList& list) {
+        draw_sampled(list, pipeline,
+                     {.texture_index = rhi::bindless_index(depth), .sampler_index = rhi::bindless_index(sampler)});
+    });
+    const Rgba8 pixel = image.at(32, 32); // depth 0.25 is returned in the red channel
+    CHECK(pixel.r >= 63);
+    CHECK(pixel.r <= 64);
 }

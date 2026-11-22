@@ -68,7 +68,7 @@ inline void write_ppm(const Rgba8Image& image, const std::filesystem::path& path
     }
 }
 
-// Reads mip 0 / layer 0 of an RGBA8 texture (needs TransferSrc usage) currently in `state`; it stays in `state`.
+// Reads mip 0 / layer 0 of an RGBA8 texture (needs CopySrc usage) currently in `state`; it stays in `state`.
 [[nodiscard]] inline Rgba8Image read_rgba8(render::rhi::Device& device, render::rhi::TextureHandle texture,
                                            render::rhi::ResourceState state) {
     const render::rhi::TextureInfo& info = device.info(texture);

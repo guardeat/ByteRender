@@ -1,68 +1,23 @@
 // White-box GPU tests of resource lifetime (static builds, label "gpu"): deferred destruction is checked against
 // the pools and VMA's live allocation count while the GPU is deliberately blocked.
 
+#include "color.frag.hpp"
+#include "support/error_text.hpp"
 #include "support/gpu_fixture.hpp"
-#include "vulkan/vulkan_device.hpp"
+#include "support/vulkan_gpu_gate.hpp"
+#include "triangle.vert.hpp"
 
 #include <doctest/doctest.h>
+
+#include <array>
 
 namespace core = bytee::core;
 namespace rhi = bytee::render::rhi;
 using bytee::tests::DeviceFixture;
 using bytee::tests::GpuFixture;
 
-namespace {
-
-uint32_t live_allocations(const rhi::detail::DeviceImpl& impl) {
-    VmaTotalStatistics statistics{};
-    vmaCalculateStatistics(impl.allocator, &statistics);
-    return statistics.total.statistics.allocationCount;
-}
-
-// Blocks the queue until open() is called: makes "the GPU is still busy" deterministic. Always opens on destruction
-// (a failing test must never leave the GPU blocked) and retires its semaphore through the device, since the blocked
-// submission may still be using it.
-class GpuGate {
-private:
-    rhi::detail::DeviceImpl& impl_;
-    VkSemaphore semaphore_ = VK_NULL_HANDLE;
-    rhi::SyncPoint blocked_;
-    bool opened_ = false;
-
-public:
-    explicit GpuGate(rhi::detail::DeviceImpl& impl)
-        : impl_(impl) {
-        const VkSemaphoreTypeCreateInfo type{.sType = VK_STRUCTURE_TYPE_SEMAPHORE_TYPE_CREATE_INFO,
-                                             .semaphoreType = VK_SEMAPHORE_TYPE_TIMELINE};
-        const VkSemaphoreCreateInfo info{.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO, .pNext = &type};
-        REQUIRE(impl_.vk.vkCreateSemaphore(impl_.device, &info, nullptr, &semaphore_) == VK_SUCCESS);
-        const VkSemaphoreSubmitInfo wait{.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
-                                         .semaphore = semaphore_,
-                                         .value = 1,
-                                         .stageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT};
-        auto submitted = impl_.submit(rhi::QueueType::Graphics, {}, std::span{&wait, 1});
-        REQUIRE(submitted.has_value());
-        blocked_ = *submitted;
-    }
-    GpuGate(const GpuGate&) = delete;
-    GpuGate& operator=(const GpuGate&) = delete;
-    ~GpuGate() {
-        if (!opened_) {
-            open();
-        }
-        impl_.retire({.type = VK_OBJECT_TYPE_SEMAPHORE, .handle = reinterpret_cast<uint64_t>(semaphore_)});
-    }
-
-    [[nodiscard]] rhi::SyncPoint blocked() const noexcept { return blocked_; }
-    void open() {
-        const VkSemaphoreSignalInfo signal{
-            .sType = VK_STRUCTURE_TYPE_SEMAPHORE_SIGNAL_INFO, .semaphore = semaphore_, .value = 1};
-        CHECK(impl_.vk.vkSignalSemaphore(impl_.device, &signal) == VK_SUCCESS);
-        opened_ = true;
-    }
-};
-
-} // namespace
+using bytee::tests::GpuGate;
+using bytee::tests::live_allocations;
 
 TEST_CASE_FIXTURE(DeviceFixture, "Resources are destroyed immediately when the GPU is idle") {
     rhi::detail::DeviceImpl& impl = *rhi::get_impl(device);
@@ -128,4 +83,25 @@ TEST_CASE_FIXTURE(GpuFixture, "Destroying a device frees pending resources witho
         gate.open();
     }
     *device = rhi::Device{}; // must not report 'pending' as a leak (the fixture fails on errors)
+}
+
+TEST_CASE_FIXTURE(DeviceFixture, "A released pipeline lives until the GPU has finished in-flight work") {
+    rhi::detail::DeviceImpl& impl = *rhi::get_impl(device);
+    static constexpr std::array k_formats{rhi::Format::RGBA8Unorm};
+    auto pipeline = device.create_graphics_pipeline({.vertex = {.spirv = shaders::triangle_vert},
+                                                     .fragment = {.spirv = shaders::color_frag},
+                                                     .color_formats = k_formats,
+                                                     .debug_name = "deferred pipeline"});
+    REQUIRE_MESSAGE(pipeline.has_value(), bytee::tests::error_text(pipeline));
+    const rhi::GraphicsPipelineHandle handle = *pipeline;
+
+    GpuGate gate{impl};
+    *pipeline = rhi::GraphicsPipeline{}; // released while the GPU is provably busy
+    CHECK(impl.graphics_pipelines.contains(handle));
+    CHECK(impl.live_objects.count() == 1);
+
+    gate.open();
+    REQUIRE(device.wait(gate.blocked()).has_value());
+    CHECK_FALSE(impl.graphics_pipelines.contains(handle));
+    CHECK(impl.live_objects.count() == 0);
 }

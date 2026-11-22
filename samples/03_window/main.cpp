@@ -2,8 +2,8 @@
 //   03_window [--frames N]   (exit after N frames, e.g. for automated runs)
 
 #include "sample_window.hpp"
-#include "triangle.frag.hpp"
 #include "triangle.vert.hpp"
+#include "vertex_color.frag.hpp"
 
 #include <bytee/core/log.hpp>
 #include <bytee/render/rhi/instance_factory.hpp>
@@ -52,9 +52,7 @@ core::Result<void> record_frame(rhi::Device& device, rhi::Swapchain& swapchain, 
     const rhi::TextureBarrier to_present{
         .texture = frame.texture, .before = rhi::ResourceState::ColorAttachment, .after = rhi::ResourceState::Present};
     commands->barrier({}, std::span{&to_present, 1});
-    if (auto presented = device.present(swapchain, std::move(*commands)); !presented) {
-        return std::move(presented).error();
-    }
+    BYTEE_TRY(device.present(swapchain, std::move(*commands)));
     return {};
 }
 
@@ -92,7 +90,7 @@ int main(int argc, char** argv) {
     const std::array color_formats{swapchain->format()};
     core::Result<rhi::GraphicsPipeline> pipeline = device->create_graphics_pipeline({
         .vertex = {.spirv = shaders::triangle_vert},
-        .fragment = {.spirv = shaders::triangle_frag},
+        .fragment = {.spirv = shaders::vertex_color_frag},
         .color_formats = color_formats,
         .debug_name = "triangle",
     });
@@ -113,7 +111,8 @@ int main(int argc, char** argv) {
             return 1;
         }
         if (!frame->is_valid()) {
-            continue; // minimized
+            window->wait_events(); // minimized: sleep until something happens instead of spinning
+            continue;
         }
         if (auto recorded = record_frame(*device, *swapchain, *pipeline, *frame); !recorded) {
             logger.error("frame failed: {}", recorded.error().message());

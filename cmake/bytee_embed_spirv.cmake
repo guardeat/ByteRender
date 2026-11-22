@@ -1,5 +1,5 @@
-# Writes a SPIR-V binary as a C++ header: inline constexpr std::array<std::uint32_t, N> shaders::<NAME>.
-#   cmake -DINPUT=<file.spv> -DOUTPUT=<file.hpp> -DNAME=<identifier> -P bytee_embed_spirv.cmake
+# Writes a SPIR-V binary as a C++ header: inline constexpr std::array<std::uint32_t, N> <NAMESPACE>::<NAME>.
+#   cmake -DINPUT=<file.spv> -DOUTPUT=<file.hpp> -DNAME=<identifier> -DNAMESPACE=<namespace> -P bytee_embed_spirv.cmake
 
 file(READ "${INPUT}" hex HEX)
 string(LENGTH "${hex}" hex_length)
@@ -32,10 +32,10 @@ file(WRITE "${OUTPUT}" "// Generated from ${INPUT} by bytee_embed_spirv.cmake. D
 #include <array>
 #include <cstdint>
 
-namespace shaders {
+namespace ${NAMESPACE} {
 
 inline constexpr std::array<std::uint32_t, ${word_count}> ${NAME}{${words}
 };
 
-} // namespace shaders
+} // namespace ${NAMESPACE}
 ")

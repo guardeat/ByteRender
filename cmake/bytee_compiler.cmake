@@ -2,6 +2,14 @@
 
 include(CheckIPOSupported)
 
+# Checked once per configure (each check compiles a test project).
+if(BYTEE_LTO)
+    check_ipo_supported(RESULT bytee_ipo_supported OUTPUT bytee_ipo_output LANGUAGES CXX)
+    if(NOT bytee_ipo_supported)
+        message(FATAL_ERROR "BYTEE_LTO=ON but LTO is not supported: ${bytee_ipo_output}")
+    endif()
+endif()
+
 # C++20, warnings (as errors unless disabled) and LTO for any Bytee-owned target (libraries, samples, tests).
 function(bytee_configure_target target)
     target_compile_features(${target} PUBLIC cxx_std_20)
@@ -27,15 +35,10 @@ function(bytee_configure_target target)
     endif()
 
     if(BYTEE_LTO)
-        check_ipo_supported(RESULT ipo_supported OUTPUT ipo_output LANGUAGES CXX)
-        if(ipo_supported)
-            set_target_properties(${target} PROPERTIES
-                INTERPROCEDURAL_OPTIMIZATION_RELEASE ON
-                INTERPROCEDURAL_OPTIMIZATION_RELWITHDEBINFO ON
-            )
-        else()
-            message(FATAL_ERROR "BYTEE_LTO=ON but LTO is not supported: ${ipo_output}")
-        endif()
+        set_target_properties(${target} PROPERTIES
+            INTERPROCEDURAL_OPTIMIZATION_RELEASE ON
+            INTERPROCEDURAL_OPTIMIZATION_RELWITHDEBINFO ON
+        )
     endif()
 endfunction()
 

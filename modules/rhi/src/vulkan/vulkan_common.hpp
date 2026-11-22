@@ -7,7 +7,9 @@
 
 #include <volk.h>
 
+#include <concepts>
 #include <cstdint>
+#include <span>
 #include <string_view>
 #include <type_traits>
 #include <vector>
@@ -17,6 +19,8 @@ namespace bytee::render::rhi::vulkan {
 inline constexpr uint32_t k_required_api_version = VK_API_VERSION_1_3;
 
 [[nodiscard]] std::string_view to_string(VkResult result) noexcept;
+
+[[nodiscard]] bool has_extension(std::span<const VkExtensionProperties> extensions, std::string_view name) noexcept;
 [[nodiscard]] core::ErrorCode to_error_code(VkResult result) noexcept;
 
 // Error for a failed Vulkan call, recording the caller's location in Debug:
@@ -47,6 +51,7 @@ void set_debug_name(VkDevice device, VkObjectType type, Handle_ handle, std::str
 //   auto gpus     = enumerate<VkPhysicalDevice>(vkEnumeratePhysicalDevices, instance);
 //   auto families = enumerate<VkQueueFamilyProperties>(vkGetPhysicalDeviceQueueFamilyProperties, gpu);
 template <class Item_, class Function_, class... Args_>
+    requires std::invocable<Function_&, Args_..., uint32_t*, Item_*>
 [[nodiscard]] std::vector<Item_> enumerate(Function_ function, Args_... args) {
     std::vector<Item_> items;
     uint32_t count = 0;

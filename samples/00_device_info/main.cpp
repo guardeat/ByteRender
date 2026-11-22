@@ -40,19 +40,19 @@ int main() {
     }
     logger.info("device created on {} (presentation: {}, bindless capacity: {} textures, {} samplers)",
                 device->adapter().name, device->is_presentation_supported() ? "yes" : "no",
-                device->limits().max_textures, device->limits().max_samplers);
+                device->capacities().max_textures, device->capacities().max_samplers);
 
     // Resources are RAII owners; they are retired (destroyed once the GPU is done) when they go out of scope.
     core::Result<rhi::Buffer> buffer = device->create_buffer({
         .size = 64 * 1024,
-        .usage = rhi::BufferUsage::Storage | rhi::BufferUsage::TransferDst,
+        .usage = rhi::BufferUsage::Storage | rhi::BufferUsage::CopyDst,
         .debug_name = "example buffer",
     });
     core::Result<rhi::Texture> texture = device->create_texture({
         .extent = {.width = 1024, .height = 1024},
         .mip_levels = rhi::full_mip_count({.width = 1024, .height = 1024}),
         .format = rhi::Format::RGBA8Srgb,
-        .usage = rhi::TextureUsage::Sampled | rhi::TextureUsage::TransferDst,
+        .usage = rhi::TextureUsage::Sampled | rhi::TextureUsage::CopyDst,
         .debug_name = "example texture",
     });
     if (!buffer || !texture) {

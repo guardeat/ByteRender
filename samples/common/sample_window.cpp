@@ -47,6 +47,10 @@ void SampleWindow::poll_events() const {
     glfwPollEvents();
 }
 
+void SampleWindow::wait_events() const {
+    glfwWaitEvents();
+}
+
 core::Result<SampleWindow> create_sample_window(std::string_view title, core::Extent2D size) {
     if (glfwInit() != GLFW_TRUE) {
         return core::make_error(core::ErrorCode::InitializationFailed, "GLFW could not be initialized");
