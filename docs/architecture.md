@@ -335,6 +335,10 @@ list is a programmer error.
 - **Transient pool**: transients survive `reset()` and are reused by a later frame with the same shape and usage;
   entries unused for `k_transient_keep_frames` (4) frames are released (deferred destruction). Reuse across frames is
   safe on one queue: a transient's first barrier (from `Undefined`) waits for all earlier work.
+- **Internals** (`modules/render_graph/src`, hidden behind `RenderGraph`'s pointer to `detail::GraphState`), one job
+  each: `GraphResources` and `GraphPasses` hold the frame's declarations (names in one `NameTable`); `GraphCompiler`
+  turns them into a `GraphSchedule` (culling, validation, usages, barriers); `TransientPool` keeps transients across
+  frames; `GraphBindings` maps refs to GPU handles and `BarrierBatch` records barriers; `graphviz.cpp` writes the dump.
 - Later: transient memory aliasing, async compute, multi-queue.
 
 ## 13. Shaders and pipelines
