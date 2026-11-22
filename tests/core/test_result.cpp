@@ -1,3 +1,5 @@
+#include "support/source_path.hpp"
+
 #include <bytee/core/result.hpp>
 
 #include <doctest/doctest.h>
@@ -68,7 +70,7 @@ TEST_CASE("Error locations are recorded only when enabled") {
 #if defined(BYTEE_ENABLE_ERROR_LOCATIONS)
     CHECK(error.location().line() == expected_line);
     // Paths are relative to the source tree (-fmacro-prefix-map), never absolute.
-    CHECK(std::string_view{error.location().file_name()} == "tests/core/test_result.cpp");
+    CHECK(bytee::tests::generic_path(error.location().file_name()) == "tests/core/test_result.cpp");
 #else
     static_cast<void>(expected_line);
     CHECK(error.location().line() == 0);

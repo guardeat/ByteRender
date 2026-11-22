@@ -42,7 +42,11 @@ Rendering features are validated **headless first** (image tests), presentation 
 ## Phase 3 — Usability & portability
 - [x] **Step 17 — Debug tooling.** GPU markers/labels (with step 16), ImGui integration sample.
 - [ ] **Step 18 — Windows & Linux.** Builds on all platforms; CI matrix with headless GPU tests (lavapipe).
-  Includes: MSVC `asan` preset (drop `/RTC1`, no incremental linking), Linux window platforms in samples/common (03_window, 04_imgui, 05_fps).
+  Done, verified on macOS only: Linux surfaces (Xlib / XCB / Wayland, no window-system headers), Linux window
+  platforms in samples/common (03-05), MSVC support (relative source paths via `/d1trimfile`, no abort dialogs,
+  `asan` preset without `/RTC1` and incremental linking), platform-independent path checks in tests.
+  Open: verify on Windows and Linux; CI (GitHub Actions workflow drafted: Linux GCC + Clang/ASan with lavapipe,
+  Windows MSVC debug + ASan without GPU, macOS with MoltenVK; pushing it needs the `workflow` token scope).
 - [ ] **Step 19 — Packaging.** `install()` + CMake package config: `find_package(Bytee)` / FetchContent.
 
 ## Backlog

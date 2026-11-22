@@ -57,7 +57,8 @@ function(bytee_fetch_vulkan)
         VMA_VULKAN_VERSION=1003000
     )
     target_link_libraries(bytee_vulkan_dependencies INTERFACE ${CMAKE_DL_LIBS})
-    # Window-system surface types and functions for this platform (Linux: roadmap step 18).
+    # Window-system surface types and functions for this platform. Linux needs none: its surfaces are created in
+    # vulkan_surface_linux.cpp without the X11 / XCB / Wayland headers.
     if(APPLE)
         target_compile_definitions(bytee_vulkan_dependencies INTERFACE VK_USE_PLATFORM_METAL_EXT)
     elseif(WIN32)

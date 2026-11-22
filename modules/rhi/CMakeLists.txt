@@ -19,6 +19,9 @@ if(BYTEE_RHI_BACKEND STREQUAL "Vulkan")
         src/vulkan/vulkan_vma.cpp
         src/vulkan/vulkan_volk.cpp
     )
+    if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+        list(APPEND backend_sources src/vulkan/vulkan_surface_linux.cpp)
+    endif()
     set(backend_libraries bytee_vulkan_dependencies)
     # volk and VMA implementations are third-party code: compile them without Bytee's warning flags.
     if(MSVC)

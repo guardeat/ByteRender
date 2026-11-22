@@ -14,13 +14,15 @@ add_subdirectory(00_device_info)
 add_subdirectory(01_headless_clear)
 add_subdirectory(02_triangle)
 
-# Windowed samples: GLFW + a small helper library (samples/common). Linux support: roadmap step 18.
-if(APPLE OR WIN32)
+# Windowed samples: GLFW + a small helper library (samples/common).
+if(APPLE OR WIN32 OR CMAKE_SYSTEM_NAME STREQUAL "Linux")
     bytee_fetch_glfw()
     if(APPLE)
         set(native_window_source common/native_window_macos.mm) # OBJCXX is enabled by the top-level CMakeLists
-    else()
+    elseif(WIN32)
         set(native_window_source common/native_window_win32.cpp)
+    else()
+        set(native_window_source common/native_window_linux.cpp) # X11 and Wayland, chosen by GLFW at run time
     endif()
     add_library(bytee_sample_common STATIC common/sample_window.cpp ${native_window_source})
     target_include_directories(bytee_sample_common PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/common")

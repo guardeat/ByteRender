@@ -291,8 +291,8 @@ list is a programmer error.
 - Headless image tests (render → read back → compare) validate every rendering feature, also in CI without a GPU
   display (Linux + lavapipe).
 - Presentation is an add-on: `Device::create_swapchain({.window = NativeWindow, .extent})`. `NativeWindow` describes a
-  window without window-system types (Metal layer, Win32, Xlib/Xcb/Wayland — Linux in step 18 — or **Headless**, which
-  makes swapchains testable without a display). The engine never owns windows; samples use GLFW via `samples/common`.
+  window without window-system types (Metal layer, Win32, Xlib/Xcb/Wayland — created without window-system
+  headers — or **Headless**, which makes swapchains testable without a display). The engine never owns windows; samples use GLFW via `samples/common`.
 - Frame loop: `swapchain.acquire()` (throttles to `frames_in_flight`, default 2; recreates on resize / out-of-date;
   returns an invalid frame for a zero-size window) → record (image: Undefined → … → `Present`) →
   `device.present(swapchain, std::move(list))` → `SyncPoint`. Swapchain images are external `TextureHandle`s (views
@@ -411,7 +411,7 @@ list is a programmer error.
 | Vulkan-Headers (pinned) | Vulkan backend | private |
 | volk (pinned) | Vulkan function loading | private |
 | Vulkan Memory Allocator (pinned) | GPU memory | private |
-| GLFW (pinned) | samples only | — |
+| GLFW (pinned) | samples only (Linux: X11 / Wayland development packages) | — |
 | Dear ImGui 1.91.9b (pinned) | samples only (debug UI) | — |
 | doctest (pinned) | tests only | — |
 

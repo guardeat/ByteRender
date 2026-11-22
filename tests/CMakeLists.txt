@@ -108,7 +108,7 @@ function(bytee_add_death_test name source library expected)
 endfunction()
 
 bytee_add_death_test(bytee_assert_failure death/assert_failure.cpp bytee::core
-    "tests/death/assert_failure.cpp:10: in 'int main[(][)]'.*condition: index < size.*message:   index 7 out of range [[]0, 4[)]")
+    "tests[/\\\\]death[/\\\\]assert_failure.cpp:10: in '[^']*main[^']*'.*condition: index < size.*message:   index 7 out of range [[]0, 4[)]")
 bytee_add_death_test(bytee_pool_stale_handle death/pool_stale_handle.cpp bytee::core
     "Pool::get: stale or invalid handle [(]index 0, generation 1[)]")
 

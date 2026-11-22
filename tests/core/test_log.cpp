@@ -1,4 +1,5 @@
 #include "support/capture_log_sink.hpp"
+#include "support/source_path.hpp"
 
 #include <bytee/core/log.hpp>
 
@@ -36,7 +37,7 @@ TEST_CASE("Logger captures the caller's source location as a relative path") {
     const auto entries = sink.entries();
     REQUIRE(entries.size() == 1);
     CHECK(entries[0].line == expected_line);
-    CHECK(entries[0].file == "tests/core/test_log.cpp");
+    CHECK(bytee::tests::generic_path(entries[0].file) == "tests/core/test_log.cpp");
 }
 
 TEST_CASE("Calls below the compile-time level compile to nothing") {

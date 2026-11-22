@@ -26,9 +26,20 @@ vulkaninfo --summary                              # should list your GPU
 Homebrew's validation-layer manifest names its library without a path, which the loader cannot resolve; the script
 rewrites it to the absolute path. Without validation Bytee still runs (it logs a warning and continues).
 
-### Windows / Linux
-Install the [LunarG Vulkan SDK](https://vulkan.lunarg.com/sdk/home), or on Linux your distribution's Vulkan loader,
-validation layers and glslang packages.
+### Windows
+Install the [LunarG Vulkan SDK](https://vulkan.lunarg.com/sdk/home) and build from a Visual Studio developer prompt
+(MSVC). Windows and Linux support is new and not yet verified on those systems (macOS is the tested platform).
+
+### Linux
+Install the Vulkan SDK, or your distribution's packages. Ubuntu 24.04:
+
+```sh
+sudo apt install cmake ninja-build glslang-tools libvulkan-dev vulkan-validationlayers vulkan-tools \
+  libx11-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev libwayland-dev libxkbcommon-dev wayland-protocols
+```
+
+Without a GPU, Mesa's software driver (`mesa-vulkan-drivers`, lavapipe) runs everything, including the GPU tests. The
+X11 / Wayland packages are only needed for the windowed samples (GLFW).
 
 ## Build
 

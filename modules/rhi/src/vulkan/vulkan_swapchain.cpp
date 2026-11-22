@@ -2,6 +2,9 @@
 
 #include "vulkan/vulkan_convert.hpp"
 #include "vulkan/vulkan_device.hpp"
+#if defined(__linux__)
+    #include "vulkan/vulkan_surface_linux.hpp"
+#endif
 
 #include <bytee/core/assert.hpp>
 
@@ -91,7 +94,11 @@ core::Result<VkSurfaceKHR> create_surface(VkInstance instance, const NativeWindo
         break;
     case NativeWindow::Platform::Xlib:
     case NativeWindow::Platform::Xcb:
-    case NativeWindow::Platform::Wayland: break; // roadmap step 18
+    case NativeWindow::Platform::Wayland:
+#if defined(__linux__)
+        result = vulkan::create_linux_surface(instance, window, surface);
+#endif
+        break;
     }
     if (result == VK_ERROR_EXTENSION_NOT_PRESENT) {
         return core::make_error(core::ErrorCode::NotSupported,

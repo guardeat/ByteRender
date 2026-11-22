@@ -1,5 +1,6 @@
 // White-box tests of Vulkan backend helpers. No GPU needed (fake enumeration functions).
 
+#include "support/source_path.hpp"
 #include "vulkan/vulkan_common.hpp"
 
 #include <doctest/doctest.h>
@@ -70,7 +71,8 @@ TEST_CASE("VkResult maps to error codes and names") {
     CHECK(error.code() == ErrorCode::DeviceLost);
     CHECK(error.message() == "vkQueueSubmit2 failed: VK_ERROR_DEVICE_LOST");
 #if defined(BYTEE_ENABLE_ERROR_LOCATIONS)
-    CHECK(std::string_view{error.location().file_name()} == "tests/vulkan/test_vulkan_common.cpp"); // the caller
+    CHECK(bytee::tests::generic_path(error.location().file_name()) ==
+          "tests/vulkan/test_vulkan_common.cpp"); // the caller
 #endif
 }
 
