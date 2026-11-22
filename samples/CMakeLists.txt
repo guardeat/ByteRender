@@ -41,4 +41,5 @@ if(APPLE OR WIN32)
     bytee_configure_target(bytee_sample_imgui)
 
     add_subdirectory(04_imgui)
+    add_subdirectory(05_fps)
 endif()
