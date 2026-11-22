@@ -78,6 +78,53 @@ struct TextureRecord {
 
 [[nodiscard]] uint64_t to_timeout_nanoseconds(std::chrono::nanoseconds timeout) noexcept;
 
+// Every live resource of a device. Lookups are lock-free (pool addresses are stable); insert/remove take `mutex`.
+struct ResourcePools {
+    std::mutex mutex;
+    core::Pool<BufferRecord, BufferTag> buffers;
+    core::Pool<TextureRecord, TextureTag> textures;
+    core::Pool<PipelineRecord, GraphicsPipelineTag> graphics_pipelines;
+    core::Pool<PipelineRecord, ComputePipelineTag> compute_pipelines;
+    core::Pool<SamplerRecord, SamplerTag> samplers;
+
+    explicit ResourcePools(const DeviceCapacities& capacities)
+        : buffers(capacities.max_buffers)
+        , textures(capacities.max_textures)
+        , graphics_pipelines(capacities.max_graphics_pipelines)
+        , compute_pipelines(capacities.max_compute_pipelines)
+        , samplers(capacities.max_samplers) {}
+};
+
+// Released objects waiting for the GPU to finish with them (deferred destruction), one list per kind.
+struct RetireLists {
+    detail::RetireList<RetiredObject, k_queue_count> objects; // backend-internal Vulkan objects
+    detail::RetireList<BufferHandle, k_queue_count> buffers;
+    detail::RetireList<TextureHandle, k_queue_count> textures;
+    detail::RetireList<GraphicsPipelineHandle, k_queue_count> graphics_pipelines;
+    detail::RetireList<ComputePipelineHandle, k_queue_count> compute_pipelines;
+    detail::RetireList<SamplerHandle, k_queue_count> samplers;
+
+    // Calls `function(list)` for every list; backend-internal objects last (they may belong to the resources above).
+    template <class Function_>
+    void for_each(Function_&& function) {
+        function(buffers);
+        function(textures);
+        function(graphics_pipelines);
+        function(compute_pipelines);
+        function(samplers);
+        function(objects);
+    }
+};
+
+// The bindless descriptor heap: one update-after-bind set per resource kind (sampled textures, storage textures,
+// samplers), written at the resource's pool index.
+struct BindlessHeap {
+    std::array<VkDescriptorSetLayout, k_bindless_set_count> layouts{};
+    std::array<VkDescriptorPool, k_bindless_set_count> pools{};
+    std::array<VkDescriptorSet, k_bindless_set_count> sets{};
+    std::mutex mutex; // vkUpdateDescriptorSets needs external synchronization of the sets
+};
+
 } // namespace vulkan
 
 namespace detail {
@@ -85,6 +132,16 @@ struct DeviceImpl;
 } // namespace detail
 
 namespace vulkan {
+
+// Command contexts of a device. All are owned by `all`; each is in exactly one of: available, pending (submitted,
+// maybe still executing; in submission order), or in use by a CommandList.
+struct CommandContextPool {
+    std::mutex mutex;
+    std::vector<std::unique_ptr<detail::CommandContext>> all;
+    std::vector<detail::CommandContext*> available;
+    std::deque<detail::CommandContext*> pending;
+    std::atomic<uint32_t> live_command_lists{0};
+};
 
 // Largest descriptor count <= min(requested, per_stage_limit) whose bindless set layout the GPU confirms
 // (vkGetDescriptorSetLayoutSupport), found by binary search.
@@ -122,12 +179,9 @@ struct BYTEE_HIDDEN detail::DeviceImpl {
     bool debug_labels = false; // VK_EXT_debug_utils is enabled on the instance (validation on)
     VmaAllocator allocator = VK_NULL_HANDLE;
     VkPhysicalDeviceLimits device_limits{};
-    // One layout shared by every pipeline: the bindless descriptor set (set 0) + push constants for all stages.
+    // One layout shared by every pipeline: the bindless sets + push constants for all stages.
     VkPipelineLayout pipeline_layout = VK_NULL_HANDLE;
-    std::array<VkDescriptorSetLayout, vulkan::k_bindless_set_count> bindless_layouts{};
-    std::array<VkDescriptorPool, vulkan::k_bindless_set_count> bindless_pools{};
-    std::array<VkDescriptorSet, vulkan::k_bindless_set_count> bindless_sets{};
-    std::mutex bindless_mutex;   // vkUpdateDescriptorSets needs external synchronization of the sets
+    vulkan::BindlessHeap bindless;
     DeviceCapacities capacities; // effective (bindless capacities adapted to what the GPU confirms)
 
     // Indexed by QueueType. Destroyed explicitly before the VkDevice.
@@ -136,29 +190,10 @@ struct BYTEE_HIDDEN detail::DeviceImpl {
 
     std::atomic<bool> lost{false}; // sticky: set by the first VK_ERROR_DEVICE_LOST
 
-    // Resources. Lookups are lock-free (pool addresses are stable); insert/remove take resources_mutex.
-    std::mutex resources_mutex;
-    core::Pool<vulkan::BufferRecord, BufferTag> buffers;
-    core::Pool<vulkan::TextureRecord, TextureTag> textures;
-    core::Pool<vulkan::PipelineRecord, GraphicsPipelineTag> graphics_pipelines;
-    core::Pool<vulkan::PipelineRecord, ComputePipelineTag> compute_pipelines;
-    core::Pool<vulkan::SamplerRecord, SamplerTag> samplers;
-
-    detail::RetireList<vulkan::RetiredObject, vulkan::k_queue_count> retired_objects;
-    detail::RetireList<BufferHandle, vulkan::k_queue_count> retired_buffers;
-    detail::RetireList<TextureHandle, vulkan::k_queue_count> retired_textures;
-    detail::RetireList<GraphicsPipelineHandle, vulkan::k_queue_count> retired_graphics_pipelines;
-    detail::RetireList<ComputePipelineHandle, vulkan::k_queue_count> retired_compute_pipelines;
-    detail::RetireList<SamplerHandle, vulkan::k_queue_count> retired_samplers;
+    vulkan::ResourcePools resources;
+    vulkan::RetireLists retired;
     detail::LiveObjectTracker live_objects; // child resources, for leak reports
-
-    // Command contexts. All are owned by `contexts`; each is in exactly one of: free, pending (submitted, maybe still
-    // executing; in submission order), or in use by a CommandList.
-    std::mutex contexts_mutex;
-    std::vector<std::unique_ptr<detail::CommandContext>> contexts;
-    std::vector<detail::CommandContext*> free_contexts;
-    std::deque<detail::CommandContext*> pending_contexts;
-    std::atomic<uint32_t> live_command_lists{0};
+    vulkan::CommandContextPool contexts;
 
     explicit DeviceImpl(const DeviceCapacities& requested);
     ~DeviceImpl();

@@ -96,19 +96,20 @@ detail::CommandContext* get_context(const CommandList& list) noexcept {
 core::Result<detail::CommandContext*> detail::DeviceImpl::acquire_context(QueueType queue_type) {
     detail::CommandContext* context = nullptr;
     {
-        const std::scoped_lock lock{contexts_mutex};
+        const std::scoped_lock lock{contexts.mutex};
         // Pending contexts are in submission order: recycle every one whose work has completed.
-        while (!pending_contexts.empty() &&
-               pending_contexts.front()->last_submission <= queue(pending_contexts.front()->queue).cached_completed()) {
-            free_contexts.push_back(pending_contexts.front());
-            pending_contexts.pop_front();
+        while (!contexts.pending.empty() &&
+               contexts.pending.front()->last_submission <= queue(contexts.pending.front()->queue).cached_completed()) {
+            contexts.available.push_back(contexts.pending.front());
+            contexts.pending.pop_front();
         }
-        const auto match = std::ranges::find_if(free_contexts, [queue_type](const detail::CommandContext* candidate) {
-            return candidate->queue == queue_type;
-        });
-        if (match != free_contexts.end()) {
+        const auto match =
+            std::ranges::find_if(contexts.available, [queue_type](const detail::CommandContext* candidate) {
+                return candidate->queue == queue_type;
+            });
+        if (match != contexts.available.end()) {
             context = *match;
-            free_contexts.erase(match);
+            contexts.available.erase(match);
         }
     }
 
@@ -142,10 +143,10 @@ core::Result<detail::CommandContext*> detail::DeviceImpl::acquire_context(QueueT
             return fail(result, "vkAllocateCommandBuffers");
         }
         context = created.get();
-        const std::scoped_lock lock{contexts_mutex};
+        const std::scoped_lock lock{contexts.mutex};
         vulkan::set_debug_name(device, VK_OBJECT_TYPE_COMMAND_POOL, created->pool,
-                               std::format("{} command pool {}", debug_name, contexts.size()));
-        contexts.push_back(std::move(created));
+                               std::format("{} command pool {}", debug_name, contexts.all.size()));
+        contexts.all.push_back(std::move(created));
     }
 
     context->in_render_pass = false;
@@ -161,30 +162,30 @@ core::Result<detail::CommandContext*> detail::DeviceImpl::acquire_context(QueueT
     // The bindless sets are bound once per list; they stay bound across pipeline changes (one shared layout).
     for (const VkPipelineBindPoint bind_point : {VK_PIPELINE_BIND_POINT_GRAPHICS, VK_PIPELINE_BIND_POINT_COMPUTE}) {
         vk.vkCmdBindDescriptorSets(context->buffer, bind_point, pipeline_layout, 0,
-                                   static_cast<uint32_t>(bindless_sets.size()), bindless_sets.data(), 0, nullptr);
+                                   static_cast<uint32_t>(bindless.sets.size()), bindless.sets.data(), 0, nullptr);
     }
     return context;
 }
 
 void detail::DeviceImpl::discard_context(detail::CommandContext* context) noexcept {
-    const std::scoped_lock lock{contexts_mutex};
-    free_contexts.push_back(context); // reset when it is acquired again
+    const std::scoped_lock lock{contexts.mutex};
+    contexts.available.push_back(context); // reset when it is acquired again
 }
 
 void detail::DeviceImpl::retire_context(detail::CommandContext* context, uint64_t value) noexcept {
     context->last_submission = value;
-    const std::scoped_lock lock{contexts_mutex};
-    pending_contexts.push_back(context);
+    const std::scoped_lock lock{contexts.mutex};
+    contexts.pending.push_back(context);
 }
 
 void detail::DeviceImpl::destroy_contexts() noexcept {
-    const std::scoped_lock lock{contexts_mutex};
-    for (const std::unique_ptr<detail::CommandContext>& context : contexts) {
+    const std::scoped_lock lock{contexts.mutex};
+    for (const std::unique_ptr<detail::CommandContext>& context : contexts.all) {
         vk.vkDestroyCommandPool(device, context->pool, nullptr); // frees its command buffer too
     }
-    contexts.clear();
-    free_contexts.clear();
-    pending_contexts.clear();
+    contexts.all.clear();
+    contexts.available.clear();
+    contexts.pending.clear();
 }
 
 // ----------------------------------------------------------------------------------------------------------------
@@ -193,7 +194,7 @@ void detail::DeviceImpl::destroy_contexts() noexcept {
 CommandList::~CommandList() {
     if (context_ != nullptr) {
         device_->discard_context(context_);
-        device_->live_command_lists.fetch_sub(1, std::memory_order_acq_rel);
+        device_->contexts.live_command_lists.fetch_sub(1, std::memory_order_acq_rel);
     }
 }
 
@@ -201,7 +202,7 @@ CommandList& CommandList::operator=(CommandList&& other) noexcept {
     if (this != &other) {
         if (context_ != nullptr) {
             device_->discard_context(context_);
-            device_->live_command_lists.fetch_sub(1, std::memory_order_acq_rel);
+            device_->contexts.live_command_lists.fetch_sub(1, std::memory_order_acq_rel);
         }
         device_ = std::exchange(other.device_, nullptr);
         context_ = std::exchange(other.context_, nullptr);
@@ -236,7 +237,7 @@ void CommandList::barrier(std::span<const BufferBarrier> buffers, std::span<cons
                 .dstAccessMask = after.access,
                 .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
                 .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-                .buffer = impl.buffers.get(barrier.buffer).buffer,
+                .buffer = impl.resources.buffers.get(barrier.buffer).buffer,
                 .offset = 0,
                 .size = VK_WHOLE_SIZE,
             };
@@ -248,7 +249,7 @@ void CommandList::barrier(std::span<const BufferBarrier> buffers, std::span<cons
                          "texture barrier {} -> {}: not a texture state", to_string(barrier.before),
                          to_string(barrier.after));
             BYTEE_ASSERT(barrier.after != ResourceState::Undefined, "textures cannot transition to Undefined");
-            const vulkan::TextureRecord& record = impl.textures.get(barrier.texture);
+            const vulkan::TextureRecord& record = impl.resources.textures.get(barrier.texture);
             const vulkan::StateScope before = vulkan::to_state_scope(barrier.before);
             const vulkan::StateScope after = vulkan::to_state_scope(barrier.after);
             const TextureSubresources& range = barrier.subresources;
@@ -290,7 +291,7 @@ void CommandList::barrier(std::span<const BufferBarrier> buffers, std::span<cons
 void CommandList::fill_buffer(BufferHandle dst, uint64_t offset, uint64_t size, uint32_t value) {
     BYTEE_ASSERT(is_valid(), "CommandList is empty");
     BYTEE_ASSERT(!context_->in_render_pass, "not allowed inside a render pass");
-    const vulkan::BufferRecord& record = device_->buffers.get(dst);
+    const vulkan::BufferRecord& record = device_->resources.buffers.get(dst);
     BYTEE_ASSERT(offset % 4 == 0 && size % 4 == 0, "fill_buffer: offset and size must be multiples of 4");
     BYTEE_ASSERT(offset <= record.info.size && size <= record.info.size - offset,
                  "fill_buffer: {} bytes at {} exceed buffer '{}' ({} bytes)", size, offset, record.info.debug_name,
@@ -302,8 +303,8 @@ void CommandList::copy_buffer(BufferHandle src, uint64_t src_offset, BufferHandl
                               uint64_t size) {
     BYTEE_ASSERT(is_valid(), "CommandList is empty");
     BYTEE_ASSERT(!context_->in_render_pass, "copies are not allowed inside a render pass");
-    const vulkan::BufferRecord& source = device_->buffers.get(src);
-    const vulkan::BufferRecord& destination = device_->buffers.get(dst);
+    const vulkan::BufferRecord& source = device_->resources.buffers.get(src);
+    const vulkan::BufferRecord& destination = device_->resources.buffers.get(dst);
     BYTEE_ASSERT(src_offset <= source.info.size && size <= source.info.size - src_offset,
                  "copy_buffer: source range exceeds buffer '{}'", source.info.debug_name);
     BYTEE_ASSERT(dst_offset <= destination.info.size && size <= destination.info.size - dst_offset,
@@ -322,8 +323,8 @@ void CommandList::copy_buffer_to_texture(BufferHandle src, uint64_t src_offset, 
                                          const TextureRegion& region) {
     BYTEE_ASSERT(is_valid(), "CommandList is empty");
     BYTEE_ASSERT(!context_->in_render_pass, "copies are not allowed inside a render pass");
-    const vulkan::BufferRecord& source = device_->buffers.get(src);
-    const vulkan::TextureRecord& destination = device_->textures.get(dst);
+    const vulkan::BufferRecord& source = device_->resources.buffers.get(src);
+    const vulkan::TextureRecord& destination = device_->resources.textures.get(dst);
     const core::Extent3D extent = resolve_extent(destination.info, region);
     BYTEE_ASSERT(region_fits(destination.info, region, extent), "copy_buffer_to_texture: region outside texture '{}'",
                  destination.info.debug_name);
@@ -344,8 +345,8 @@ void CommandList::copy_texture_to_buffer(TextureHandle src, const TextureRegion&
                                          uint64_t dst_offset) {
     BYTEE_ASSERT(is_valid(), "CommandList is empty");
     BYTEE_ASSERT(!context_->in_render_pass, "copies are not allowed inside a render pass");
-    const vulkan::TextureRecord& source = device_->textures.get(src);
-    const vulkan::BufferRecord& destination = device_->buffers.get(dst);
+    const vulkan::TextureRecord& source = device_->resources.textures.get(src);
+    const vulkan::BufferRecord& destination = device_->resources.buffers.get(dst);
     const core::Extent3D extent = resolve_extent(source.info, region);
     BYTEE_ASSERT(region_fits(source.info, region, extent), "copy_texture_to_buffer: region outside texture '{}'",
                  source.info.debug_name);
@@ -395,7 +396,7 @@ void CommandList::begin_render_pass(const RenderPassDesc& desc) {
     std::array<VkRenderingAttachmentInfo, k_max_color_attachments> colors{};
     for (std::size_t index = 0; index < desc.colors.size(); ++index) {
         const ColorAttachment& attachment = desc.colors[index];
-        const vulkan::TextureRecord& record = impl.textures.get(attachment.texture);
+        const vulkan::TextureRecord& record = impl.resources.textures.get(attachment.texture);
         BYTEE_ASSERT(record.info.usage.has(TextureUsage::ColorAttachment), "texture '{}' lacks ColorAttachment usage",
                      record.info.debug_name);
         check_extent(record.info);
@@ -414,7 +415,7 @@ void CommandList::begin_render_pass(const RenderPassDesc& desc) {
     VkRenderingAttachmentInfo stencil{};
     bool uses_stencil = false;
     if (desc.depth) {
-        const vulkan::TextureRecord& record = impl.textures.get(desc.depth->texture);
+        const vulkan::TextureRecord& record = impl.resources.textures.get(desc.depth->texture);
         BYTEE_ASSERT(record.info.usage.has(TextureUsage::DepthStencilAttachment),
                      "texture '{}' lacks DepthStencilAttachment usage", record.info.debug_name);
         check_extent(record.info);
@@ -455,14 +456,14 @@ void CommandList::end_render_pass() {
 
 void CommandList::bind_pipeline(GraphicsPipelineHandle pipeline) {
     BYTEE_ASSERT(is_valid(), "CommandList is empty");
-    const VkPipeline handle = device_->graphics_pipelines.get(pipeline).pipeline;
+    const VkPipeline handle = device_->resources.graphics_pipelines.get(pipeline).pipeline;
     device_->vk.vkCmdBindPipeline(context_->buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, handle);
     context_->graphics_pipeline_bound = true;
 }
 
 void CommandList::bind_pipeline(ComputePipelineHandle pipeline) {
     BYTEE_ASSERT(is_valid(), "CommandList is empty");
-    const VkPipeline handle = device_->compute_pipelines.get(pipeline).pipeline;
+    const VkPipeline handle = device_->resources.compute_pipelines.get(pipeline).pipeline;
     device_->vk.vkCmdBindPipeline(context_->buffer, VK_PIPELINE_BIND_POINT_COMPUTE, handle);
     context_->compute_pipeline_bound = true;
 }
@@ -529,7 +530,7 @@ void CommandList::push_constants(std::span<const std::byte> data, uint32_t offse
 
 void CommandList::bind_index_buffer(BufferHandle buffer, uint64_t offset, IndexType type) {
     BYTEE_ASSERT(is_valid(), "CommandList is empty");
-    const vulkan::BufferRecord& record = device_->buffers.get(buffer);
+    const vulkan::BufferRecord& record = device_->resources.buffers.get(buffer);
     BYTEE_ASSERT(record.info.usage.has(BufferUsage::Index), "buffer '{}' lacks Index usage", record.info.debug_name);
     device_->vk.vkCmdBindIndexBuffer(context_->buffer, record.buffer, offset, vulkan::to_vk_index_type(type));
 }
@@ -562,14 +563,14 @@ core::Result<CommandList> Device::begin_commands(QueueType queue) {
     if (!context) {
         return std::move(context).error();
     }
-    impl_->live_command_lists.fetch_add(1, std::memory_order_acq_rel);
+    impl_->contexts.live_command_lists.fetch_add(1, std::memory_order_acq_rel);
     return CommandList{impl_, *context};
 }
 
 detail::CommandContext* take_context(CommandList& list) noexcept {
     detail::CommandContext* context = std::exchange(list.context_, nullptr);
     if (context != nullptr) {
-        list.device_->live_command_lists.fetch_sub(1, std::memory_order_acq_rel);
+        list.device_->contexts.live_command_lists.fetch_sub(1, std::memory_order_acq_rel);
     }
     list.device_ = nullptr;
     return context;
@@ -605,7 +606,7 @@ core::Result<SyncPoint> Device::submit(CommandList&& commands) {
 
 core::Result<SyncPoint> Device::upload(BufferHandle dst, uint64_t dst_offset, std::span<const std::byte> data) {
     BYTEE_ASSERT(is_valid(), "Device is empty");
-    const BufferInfo& info = impl_->buffers.get(dst).info;
+    const BufferInfo& info = impl_->resources.buffers.get(dst).info;
     if (data.empty() || dst_offset > info.size || data.size() > info.size - dst_offset) {
         return core::make_error(core::ErrorCode::InvalidArgument,
                                 "upload of {} bytes at offset {} does not fit buffer '{}' ({} bytes)", data.size(),
@@ -636,7 +637,7 @@ core::Result<SyncPoint> Device::upload(BufferHandle dst, uint64_t dst_offset, st
 core::Result<SyncPoint> Device::upload(TextureHandle dst, std::span<const std::byte> data,
                                        const TextureUploadDesc& desc) {
     BYTEE_ASSERT(is_valid(), "Device is empty");
-    const TextureInfo& info = impl_->textures.get(dst).info;
+    const TextureInfo& info = impl_->resources.textures.get(dst).info;
     const core::Extent3D extent = resolve_extent(info, desc.region);
     // Upload regions often come from asset data: validate at runtime (command-list copies only assert).
     if (!region_fits(info, desc.region, extent)) {
@@ -680,7 +681,7 @@ core::Result<SyncPoint> Device::upload(TextureHandle dst, std::span<const std::b
 
 core::Result<void> Device::download(TextureHandle src, std::span<std::byte> data, const TextureDownloadDesc& desc) {
     BYTEE_ASSERT(is_valid(), "Device is empty");
-    const TextureInfo& info = impl_->textures.get(src).info;
+    const TextureInfo& info = impl_->resources.textures.get(src).info;
     const core::Extent3D extent = resolve_extent(info, desc.region);
     if (!region_fits(info, desc.region, extent)) {
         return core::make_error(

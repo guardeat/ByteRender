@@ -66,7 +66,7 @@ TEST_CASE_FIXTURE(DeviceFixture, "Waiting times out while the GPU is blocked, th
 TEST_CASE_FIXTURE(DeviceFixture, "Retiring with no GPU work in flight destroys immediately") {
     rhi::detail::DeviceImpl& impl = *rhi::get_impl(device);
     impl.retire(retired(create_fence(impl)));
-    CHECK(impl.retired_objects.size() == 0);
+    CHECK(impl.retired.objects.size() == 0);
 }
 
 TEST_CASE_FIXTURE(DeviceFixture, "Retired objects wait for in-flight work") {
@@ -74,13 +74,13 @@ TEST_CASE_FIXTURE(DeviceFixture, "Retired objects wait for in-flight work") {
     GpuGate gate{impl};
 
     impl.retire(retired(create_fence(impl))); // the GPU is provably not done: must be deferred
-    CHECK(impl.retired_objects.size() == 1);
+    CHECK(impl.retired.objects.size() == 1);
     REQUIRE(impl.collect().has_value());
-    CHECK(impl.retired_objects.size() == 1);
+    CHECK(impl.retired.objects.size() == 1);
 
     gate.open();
     REQUIRE(device.wait(gate.blocked()).has_value()); // wait() collects
-    CHECK(impl.retired_objects.size() == 0);
+    CHECK(impl.retired.objects.size() == 0);
 }
 
 TEST_CASE_FIXTURE(DeviceFixture, "wait_idle releases every retired object") {
@@ -90,7 +90,7 @@ TEST_CASE_FIXTURE(DeviceFixture, "wait_idle releases every retired object") {
         impl.retire(retired(create_fence(impl)));
     }
     REQUIRE(device.wait_idle().has_value());
-    CHECK(impl.retired_objects.size() == 0);
+    CHECK(impl.retired.objects.size() == 0);
 }
 
 TEST_CASE_FIXTURE(GpuFixture, "Destroying a device releases objects that are still retired") {
@@ -103,7 +103,7 @@ TEST_CASE_FIXTURE(GpuFixture, "Destroying a device releases objects that are sti
     {
         GpuGate gate{impl};
         impl.retire(retired(create_fence(impl)));
-        REQUIRE(impl.retired_objects.size() == 1);
+        REQUIRE(impl.retired.objects.size() == 1);
     } // the gate opens and retires its own semaphore: both are still pending when the device goes away
     *device = rhi::Device{}; // validation would report leaked or in-use objects
 }

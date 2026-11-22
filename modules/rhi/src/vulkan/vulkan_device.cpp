@@ -167,11 +167,7 @@ VkResult create_bindless_set(const detail::DeviceImpl& impl, VkDescriptorType ty
 } // namespace vulkan
 
 detail::DeviceImpl::DeviceImpl(const DeviceCapacities& requested)
-    : buffers(requested.max_buffers)
-    , textures(requested.max_textures)
-    , graphics_pipelines(requested.max_graphics_pipelines)
-    , compute_pipelines(requested.max_compute_pipelines)
-    , samplers(requested.max_samplers) {}
+    : resources(requested) {}
 
 detail::DeviceImpl::~DeviceImpl() {
     finish_pending_work();
@@ -180,11 +176,11 @@ detail::DeviceImpl::~DeviceImpl() {
         vk.vkDestroyPipelineLayout(device, pipeline_layout, nullptr);
     }
     for (std::size_t index = 0; index < vulkan::k_bindless_set_count; ++index) {
-        if (bindless_pools[index] != VK_NULL_HANDLE) {
-            vk.vkDestroyDescriptorPool(device, bindless_pools[index], nullptr); // frees its set
+        if (bindless.pools[index] != VK_NULL_HANDLE) {
+            vk.vkDestroyDescriptorPool(device, bindless.pools[index], nullptr); // frees its set
         }
-        if (bindless_layouts[index] != VK_NULL_HANDLE) {
-            vk.vkDestroyDescriptorSetLayout(device, bindless_layouts[index], nullptr);
+        if (bindless.layouts[index] != VK_NULL_HANDLE) {
+            vk.vkDestroyDescriptorSetLayout(device, bindless.layouts[index], nullptr);
         }
     }
     for (std::unique_ptr<vulkan::Queue>& queue_ptr : queues) {
@@ -207,12 +203,7 @@ void detail::DeviceImpl::finish_pending_work() noexcept {
     }
     // Nothing can be reported from here; afterwards the GPU is idle unless the device was lost.
     static_cast<void>(vk.vkDeviceWaitIdle(device));
-    retired_buffers.drain([this](BufferHandle buffer) { destroy_now(buffer); });
-    retired_textures.drain([this](TextureHandle texture) { destroy_now(texture); });
-    retired_graphics_pipelines.drain([this](GraphicsPipelineHandle pipeline) { destroy_now(pipeline); });
-    retired_compute_pipelines.drain([this](ComputePipelineHandle pipeline) { destroy_now(pipeline); });
-    retired_samplers.drain([this](SamplerHandle sampler) { destroy_now(sampler); });
-    retired_objects.drain([this](const vulkan::RetiredObject& object) { destroy_now(object); });
+    retired.for_each([&](auto& list) { list.drain([&](const auto& item) { destroy_now(item); }); });
 }
 
 core::Error detail::DeviceImpl::fail(VkResult result, core::ErrorFormat<> call) {
@@ -258,7 +249,8 @@ core::Result<SyncPoint> detail::DeviceImpl::submit(QueueType type,
 }
 
 void detail::DeviceImpl::retire(vulkan::RetiredObject object) {
-    retire_or_destroy(retired_objects, object, [this](const vulkan::RetiredObject& retired) { destroy_now(retired); });
+    retire_or_destroy(retired.objects, object,
+                      [this](const vulkan::RetiredObject& retired_object) { destroy_now(retired_object); });
 }
 
 core::Result<void> detail::DeviceImpl::collect() {
@@ -268,12 +260,7 @@ core::Result<void> detail::DeviceImpl::collect() {
             return fail(result, "vkGetSemaphoreCounterValue");
         }
     }
-    retired_buffers.collect(completed, [this](BufferHandle buffer) { destroy_now(buffer); });
-    retired_textures.collect(completed, [this](TextureHandle texture) { destroy_now(texture); });
-    retired_graphics_pipelines.collect(completed, [this](GraphicsPipelineHandle pipeline) { destroy_now(pipeline); });
-    retired_compute_pipelines.collect(completed, [this](ComputePipelineHandle pipeline) { destroy_now(pipeline); });
-    retired_samplers.collect(completed, [this](SamplerHandle sampler) { destroy_now(sampler); });
-    retired_objects.collect(completed, [this](const vulkan::RetiredObject& object) { destroy_now(object); });
+    retired.for_each([&](auto& list) { list.collect(completed, [&](const auto& item) { destroy_now(item); }); });
     return {};
 }
 
@@ -296,7 +283,7 @@ void destroy(detail::DeviceImpl* impl) noexcept {
         return;
     }
     impl->finish_pending_work(); // retired-but-pending resources are not leaks
-    if (const uint32_t lists = impl->live_command_lists.load(std::memory_order_acquire); lists > 0) {
+    if (const uint32_t lists = impl->contexts.live_command_lists.load(std::memory_order_acquire); lists > 0) {
         impl->logger->error("Device '{}' destroyed while {} CommandList(s) are alive", impl->debug_name, lists);
         BYTEE_ASSERT(false, "every CommandList must be submitted or destroyed before its Device");
         return; // leaked on purpose: the command lists still use it
@@ -526,8 +513,8 @@ core::Result<Device> Instance::create_device(const DeviceDesc& desc) {
     impl->capacities.max_textures = texture_capacity;
     impl->capacities.max_samplers = sampler_capacity;
     // Slot = pool index: the pools may hold at most as many objects as the heap has slots (pools are still empty).
-    impl->textures = core::Pool<vulkan::TextureRecord, TextureTag>{texture_capacity};
-    impl->samplers = core::Pool<vulkan::SamplerRecord, SamplerTag>{sampler_capacity};
+    impl->resources.textures = core::Pool<vulkan::TextureRecord, TextureTag>{texture_capacity};
+    impl->resources.samplers = core::Pool<vulkan::SamplerRecord, SamplerTag>{sampler_capacity};
 
     const std::array<std::pair<VkDescriptorType, uint32_t>, vulkan::k_bindless_set_count> set_contents{{
         {VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, texture_capacity},
@@ -537,8 +524,8 @@ core::Result<Device> Instance::create_device(const DeviceDesc& desc) {
     for (std::size_t index = 0; index < vulkan::k_bindless_set_count; ++index) {
         const auto [type, count] = set_contents[index];
         if (const VkResult result =
-                vulkan::create_bindless_set(*impl, type, count, impl->bindless_layouts[index],
-                                            impl->bindless_pools[index], impl->bindless_sets[index]);
+                vulkan::create_bindless_set(*impl, type, count, impl->bindless.layouts[index],
+                                            impl->bindless.pools[index], impl->bindless.sets[index]);
             result != VK_SUCCESS) {
             return vulkan::make_vk_error(result, "bindless descriptor set creation");
         }
@@ -554,8 +541,8 @@ core::Result<Device> Instance::create_device(const DeviceDesc& desc) {
     };
     const VkPipelineLayoutCreateInfo layout_info{
         .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
-        .setLayoutCount = static_cast<uint32_t>(impl->bindless_layouts.size()),
-        .pSetLayouts = impl->bindless_layouts.data(),
+        .setLayoutCount = static_cast<uint32_t>(impl->bindless.layouts.size()),
+        .pSetLayouts = impl->bindless.layouts.data(),
         .pushConstantRangeCount = 1,
         .pPushConstantRanges = &push_constants,
     };
@@ -572,7 +559,7 @@ core::Result<Device> Instance::create_device(const DeviceDesc& desc) {
     constexpr std::array<std::string_view, vulkan::k_bindless_set_count> k_set_names{"textures", "storage textures",
                                                                                      "samplers"};
     for (std::size_t index = 0; index < vulkan::k_bindless_set_count; ++index) {
-        vulkan::set_debug_name(impl->device, VK_OBJECT_TYPE_DESCRIPTOR_SET, impl->bindless_sets[index],
+        vulkan::set_debug_name(impl->device, VK_OBJECT_TYPE_DESCRIPTOR_SET, impl->bindless.sets[index],
                                std::format("{} bindless {}", desc.debug_name, k_set_names[index]));
     }
 

@@ -28,7 +28,7 @@ TEST_CASE_FIXTURE(DeviceFixture, "Resources are destroyed immediately when the G
         handle = *buffer;
         CHECK(live_allocations(impl) == 1);
     }
-    CHECK_FALSE(impl.buffers.contains(handle));
+    CHECK_FALSE(impl.resources.buffers.contains(handle));
     CHECK(live_allocations(impl) == 0);
     CHECK(impl.live_objects.count() == 0);
 }
@@ -50,16 +50,16 @@ TEST_CASE_FIXTURE(DeviceFixture, "Released resources live until the GPU has fini
         texture = *created_texture;
     } // both released while the GPU is provably busy
 
-    CHECK(impl.buffers.contains(buffer));
-    CHECK(impl.textures.contains(texture));
+    CHECK(impl.resources.buffers.contains(buffer));
+    CHECK(impl.resources.textures.contains(texture));
     CHECK(live_allocations(impl) == 2);
     REQUIRE(impl.collect().has_value());
-    CHECK(impl.buffers.contains(buffer)); // still in flight
+    CHECK(impl.resources.buffers.contains(buffer)); // still in flight
 
     gate.open();
     REQUIRE(device.wait(gate.blocked()).has_value()); // wait() collects
-    CHECK_FALSE(impl.buffers.contains(buffer));
-    CHECK_FALSE(impl.textures.contains(texture));
+    CHECK_FALSE(impl.resources.buffers.contains(buffer));
+    CHECK_FALSE(impl.resources.textures.contains(texture));
     CHECK(live_allocations(impl) == 0);
     CHECK(impl.live_objects.count() == 0);
 }
@@ -79,7 +79,7 @@ TEST_CASE_FIXTURE(GpuFixture, "Destroying a device frees pending resources witho
                                                .debug_name = "pending"});
         REQUIRE(texture.has_value());
         *texture = rhi::Texture{}; // retired, still pending
-        CHECK(impl.retired_textures.size() == 1);
+        CHECK(impl.retired.textures.size() == 1);
         gate.open();
     }
     *device = rhi::Device{}; // must not report 'pending' as a leak (the fixture fails on errors)
@@ -97,11 +97,11 @@ TEST_CASE_FIXTURE(DeviceFixture, "A released pipeline lives until the GPU has fi
 
     GpuGate gate{impl};
     *pipeline = rhi::GraphicsPipeline{}; // released while the GPU is provably busy
-    CHECK(impl.graphics_pipelines.contains(handle));
+    CHECK(impl.resources.graphics_pipelines.contains(handle));
     CHECK(impl.live_objects.count() == 1);
 
     gate.open();
     REQUIRE(device.wait(gate.blocked()).has_value());
-    CHECK_FALSE(impl.graphics_pipelines.contains(handle));
+    CHECK_FALSE(impl.resources.graphics_pipelines.contains(handle));
     CHECK(impl.live_objects.count() == 0);
 }

@@ -66,7 +66,7 @@ void ResourceReleaser::operator()(GraphicsPipelineHandle pipeline) const noexcep
 }
 
 void detail::DeviceImpl::release(GraphicsPipelineHandle pipeline) {
-    retire_or_destroy(retired_graphics_pipelines, pipeline,
+    retire_or_destroy(retired.graphics_pipelines, pipeline,
                       [this](GraphicsPipelineHandle handle) { destroy_now(handle); });
 }
 
@@ -77,24 +77,24 @@ void ResourceReleaser::operator()(ComputePipelineHandle pipeline) const noexcept
 }
 
 void detail::DeviceImpl::release(ComputePipelineHandle pipeline) {
-    retire_or_destroy(retired_compute_pipelines, pipeline,
+    retire_or_destroy(retired.compute_pipelines, pipeline,
                       [this](ComputePipelineHandle handle) { destroy_now(handle); });
 }
 
 void detail::DeviceImpl::destroy_now(ComputePipelineHandle pipeline) {
-    const std::scoped_lock lock{resources_mutex};
-    vulkan::PipelineRecord& record = compute_pipelines.get(pipeline);
+    const std::scoped_lock lock{resources.mutex};
+    vulkan::PipelineRecord& record = resources.compute_pipelines.get(pipeline);
     vk.vkDestroyPipeline(device, record.pipeline, nullptr);
     live_objects.remove(record.tracker_id);
-    compute_pipelines.remove(pipeline);
+    resources.compute_pipelines.remove(pipeline);
 }
 
 void detail::DeviceImpl::destroy_now(GraphicsPipelineHandle pipeline) {
-    const std::scoped_lock lock{resources_mutex};
-    vulkan::PipelineRecord& record = graphics_pipelines.get(pipeline);
+    const std::scoped_lock lock{resources.mutex};
+    vulkan::PipelineRecord& record = resources.graphics_pipelines.get(pipeline);
     vk.vkDestroyPipeline(device, record.pipeline, nullptr);
     live_objects.remove(record.tracker_id);
-    graphics_pipelines.remove(pipeline);
+    resources.graphics_pipelines.remove(pipeline);
 }
 
 core::Result<GraphicsPipeline> Device::create_graphics_pipeline(const GraphicsPipelineDesc& desc) {
@@ -230,9 +230,10 @@ core::Result<GraphicsPipeline> Device::create_graphics_pipeline(const GraphicsPi
 
     GraphicsPipelineHandle handle;
     {
-        const std::scoped_lock lock{impl.resources_mutex};
+        const std::scoped_lock lock{impl.resources.mutex};
         record.tracker_id = impl.live_objects.add("GraphicsPipeline", name);
-        handle = impl.graphics_pipelines.insert(std::move(record)); // a full pool returns before consuming `record`
+        handle = impl.resources.graphics_pipelines.insert(
+            std::move(record)); // a full pool returns before consuming `record`
         if (!handle.is_valid()) {
             impl.live_objects.remove(record.tracker_id);
         }
@@ -241,7 +242,7 @@ core::Result<GraphicsPipeline> Device::create_graphics_pipeline(const GraphicsPi
         impl.vk.vkDestroyPipeline(impl.device, record.pipeline, nullptr);
         return core::make_error(core::ErrorCode::LimitExceeded,
                                 "pipeline '{}': the device's graphics pipeline capacity ({}) is reached", name,
-                                impl.graphics_pipelines.capacity());
+                                impl.resources.graphics_pipelines.capacity());
     }
     return GraphicsPipeline{handle, ResourceReleaser{impl_}};
 }
@@ -280,9 +281,10 @@ core::Result<ComputePipeline> Device::create_compute_pipeline(const ComputePipel
     const VkPipeline created = record.pipeline;
     ComputePipelineHandle handle;
     {
-        const std::scoped_lock lock{impl.resources_mutex};
+        const std::scoped_lock lock{impl.resources.mutex};
         record.tracker_id = impl.live_objects.add("ComputePipeline", name);
-        handle = impl.compute_pipelines.insert(std::move(record)); // a full pool returns before consuming `record`
+        handle =
+            impl.resources.compute_pipelines.insert(std::move(record)); // a full pool returns before consuming `record`
         if (!handle.is_valid()) {
             impl.live_objects.remove(record.tracker_id);
         }
@@ -291,7 +293,7 @@ core::Result<ComputePipeline> Device::create_compute_pipeline(const ComputePipel
         impl.vk.vkDestroyPipeline(impl.device, created, nullptr);
         return core::make_error(core::ErrorCode::LimitExceeded,
                                 "pipeline '{}': the device's compute pipeline capacity ({}) is reached", name,
-                                impl.compute_pipelines.capacity());
+                                impl.resources.compute_pipelines.capacity());
     }
     return ComputePipeline{handle, ResourceReleaser{impl_}};
 }

@@ -16,27 +16,27 @@ void ResourceReleaser::operator()(SamplerHandle sampler) const noexcept {
 }
 
 void detail::DeviceImpl::release(SamplerHandle sampler) {
-    retire_or_destroy(retired_samplers, sampler, [this](SamplerHandle handle) { destroy_now(handle); });
+    retire_or_destroy(retired.samplers, sampler, [this](SamplerHandle handle) { destroy_now(handle); });
 }
 
 void detail::DeviceImpl::destroy_now(SamplerHandle sampler) {
-    const std::scoped_lock lock{resources_mutex};
-    vulkan::SamplerRecord& record = samplers.get(sampler);
+    const std::scoped_lock lock{resources.mutex};
+    vulkan::SamplerRecord& record = resources.samplers.get(sampler);
     vk.vkDestroySampler(device, record.sampler, nullptr);
     live_objects.remove(record.tracker_id);
-    samplers.remove(sampler);
+    resources.samplers.remove(sampler);
 }
 
 void detail::DeviceImpl::write_bindless(SamplerHandle sampler, VkSampler handle) {
     const VkDescriptorImageInfo image{.sampler = handle};
     const VkWriteDescriptorSet write{.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-                                     .dstSet = bindless_sets[static_cast<std::size_t>(vulkan::BindlessSet::Samplers)],
+                                     .dstSet = bindless.sets[static_cast<std::size_t>(vulkan::BindlessSet::Samplers)],
                                      .dstBinding = 0,
                                      .dstArrayElement = sampler.index(),
                                      .descriptorCount = 1,
                                      .descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER,
                                      .pImageInfo = &image};
-    const std::scoped_lock lock{bindless_mutex};
+    const std::scoped_lock lock{bindless.mutex};
     vk.vkUpdateDescriptorSets(device, 1, &write, 0, nullptr);
 }
 
@@ -83,9 +83,9 @@ core::Result<Sampler> Device::create_sampler(const SamplerDesc& desc) {
     const VkSampler sampler = record.sampler;
     SamplerHandle handle;
     {
-        const std::scoped_lock lock{impl.resources_mutex};
+        const std::scoped_lock lock{impl.resources.mutex};
         record.tracker_id = impl.live_objects.add("Sampler", name);
-        handle = impl.samplers.insert(std::move(record)); // a full pool returns before consuming `record`
+        handle = impl.resources.samplers.insert(std::move(record)); // a full pool returns before consuming `record`
         if (!handle.is_valid()) {
             impl.live_objects.remove(record.tracker_id);
         }
@@ -94,7 +94,7 @@ core::Result<Sampler> Device::create_sampler(const SamplerDesc& desc) {
         impl.vk.vkDestroySampler(impl.device, sampler, nullptr);
         return core::make_error(core::ErrorCode::LimitExceeded,
                                 "sampler '{}': the device's sampler capacity ({}) is reached", name,
-                                impl.samplers.capacity());
+                                impl.resources.samplers.capacity());
     }
     impl.write_bindless(handle, sampler);
     return Sampler{handle, ResourceReleaser{impl_}};

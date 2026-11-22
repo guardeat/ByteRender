@@ -126,11 +126,11 @@ void ResourceReleaser::operator()(TextureHandle texture) const noexcept {
 // Deferred destruction
 
 void detail::DeviceImpl::release(BufferHandle buffer) {
-    retire_or_destroy(retired_buffers, buffer, [this](BufferHandle handle) { destroy_now(handle); });
+    retire_or_destroy(retired.buffers, buffer, [this](BufferHandle handle) { destroy_now(handle); });
 }
 
 void detail::DeviceImpl::release(TextureHandle texture) {
-    retire_or_destroy(retired_textures, texture, [this](TextureHandle handle) { destroy_now(handle); });
+    retire_or_destroy(retired.textures, texture, [this](TextureHandle handle) { destroy_now(handle); });
 }
 
 void detail::DeviceImpl::write_bindless(TextureHandle texture, const vulkan::TextureRecord& record) {
@@ -140,7 +140,7 @@ void detail::DeviceImpl::write_bindless(TextureHandle texture, const vulkan::Tex
     const auto add = [&](vulkan::BindlessSet set, VkDescriptorType type, VkImageLayout layout) {
         images[count] = VkDescriptorImageInfo{.imageView = record.view, .imageLayout = layout};
         writes[count] = VkWriteDescriptorSet{.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-                                             .dstSet = bindless_sets[static_cast<std::size_t>(set)],
+                                             .dstSet = bindless.sets[static_cast<std::size_t>(set)],
                                              .dstBinding = 0,
                                              .dstArrayElement = texture.index(),
                                              .descriptorCount = 1,
@@ -155,22 +155,22 @@ void detail::DeviceImpl::write_bindless(TextureHandle texture, const vulkan::Tex
         add(vulkan::BindlessSet::StorageTextures, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_IMAGE_LAYOUT_GENERAL);
     }
     if (count > 0) {
-        const std::scoped_lock lock{bindless_mutex};
+        const std::scoped_lock lock{bindless.mutex};
         vk.vkUpdateDescriptorSets(device, count, writes.data(), 0, nullptr);
     }
 }
 
 void detail::DeviceImpl::destroy_now(BufferHandle buffer) {
-    const std::scoped_lock lock{resources_mutex};
-    vulkan::BufferRecord& record = buffers.get(buffer);
+    const std::scoped_lock lock{resources.mutex};
+    vulkan::BufferRecord& record = resources.buffers.get(buffer);
     vmaDestroyBuffer(allocator, record.buffer, record.allocation);
     live_objects.remove(record.tracker_id);
-    buffers.remove(buffer);
+    resources.buffers.remove(buffer);
 }
 
 void detail::DeviceImpl::destroy_now(TextureHandle texture) {
-    const std::scoped_lock lock{resources_mutex};
-    vulkan::TextureRecord& record = textures.get(texture);
+    const std::scoped_lock lock{resources.mutex};
+    vulkan::TextureRecord& record = resources.textures.get(texture);
     if (record.attachment_view != record.view) {
         vk.vkDestroyImageView(device, record.attachment_view, nullptr);
     }
@@ -179,7 +179,7 @@ void detail::DeviceImpl::destroy_now(TextureHandle texture) {
         vmaDestroyImage(allocator, record.image, record.allocation);
     }
     live_objects.remove(record.tracker_id);
-    textures.remove(texture);
+    resources.textures.remove(texture);
 }
 
 // ----------------------------------------------------------------------------------------------------------------
@@ -224,9 +224,9 @@ core::Result<Buffer> Device::create_buffer(const BufferDesc& desc) {
 
     BufferHandle handle;
     {
-        const std::scoped_lock lock{impl.resources_mutex};
+        const std::scoped_lock lock{impl.resources.mutex};
         record.tracker_id = impl.live_objects.add("Buffer", name);
-        handle = impl.buffers.insert(std::move(record)); // a full pool returns before consuming `record`
+        handle = impl.resources.buffers.insert(std::move(record)); // a full pool returns before consuming `record`
         if (!handle.is_valid()) {
             impl.live_objects.remove(record.tracker_id);
         }
@@ -235,19 +235,19 @@ core::Result<Buffer> Device::create_buffer(const BufferDesc& desc) {
         vmaDestroyBuffer(impl.allocator, record.buffer, record.allocation);
         return core::make_error(core::ErrorCode::LimitExceeded,
                                 "buffer '{}': the device's buffer capacity ({}) is reached", name,
-                                impl.buffers.capacity());
+                                impl.resources.buffers.capacity());
     }
     return Buffer{handle, ResourceReleaser{impl_}};
 }
 
 const BufferInfo& Device::info(BufferHandle buffer) const noexcept {
     BYTEE_ASSERT(is_valid(), "Device is empty");
-    return impl_->buffers.get(buffer).info;
+    return impl_->resources.buffers.get(buffer).info;
 }
 
 core::Result<void> Device::write(BufferHandle buffer, uint64_t offset, std::span<const std::byte> data) {
     BYTEE_ASSERT(is_valid(), "Device is empty");
-    const vulkan::BufferRecord& record = impl_->buffers.get(buffer);
+    const vulkan::BufferRecord& record = impl_->resources.buffers.get(buffer);
     BYTEE_ASSERT(record.mapped != nullptr, "buffer '{}' is not CPU-accessible (memory: {})", record.info.debug_name,
                  to_string(record.info.memory));
     BYTEE_ASSERT(offset <= record.info.size && data.size() <= record.info.size - offset,
@@ -266,7 +266,7 @@ core::Result<void> Device::write(BufferHandle buffer, uint64_t offset, std::span
 
 core::Result<void> Device::read(BufferHandle buffer, uint64_t offset, std::span<std::byte> data) const {
     BYTEE_ASSERT(is_valid(), "Device is empty");
-    const vulkan::BufferRecord& record = impl_->buffers.get(buffer);
+    const vulkan::BufferRecord& record = impl_->resources.buffers.get(buffer);
     BYTEE_ASSERT(record.mapped != nullptr, "buffer '{}' is not CPU-accessible (memory: {})", record.info.debug_name,
                  to_string(record.info.memory));
     BYTEE_ASSERT(offset <= record.info.size && data.size() <= record.info.size - offset,
@@ -391,29 +391,29 @@ core::Result<Texture> Device::create_texture(const TextureDesc& desc) {
 
     TextureHandle handle;
     {
-        const std::scoped_lock lock{impl.resources_mutex};
+        const std::scoped_lock lock{impl.resources.mutex};
         record.tracker_id = impl.live_objects.add("Texture", name);
-        handle = impl.textures.insert(std::move(record)); // a full pool returns before consuming `record`
+        handle = impl.resources.textures.insert(std::move(record)); // a full pool returns before consuming `record`
         if (!handle.is_valid()) {
             impl.live_objects.remove(record.tracker_id);
         }
     }
     if (handle.is_valid()) {
-        impl.write_bindless(handle, impl.textures.get(handle));
+        impl.write_bindless(handle, impl.resources.textures.get(handle));
     } else {
         impl.vk.vkDestroyImageView(impl.device, record.attachment_view, nullptr);
         impl.vk.vkDestroyImageView(impl.device, record.view, nullptr);
         vmaDestroyImage(impl.allocator, record.image, record.allocation);
         return core::make_error(core::ErrorCode::LimitExceeded,
                                 "texture '{}': the device's texture capacity ({}) is reached", name,
-                                impl.textures.capacity());
+                                impl.resources.textures.capacity());
     }
     return Texture{handle, ResourceReleaser{impl_}};
 }
 
 const TextureInfo& Device::info(TextureHandle texture) const noexcept {
     BYTEE_ASSERT(is_valid(), "Device is empty");
-    return impl_->textures.get(texture).info;
+    return impl_->resources.textures.get(texture).info;
 }
 
 } // namespace bytee::render::rhi

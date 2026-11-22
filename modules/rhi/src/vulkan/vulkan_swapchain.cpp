@@ -262,9 +262,9 @@ core::Result<void> detail::SwapchainImpl::create_swapchain() {
         const VkImageView view = record.view;
         TextureHandle handle;
         {
-            const std::scoped_lock lock{impl.resources_mutex};
+            const std::scoped_lock lock{impl.resources.mutex};
             record.tracker_id = impl.live_objects.add("Texture", image_name);
-            handle = impl.textures.insert(std::move(record)); // a full pool returns before consuming `record`
+            handle = impl.resources.textures.insert(std::move(record)); // a full pool returns before consuming `record`
             if (!handle.is_valid()) {
                 impl.live_objects.remove(record.tracker_id);
             }
@@ -273,7 +273,7 @@ core::Result<void> detail::SwapchainImpl::create_swapchain() {
             impl.vk.vkDestroyImageView(impl.device, view, nullptr);
             return core::make_error(core::ErrorCode::LimitExceeded,
                                     "swapchain '{}': the device's texture capacity ({}) is reached", debug_name,
-                                    impl.textures.capacity());
+                                    impl.resources.textures.capacity());
         }
         images.push_back(handle);
 

@@ -20,14 +20,14 @@ TEST_CASE_FIXTURE(DeviceFixture, "Command contexts are recycled once their work 
         REQUIRE(done.has_value());
         REQUIRE(device.wait(*done).has_value());
     }
-    CHECK(impl.contexts.size() == 1); // one context, reused every time
+    CHECK(impl.contexts.all.size() == 1); // one context, reused every time
 
     {
         auto discarded = device.begin_commands();
         REQUIRE(discarded.has_value());
     }
-    CHECK(impl.contexts.size() == 1); // discarded lists return their context too
-    CHECK(impl.live_command_lists.load() == 0);
+    CHECK(impl.contexts.all.size() == 1); // discarded lists return their context too
+    CHECK(impl.contexts.live_command_lists.load() == 0);
 }
 
 TEST_CASE_FIXTURE(DeviceFixture, "A submitted context is not reused until its work completes") {
@@ -43,13 +43,13 @@ TEST_CASE_FIXTURE(DeviceFixture, "A submitted context is not reused until its wo
     REQUIRE(second.has_value());
     CHECK(rhi::get_context(*second) != submitted_context); // in flight: must not be recycled
     REQUIRE(device.submit(std::move(*second)).has_value());
-    CHECK(impl.contexts.size() == 2);
+    CHECK(impl.contexts.all.size() == 2);
 
     gate.open();
     REQUIRE(device.wait_idle().has_value());
     auto third = device.begin_commands();
     REQUIRE(third.has_value());
-    CHECK(impl.contexts.size() == 2); // completed contexts are reused, no new one
+    CHECK(impl.contexts.all.size() == 2); // completed contexts are reused, no new one
 }
 
 TEST_CASE_FIXTURE(DeviceFixture, "Upload staging buffers are freed after the copy completes") {
