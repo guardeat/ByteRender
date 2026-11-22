@@ -312,10 +312,11 @@ Rgba8Image expected_gradient() {
 
 rhi::Texture make_target(rhi::Device& device) {
     return device
-        .create_texture({.extent = {.width = k_width, .height = k_height},
-                         .format = rhi::Format::RGBA8Unorm,
-                         .usage = rhi::TextureUsage::ColorAttachment | rhi::TextureUsage::CopySrc,
-                         .debug_name = "graph target"})
+        .create_texture(
+            {.extent = {.width = k_width, .height = k_height},
+             .format = rhi::Format::RGBA8Unorm,
+             .usage = rhi::TextureUsage::ColorAttachment | rhi::TextureUsage::CopySrc | rhi::TextureUsage::CopyDst,
+             .debug_name = "graph target"})
         .value();
 }
 
@@ -506,4 +507,88 @@ TEST_CASE_FIXTURE(DeviceFixture, "Transients are reused across frames and releas
     }
     CHECK(graph.pooled_texture_count() == 0);
     REQUIRE(device.wait_idle().has_value());
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+// Tooling: Graphviz dump, validation of attachments and imported usages
+
+TEST_CASE_FIXTURE(DeviceFixture, "The Graphviz dump shows passes, resources, states and culling") {
+    rhi::Texture target = make_target(device);
+    GradientPass gradient{device};
+    UnusedPass unused;
+    CopyPass copy{device};
+    render::RenderGraph graph{device};
+    build_frame(graph, gradient, unused, copy, target);
+    REQUIRE(graph.compile().has_value());
+
+    const std::string dot = graph.to_graphviz();
+    CHECK(dot.starts_with("digraph RenderGraph {"));
+    CHECK(dot.ends_with("}\n"));
+    CHECK(dot.find(R"dot(pass0 [label="Gradient", shape=box, style="filled")dot") != std::string::npos);
+    CHECK(dot.find(R"dot(pass1 [label="Unused (culled)", shape=box, style="filled,dashed")dot") != std::string::npos);
+    CHECK(dot.find(R"dot(texture0 [label="gradient\n37x21 RGBA8Unorm", shape=ellipse])dot") != std::string::npos);
+    CHECK(dot.find(R"dot(texture2 [label="target\n37x21 RGBA8Unorm", shape=ellipse, style=bold])dot") !=
+          std::string::npos);
+    CHECK(dot.find(R"dot(pass0 -> texture0 [label="ShaderWrite"])dot") != std::string::npos);
+    CHECK(dot.find(R"dot(texture0 -> pass2 [label="ShaderRead"])dot") != std::string::npos);
+    CHECK(dot.find(R"dot(pass2 -> texture2 [label="ColorAttachment"])dot") != std::string::npos);
+}
+
+TEST_CASE_FIXTURE(DeviceFixture, "Graphviz names are escaped") {
+    render::RenderGraph graph{device};
+    struct Quoted {
+        void setup(render::PassBuilder& builder) {
+            (void)builder.create_buffer(R"dot(a "quoted" \ name)dot", {.size = 4});
+        }
+        void execute(render::PassContext& /*context*/) {}
+    };
+    Quoted quoted;
+    graph.add_pass(R"(say "hi")", quoted);
+    const std::string dot = graph.to_graphviz();
+    CHECK(dot.find(R"dot(label="say \"hi\"")dot") != std::string::npos);
+    CHECK(dot.find(R"dot(label="a \"quoted\" \\ name\n4 bytes")dot") != std::string::npos);
+}
+
+TEST_CASE_FIXTURE(DeviceFixture,
+                  "Compile rejects attachments of different sizes and imports without the needed usage") {
+    struct TwoTargets {
+        render::TextureRef first;
+        render::TextureRef second;
+        void setup(render::PassBuilder& builder) {
+            builder.color_attachment({.texture = first});
+            builder.color_attachment({.texture = second});
+        }
+        void execute(render::PassContext& /*context*/) {}
+    };
+    rhi::Texture big = make_target(device);
+    rhi::Texture small = device
+                             .create_texture({.extent = {.width = 8, .height = 8},
+                                              .format = rhi::Format::RGBA8Unorm,
+                                              .usage = rhi::TextureUsage::ColorAttachment})
+                             .value();
+    rhi::Texture sampled_only = device
+                                    .create_texture({.extent = {.width = 8, .height = 8},
+                                                     .format = rhi::Format::RGBA8Unorm,
+                                                     .usage = rhi::TextureUsage::Sampled})
+                                    .value();
+    const render::ImportedStates states{.before = ResourceState::Undefined, .after = ResourceState::ColorAttachment};
+
+    render::RenderGraph graph{device};
+    TwoTargets mismatched{.first = graph.import_texture("big", big, states),
+                          .second = graph.import_texture("small", small, states)};
+    graph.add_pass("Two targets", mismatched);
+    auto compiled = graph.compile();
+    REQUIRE_FALSE(compiled.has_value());
+    CHECK(compiled.error().code() == core::ErrorCode::InvalidArgument);
+    CHECK(compiled.error().message() ==
+          "render graph: pass 'Two targets' has attachments of different sizes ('big' 37x21, 'small' 8x8)");
+
+    graph.reset();
+    TwoTargets wrong_usage{.first = graph.import_texture("small", small, states),
+                           .second = graph.import_texture("sampled only", sampled_only, states)};
+    graph.add_pass("Wrong usage", wrong_usage);
+    compiled = graph.compile();
+    REQUIRE_FALSE(compiled.has_value());
+    CHECK(compiled.error().message() == "render graph: pass 'Wrong usage' uses 'sampled only' as ColorAttachment, but "
+                                        "it was created without the usage flags that state needs");
 }

@@ -3,6 +3,7 @@
 
 #include <algorithm>
 #include <array>
+#include <format>
 #include <iterator>
 
 namespace bytee::render {
@@ -41,6 +42,19 @@ core::Flags<rhi::BufferUsage> buffer_usage(rhi::ResourceState state) noexcept {
     case ResourceState::UniformBuffer: return BufferUsage::Uniform;
     default: return {};
     }
+}
+
+// DOT string literal contents: quotes and backslashes escaped.
+std::string dot_escape(std::string_view text) {
+    std::string escaped;
+    escaped.reserve(text.size());
+    for (const char c : text) {
+        if (c == '"' || c == '\\') {
+            escaped.push_back('\\');
+        }
+        escaped.push_back(c);
+    }
+    return escaped;
 }
 
 } // namespace
@@ -196,6 +210,7 @@ core::Result<void> RenderGraph::compile() {
         if (pass.culled) {
             continue;
         }
+        BYTEE_TRY(validate_pass(pass));
         const std::string_view pass_name = name_of(pass.name);
         for (const ResourceAccess& access : std::span{accesses_}.subspan(pass.first_access, pass.access_count)) {
             Tracking& tracking = tracking_of(access);
@@ -270,8 +285,10 @@ core::Result<rhi::CommandList> RenderGraph::record() {
     }
     for (const PassEntry& pass : passes_) {
         if (!pass.culled) {
+            commands->begin_debug_label(name_of(pass.name));
             record_barriers(*commands, std::span{barriers_}.subspan(pass.first_barrier, pass.barrier_count));
             record_pass(*commands, pass);
+            commands->end_debug_label();
         }
     }
     record_barriers(*commands, final_barriers());
@@ -285,6 +302,105 @@ core::Result<rhi::SyncPoint> RenderGraph::execute() {
         return std::move(commands).error();
     }
     return device_->submit(std::move(*commands));
+}
+
+std::string RenderGraph::to_graphviz() const {
+    std::string dot = "digraph RenderGraph {\n    rankdir=LR;\n    node [fontname=\"Helvetica\"];\n"
+                      "    edge [fontname=\"Helvetica\", fontsize=10];\n";
+    for (std::size_t i = 0; i < passes_.size(); ++i) {
+        const PassEntry& pass = passes_[i];
+        std::format_to(
+            std::back_inserter(dot), "    pass{} [label=\"{}{}\", shape=box, style=\"{}\", fillcolor=\"{}\"{}];\n", i,
+            dot_escape(name_of(pass.name)), pass.culled ? " (culled)" : "", pass.culled ? "filled,dashed" : "filled",
+            pass.culled ? "#eeeeee" : "#cfe2ff", pass.culled ? ", fontcolor=\"#888888\"" : "");
+    }
+    for (std::size_t i = 0; i < textures_.size(); ++i) {
+        const TextureEntry& texture = textures_[i];
+        std::format_to(std::back_inserter(dot), "    texture{} [label=\"{}\\n{}x{} {}\", shape=ellipse{}];\n", i,
+                       dot_escape(name_of(texture.name)), texture.desc.extent.width, texture.desc.extent.height,
+                       rhi::to_string(texture.desc.format), texture.imported ? ", style=bold" : "");
+    }
+    for (std::size_t i = 0; i < buffers_.size(); ++i) {
+        const BufferEntry& buffer = buffers_[i];
+        std::format_to(std::back_inserter(dot), "    buffer{} [label=\"{}\\n{} bytes\", shape=ellipse{}];\n", i,
+                       dot_escape(name_of(buffer.name)), buffer.desc.size, buffer.imported ? ", style=bold" : "");
+    }
+    for (std::size_t i = 0; i < passes_.size(); ++i) {
+        const PassEntry& pass = passes_[i];
+        for (const ResourceAccess& access : std::span{accesses_}.subspan(pass.first_access, pass.access_count)) {
+            const std::string resource =
+                std::format("{}{}", access.kind == ResourceKind::Texture ? "texture" : "buffer", access.resource);
+            const std::string pass_node = std::format("pass{}", i);
+            std::format_to(std::back_inserter(dot), "    {} -> {} [label=\"{}\"];\n",
+                           access.writes ? pass_node : resource, access.writes ? resource : pass_node,
+                           rhi::to_string(access.state));
+        }
+    }
+    dot += "}\n";
+    return dot;
+}
+
+core::Result<void> RenderGraph::validate_pass(const PassEntry& pass) const {
+    const std::string_view pass_name = name_of(pass.name);
+
+    // Render targets of one pass share the render area.
+    std::optional<TextureRef> first_attachment;
+    const auto check_size = [&](TextureRef texture) -> core::Result<void> {
+        if (!first_attachment) {
+            first_attachment = texture;
+            return {};
+        }
+        const TextureEntry& first = textures_[first_attachment->index()];
+        const TextureEntry& other = textures_[texture.index()];
+        if (first.desc.extent.width != other.desc.extent.width ||
+            first.desc.extent.height != other.desc.extent.height) {
+            return core::make_error(
+                core::ErrorCode::InvalidArgument,
+                "render graph: pass '{}' has attachments of different sizes ('{}' {}x{}, '{}' {}x{})", pass_name,
+                name_of(first.name), first.desc.extent.width, first.desc.extent.height, name_of(other.name),
+                other.desc.extent.width, other.desc.extent.height);
+        }
+        return {};
+    };
+    for (const ColorAttachment& color : std::span{colors_}.subspan(pass.first_color, pass.color_count)) {
+        BYTEE_TRY(check_size(color.texture));
+    }
+    if (pass.depth) {
+        BYTEE_TRY(check_size(pass.depth->texture));
+    }
+
+    // Imported resources must have been created with the usage their states need (transients get it automatically).
+    for (const ResourceAccess& access : std::span{accesses_}.subspan(pass.first_access, pass.access_count)) {
+        if (access.state == rhi::ResourceState::General) {
+            continue; // any usage
+        }
+        bool supported = true;
+        std::string_view resource_name;
+        if (access.kind == ResourceKind::Texture) {
+            const TextureEntry& texture = textures_[access.resource];
+            if (texture.imported) {
+                // DepthRead may be depth testing only: sampling usage is the RHI's to check.
+                const core::Flags<rhi::TextureUsage> needed = access.state == rhi::ResourceState::DepthRead
+                                                                  ? rhi::TextureUsage::DepthStencilAttachment
+                                                                  : texture_usage(access.state);
+                supported = device_->info(*texture.imported).usage.has(needed);
+                resource_name = name_of(texture.name);
+            }
+        } else {
+            const BufferEntry& buffer = buffers_[access.resource];
+            if (buffer.imported) {
+                supported = device_->info(*buffer.imported).usage.has(buffer_usage(access.state));
+                resource_name = name_of(buffer.name);
+            }
+        }
+        if (!supported) {
+            return core::make_error(core::ErrorCode::InvalidArgument,
+                                    "render graph: pass '{}' uses '{}' as {}, but it was created without the usage "
+                                    "flags that state needs",
+                                    pass_name, resource_name, rhi::to_string(access.state));
+        }
+    }
+    return {};
 }
 
 void RenderGraph::add_barrier(ResourceKind kind, uint32_t resource, Tracking& tracking, rhi::ResourceState state,

@@ -104,6 +104,7 @@ struct BYTEE_HIDDEN detail::CommandContext {
     QueueType queue = QueueType::Graphics;
     uint64_t last_submission = 0; // timeline value of its queue; 0 = never submitted
     bool in_render_pass = false;  // recording state, for misuse asserts
+    uint32_t debug_label_depth = 0;
     bool graphics_pipeline_bound = false;
     bool compute_pipeline_bound = false;
 };
@@ -117,7 +118,8 @@ struct BYTEE_HIDDEN detail::DeviceImpl {
     AdapterInfo adapter;
     VkPhysicalDevice physical_device = VK_NULL_HANDLE;
     VkDevice device = VK_NULL_HANDLE;
-    VolkDeviceTable vk{}; // device-level functions for this device only: no loader dispatch, no globals
+    VolkDeviceTable vk{};      // device-level functions for this device only: no loader dispatch, no globals
+    bool debug_labels = false; // VK_EXT_debug_utils is enabled on the instance (validation on)
     VmaAllocator allocator = VK_NULL_HANDLE;
     VkPhysicalDeviceLimits device_limits{};
     // One layout shared by every pipeline: the bindless descriptor set (set 0) + push constants for all stages.

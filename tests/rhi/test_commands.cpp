@@ -10,6 +10,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
+#include <string>
 #include <thread>
 #include <vector>
 
@@ -215,4 +216,19 @@ TEST_CASE_FIXTURE(DeviceFixture, "Upload size mismatches are rejected") {
     auto outside = device.upload(texture, one_texel, {.region = {.mip_level = 3}}); // a 4x4 texture has 1 level here
     REQUIRE_FALSE(outside.has_value());
     CHECK(outside.error().code() == core::ErrorCode::InvalidArgument);
+}
+
+TEST_CASE_FIXTURE(DeviceFixture, "Debug labels nest around commands") {
+    rhi::Buffer buffer =
+        device.create_buffer({.size = 64, .usage = rhi::BufferUsage::CopyDst, .debug_name = "labeled"}).value();
+    auto commands = device.begin_commands();
+    REQUIRE(commands.has_value());
+    commands->begin_debug_label("Outer");
+    commands->begin_debug_label(std::string(300, 'x')); // longer than the internal buffer: truncated, not an error
+    commands->fill_buffer(buffer, 0, 64, 0);
+    commands->end_debug_label();
+    commands->end_debug_label();
+    auto done = device.submit(std::move(*commands));
+    REQUIRE_MESSAGE(done.has_value(), bytee::tests::error_text(done));
+    REQUIRE(device.wait(*done).has_value());
 }

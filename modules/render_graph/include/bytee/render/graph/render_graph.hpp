@@ -267,13 +267,14 @@ public:
     template <RenderPass Pass_>
     void add_pass(std::string_view name, Pass_& pass);
 
-    // Culls passes, validates resource use (InvalidArgument on errors) and computes barriers and transient usages.
-    // Runs on the CPU only; record() calls it when the graph changed.
+    // Culls passes, validates resource use (InvalidArgument on errors: reads before writes, transients in host-only
+    // states, attachments of different sizes, imported resources without the usage a state needs) and computes
+    // barriers and transient usages. Runs on the CPU only; record() calls it when the graph changed.
     [[nodiscard]] core::Result<void> compile();
 
     // Creates (or reuses) transient resources and records every pass that executes, with its barriers and render
-    // pass, into one command list; imported resources end in their `after` state. Submit or present the list. Once per
-    // reset().
+    // pass, into one command list (each pass inside a debug label with its name); imported resources end in their
+    // `after` state. Submit or present the list. Once per reset().
     [[nodiscard]] core::Result<rhi::CommandList> record();
 
     // record() and submit.
@@ -287,6 +288,11 @@ public:
     [[nodiscard]] TextureView texture(TextureRef texture) const;
     [[nodiscard]] BufferView buffer(BufferRef buffer) const;
     [[nodiscard]] std::span<const GraphBarrier> final_barriers() const noexcept; // after compile()
+
+    // The graph in Graphviz DOT format (render with `dot -Tsvg graph.dot -o graph.svg`): passes as boxes in execution
+    // order, resources as ellipses (imported ones bold), edges labeled with states. After compile(), culled passes
+    // are greyed out and dashed.
+    [[nodiscard]] std::string to_graphviz() const;
     [[nodiscard]] uint32_t pooled_texture_count() const noexcept {
         return static_cast<uint32_t>(pooled_textures_.size());
     }
@@ -299,6 +305,7 @@ private:
     [[nodiscard]] Name store_name(std::string_view name);
     [[nodiscard]] std::string_view name_of(Name name) const noexcept;
     void add_barrier(ResourceKind kind, uint32_t resource, Tracking& tracking, rhi::ResourceState state, bool writes);
+    [[nodiscard]] core::Result<void> validate_pass(const PassEntry& pass) const;
     [[nodiscard]] core::Result<void> acquire_transients();
     void record_barriers(rhi::CommandList& commands, std::span<const GraphBarrier> barriers);
     void record_pass(rhi::CommandList& commands, const PassEntry& pass);

@@ -463,6 +463,7 @@ core::Result<Device> Instance::create_device(const DeviceDesc& desc) {
     impl->adapter = adapter;
     impl->physical_device = physical_device;
     impl->presentation_supported = presentation;
+    impl->debug_labels = instance.validation_enabled; // debug utils are enabled together with validation
 
     // Created into locals throughout: Vulkan leaves output handles undefined on failure, and the destructor of
     // `impl` destroys whatever handles it holds.

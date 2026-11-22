@@ -318,8 +318,9 @@ list is a programmer error.
 - **Compile** (`graph.compile()`, CPU only; `record()` runs it when the graph changed):
   - Culling, last pass first: a pass executes if it writes an imported resource or something a later executing pass
     uses. Culled passes never execute and their transients are never created.
-  - Validation (`InvalidArgument`): reading a transient before any pass wrote it; a transient in a state only imported
-    resources can be in (`Present`, `HostRead`).
+  - Validation (`InvalidArgument`, with pass and resource names): reading a transient before any pass wrote it; a
+    transient in a state only imported resources can be in (`Present`, `HostRead`); attachments of one pass with
+    different sizes; an imported resource created without the usage its state needs.
   - Transient usage flags = union over their accesses (`ShaderRead` → Sampled, `ShaderWrite` → Storage, ...).
   - Barriers: per resource the graph tracks the current state and whether the last access wrote. A barrier is placed
     when the state changes or a write is involved; repeated reads in one state need none. Imported resources start in
@@ -327,6 +328,10 @@ list is a programmer error.
 - **Record / execute**: `graph.record()` → one `rhi::CommandList` (barriers, render passes for passes with attachments,
   each pass's `execute()`); submit it, or present it for swapchain frames. `graph.execute()` = record + submit. Once
   per `reset()`. `PassContext` gives the command list, the device and the GPU handles behind refs.
+- **Tooling**: every executing pass is recorded inside a debug label with its name (`CommandList::begin_debug_label`
+  / `end_debug_label`, visible in Xcode / RenderDoc; no-op without validation, no allocation). `graph.to_graphviz()`
+  returns the graph in DOT format: passes in order, resources (imported ones bold), edges labeled with states, culled
+  passes greyed out.
 - **Transient pool**: transients survive `reset()` and are reused by a later frame with the same shape and usage;
   entries unused for `k_transient_keep_frames` (4) frames are released (deferred destruction). Reuse across frames is
   safe on one queue: a transient's first barrier (from `Undefined`) waits for all earlier work.

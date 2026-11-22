@@ -129,4 +129,7 @@ if(BYTEE_ASSERTS STREQUAL "ON" OR (BYTEE_ASSERTS STREQUAL "AUTO" AND CMAKE_BUILD
     bytee_add_death_test(bytee_graph_resource_used_twice death/graph_resource_used_twice.cpp bytee::render_graph
         "pass 'Read and write': resource 0 is used more than once")
     set_tests_properties(bytee_graph_resource_used_twice PROPERTIES LABELS gpu)
+    bytee_add_death_test(bytee_submit_with_open_label death/submit_with_open_label.cpp bytee::rhi
+        "submitting a CommandList with 1 open debug label[(]s[)]")
+    set_tests_properties(bytee_submit_with_open_label PROPERTIES LABELS gpu)
 endif()

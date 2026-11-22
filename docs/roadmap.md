@@ -37,7 +37,7 @@ Rendering features are validated **headless first** (image tests), presentation 
 - [x] **Step 14 — Graph API.** Pass builder, transient + imported resources.
 - [x] **Step 15 — Compile & execute.** Culling, ordering, automatic barriers, transient resource pool;
   samples ported to the graph.
-- [ ] **Step 16 — Graph tooling.** Pass markers, Graphviz dump, validation.
+- [x] **Step 16 — Graph tooling.** Pass markers, Graphviz dump, validation.
 
 ## Phase 3 — Usability & portability
 - [ ] **Step 17 — Debug tooling.** GPU markers/labels, optional ImGui integration sample.

@@ -235,6 +235,11 @@ public:
     void copy_buffer_to_texture(BufferHandle src, uint64_t src_offset, TextureHandle dst, const TextureRegion& region);
     void copy_texture_to_buffer(TextureHandle src, const TextureRegion& region, BufferHandle dst, uint64_t dst_offset);
 
+    // Names a range of commands for GPU debuggers (Xcode, RenderDoc) and validation messages; no-op when the instance
+    // runs without validation. Labels nest; each begin needs an end in the same command list before submission.
+    void begin_debug_label(std::string_view name);
+    void end_debug_label();
+
 private:
     friend class Device;
     friend detail::CommandContext* get_context(const CommandList& list) noexcept;

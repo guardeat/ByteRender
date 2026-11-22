@@ -149,6 +149,7 @@ core::Result<detail::CommandContext*> detail::DeviceImpl::acquire_context(QueueT
     }
 
     context->in_render_pass = false;
+    context->debug_label_depth = 0;
     context->graphics_pipeline_bound = false;
     context->compute_pipeline_bound = false;
     const VkCommandBufferBeginInfo begin_info{.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
@@ -473,6 +474,28 @@ void CommandList::dispatch(uint32_t group_count_x, uint32_t group_count_y, uint3
     device_->vk.vkCmdDispatch(context_->buffer, group_count_x, group_count_y, group_count_z);
 }
 
+void CommandList::begin_debug_label(std::string_view name) {
+    BYTEE_ASSERT(is_valid(), "CommandList is empty");
+    ++context_->debug_label_depth;
+    if (!device_->debug_labels) {
+        return;
+    }
+    std::array<char, 256> terminated{}; // hot path: no allocation; longer names are truncated
+    const std::size_t length = std::min(name.size(), terminated.size() - 1);
+    std::copy_n(name.data(), length, terminated.data());
+    const VkDebugUtilsLabelEXT label{.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT, .pLabelName = terminated.data()};
+    vkCmdBeginDebugUtilsLabelEXT(context_->buffer, &label);
+}
+
+void CommandList::end_debug_label() {
+    BYTEE_ASSERT(is_valid(), "CommandList is empty");
+    BYTEE_ASSERT(context_->debug_label_depth > 0, "end_debug_label() without begin_debug_label()");
+    --context_->debug_label_depth;
+    if (device_->debug_labels) {
+        vkCmdEndDebugUtilsLabelEXT(context_->buffer);
+    }
+}
+
 void CommandList::set_viewport(const Viewport& viewport) {
     BYTEE_ASSERT(is_valid(), "CommandList is empty");
     // Negative height flips Vulkan's Y-down framebuffer convention into Bytee's Y-up clip space (architecture §14).
@@ -556,6 +579,8 @@ core::Result<SyncPoint> detail::DeviceImpl::submit_context(detail::CommandContex
                                                            std::span<const VkSemaphoreSubmitInfo> waits,
                                                            std::span<const VkSemaphoreSubmitInfo> signals) {
     BYTEE_ASSERT(!context->in_render_pass, "submitting a CommandList with an open render pass");
+    BYTEE_ASSERT(context->debug_label_depth == 0, "submitting a CommandList with {} open debug label(s)",
+                 context->debug_label_depth);
     if (const VkResult result = vk.vkEndCommandBuffer(context->buffer); result != VK_SUCCESS) {
         discard_context(context);
         return fail(result, "vkEndCommandBuffer");
