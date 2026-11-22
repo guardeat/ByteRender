@@ -40,6 +40,7 @@ ctest --preset debug            # run tests (ctest --preset debug -LE gpu: skip 
 ./build/debug/bin/01_headless_clear            # renders without a window, writes headless_clear.ppm
 ./build/debug/bin/02_triangle                  # the RGB triangle, headless, writes triangle.ppm
 ./build/debug/bin/03_window                    # the triangle in a resizable window (macOS / Windows)
+./build/debug/bin/04_imgui                     # debug UI (Dear ImGui) rendered by a render graph pass
 ```
 
 | Preset | What |

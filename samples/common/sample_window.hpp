@@ -32,6 +32,7 @@ public:
     [[nodiscard]] bool should_close() const;
     void poll_events() const;
     void wait_events() const; // blocks until an event arrives (e.g. while minimized)
+    [[nodiscard]] GLFWwindow* glfw_window() const noexcept { return window_; } // for input backends (ImGui)
 
 private:
     friend core::Result<SampleWindow> create_sample_window(std::string_view title, core::Extent2D size);

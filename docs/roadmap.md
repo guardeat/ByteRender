@@ -40,9 +40,9 @@ Rendering features are validated **headless first** (image tests), presentation 
 - [x] **Step 16 — Graph tooling.** Pass markers, Graphviz dump, validation.
 
 ## Phase 3 — Usability & portability
-- [ ] **Step 17 — Debug tooling.** GPU markers/labels, optional ImGui integration sample.
+- [x] **Step 17 — Debug tooling.** GPU markers/labels (with step 16), ImGui integration sample.
 - [ ] **Step 18 — Windows & Linux.** Builds on all platforms; CI matrix with headless GPU tests (lavapipe).
-  Includes: MSVC `asan` preset (drop `/RTC1`, no incremental linking), Linux window platforms in samples/common.
+  Includes: MSVC `asan` preset (drop `/RTC1`, no incremental linking), Linux window platforms in samples/common (03_window, 04_imgui).
 - [ ] **Step 19 — Packaging.** `install()` + CMake package config: `find_package(Bytee)` / FetchContent.
 
 ## Backlog

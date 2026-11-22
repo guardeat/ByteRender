@@ -332,6 +332,11 @@ list is a programmer error.
   / `end_debug_label`, visible in Xcode / RenderDoc; no-op without validation, no allocation). `graph.to_graphviz()`
   returns the graph in DOT format: passes in order, resources (imported ones bold), edges labeled with states, culled
   passes greyed out.
+- **Debug UI** (samples): `samples/common/imgui_pass` renders Dear ImGui as an ordinary graph pass on Bytee's RHI —
+  font atlas as a bindless texture (`ImTextureID` = bindless index), vertices pulled by buffer device address, one
+  scissor per draw command, sRGB-correct colors, one host-visible vertex/index buffer pair per frame in flight. Input
+  comes from ImGui's GLFW backend. `04_imgui` shows frame statistics and the previous frame's graph (passes, culling,
+  Graphviz dump to the clipboard).
 - **Transient pool**: transients survive `reset()` and are reused by a later frame with the same shape and usage;
   entries unused for `k_transient_keep_frames` (4) frames are released (deferred destruction). Reuse across frames is
   safe on one queue: a transient's first barrier (from `Undefined`) waits for all earlier work.
@@ -407,6 +412,7 @@ list is a programmer error.
 | volk (pinned) | Vulkan function loading | private |
 | Vulkan Memory Allocator (pinned) | GPU memory | private |
 | GLFW (pinned) | samples only | — |
+| Dear ImGui 1.91.9b (pinned) | samples only (debug UI) | — |
 | doctest (pinned) | tests only | — |
 
 | Option | Default | Meaning |

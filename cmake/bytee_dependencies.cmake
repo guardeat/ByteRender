@@ -88,3 +88,32 @@ function(bytee_fetch_glfw)
         target_compile_options(glfw PRIVATE -w)
     endif()
 endfunction()
+
+# Dear ImGui: debug UI for the samples only, with its GLFW input backend (Bytee renders the draw data itself, see
+# samples/common/imgui_pass). Pinned to the last release before the 1.92 texture rework; third-party code compiles
+# without warnings output, and its headers are SYSTEM includes.
+function(bytee_fetch_imgui)
+    if(TARGET bytee_imgui)
+        return()
+    endif()
+    FetchContent_Declare(imgui
+        URL https://github.com/ocornut/imgui/archive/refs/tags/v1.91.9b.tar.gz
+        URL_HASH SHA256=8e1bbc76c71d74fef2fb85db7e7ca8eba13d6a86623c54992b60162db554ffdb
+    )
+    FetchContent_MakeAvailable(imgui)
+    add_library(bytee_imgui STATIC
+        ${imgui_SOURCE_DIR}/imgui.cpp
+        ${imgui_SOURCE_DIR}/imgui_demo.cpp
+        ${imgui_SOURCE_DIR}/imgui_draw.cpp
+        ${imgui_SOURCE_DIR}/imgui_tables.cpp
+        ${imgui_SOURCE_DIR}/imgui_widgets.cpp
+        ${imgui_SOURCE_DIR}/backends/imgui_impl_glfw.cpp
+    )
+    target_include_directories(bytee_imgui SYSTEM PUBLIC ${imgui_SOURCE_DIR} ${imgui_SOURCE_DIR}/backends)
+    target_link_libraries(bytee_imgui PUBLIC glfw)
+    if(MSVC)
+        target_compile_options(bytee_imgui PRIVATE /W0)
+    else()
+        target_compile_options(bytee_imgui PRIVATE -w)
+    endif()
+endfunction()
