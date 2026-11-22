@@ -1,4 +1,4 @@
-// Renders the classic RGB triangle without a window and writes it to a PPM image.
+// Renders the classic RGB triangle without a window (one render graph pass) and writes it to a PPM image.
 //   02_triangle [output.ppm]
 
 #include "ppm.hpp"
@@ -6,15 +6,18 @@
 #include "vertex_color.frag.hpp"
 
 #include <bytee/core/log.hpp>
+#include <bytee/render/graph/render_graph.hpp>
 #include <bytee/render/rhi/instance_factory.hpp>
 
 #include <array>
 #include <cstddef>
 #include <cstdint>
 #include <string>
+#include <utility>
 #include <vector>
 
 namespace core = bytee::core;
+namespace render = bytee::render;
 namespace rhi = bytee::render::rhi;
 
 namespace {
@@ -23,8 +26,28 @@ constexpr uint32_t k_width = 512;
 constexpr uint32_t k_height = 512;
 constexpr rhi::Format k_format = rhi::Format::RGBA8Srgb;
 
-core::Result<std::vector<std::byte>> render(rhi::Device& device) {
-    // Pipelines are created once, at load time.
+// Draws the triangle into its target. Owns its pipeline (created once, at load time).
+class TrianglePass {
+private:
+    rhi::GraphicsPipeline pipeline_;
+    render::TextureRef target_;
+
+public:
+    explicit TrianglePass(rhi::GraphicsPipeline pipeline) noexcept
+        : pipeline_(std::move(pipeline)) {}
+
+    void set_target(render::TextureRef target) noexcept { target_ = target; }
+
+    void setup(render::PassBuilder& builder) {
+        builder.color_attachment({.texture = target_, .clear = {0.02f, 0.02f, 0.03f, 1.0f}});
+    }
+    void execute(render::PassContext& context) {
+        context.commands().bind_pipeline(pipeline_);
+        context.commands().draw(3);
+    }
+};
+
+core::Result<TrianglePass> create_triangle_pass(rhi::Device& device) {
     static constexpr std::array k_color_formats{k_format};
     core::Result<rhi::GraphicsPipeline> pipeline = device.create_graphics_pipeline({
         .vertex = {.spirv = shaders::triangle_vert},
@@ -34,6 +57,14 @@ core::Result<std::vector<std::byte>> render(rhi::Device& device) {
     });
     if (!pipeline) {
         return std::move(pipeline).error();
+    }
+    return TrianglePass{std::move(*pipeline)};
+}
+
+core::Result<std::vector<std::byte>> render_image(rhi::Device& device) {
+    core::Result<TrianglePass> triangle = create_triangle_pass(device);
+    if (!triangle) {
+        return std::move(triangle).error();
     }
     core::Result<rhi::Texture> target = device.create_texture({
         .extent = {.width = k_width, .height = k_height},
@@ -45,22 +76,14 @@ core::Result<std::vector<std::byte>> render(rhi::Device& device) {
         return std::move(target).error();
     }
 
-    core::Result<rhi::CommandList> commands = device.begin_commands();
-    if (!commands) {
-        return std::move(commands).error();
-    }
-    const rhi::TextureBarrier to_attachment{
-        .texture = *target, .before = rhi::ResourceState::Undefined, .after = rhi::ResourceState::ColorAttachment};
-    commands->barrier({}, std::span{&to_attachment, 1});
-    const rhi::ColorAttachment color{.texture = *target, .clear = {0.02f, 0.02f, 0.03f, 1.0f}};
-    commands->begin_render_pass({.colors = std::span{&color, 1}});
-    commands->bind_pipeline(*pipeline);
-    commands->draw(3);
-    commands->end_render_pass();
-    BYTEE_TRY(device.submit(std::move(*commands)));
+    render::RenderGraph graph{device};
+    triangle->set_target(graph.import_texture(
+        "target", *target, {.before = rhi::ResourceState::Undefined, .after = rhi::ResourceState::CopySrc}));
+    graph.add_pass("Triangle", *triangle);
+    BYTEE_TRY(graph.execute());
 
     std::vector<std::byte> pixels(std::size_t{k_width} * k_height * 4);
-    BYTEE_TRY(device.download(*target, pixels, {.before = rhi::ResourceState::ColorAttachment}));
+    BYTEE_TRY(device.download(*target, pixels, {.before = rhi::ResourceState::CopySrc}));
     return pixels;
 }
 
@@ -83,7 +106,7 @@ int main(int argc, char** argv) {
         logger.error("cannot create a device: {}", device.error().message());
         return 1;
     }
-    core::Result<std::vector<std::byte>> pixels = render(*device);
+    core::Result<std::vector<std::byte>> pixels = render_image(*device);
     if (!pixels) {
         logger.error("rendering failed: {}", pixels.error().message());
         return 1;

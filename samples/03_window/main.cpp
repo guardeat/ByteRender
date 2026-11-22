@@ -1,4 +1,4 @@
-// The RGB triangle in a window: swapchain, frames in flight, resizing.
+// The RGB triangle in a window: swapchain, frames in flight, resizing; each frame is a render graph.
 //   03_window [--frames N]   (exit after N frames, e.g. for automated runs)
 
 #include "sample_window.hpp"
@@ -6,6 +6,7 @@
 #include "vertex_color.frag.hpp"
 
 #include <bytee/core/log.hpp>
+#include <bytee/render/graph/render_graph.hpp>
 #include <bytee/render/rhi/instance_factory.hpp>
 
 #include <array>
@@ -13,8 +14,10 @@
 #include <cstdint>
 #include <optional>
 #include <string_view>
+#include <utility>
 
 namespace core = bytee::core;
+namespace render = bytee::render;
 namespace rhi = bytee::render::rhi;
 
 namespace {
@@ -32,26 +35,39 @@ std::optional<uint64_t> frame_limit(int argc, char** argv) {
     return std::nullopt;
 }
 
-core::Result<void> record_frame(rhi::Device& device, rhi::Swapchain& swapchain, rhi::GraphicsPipelineHandle pipeline,
-                                rhi::SwapchainFrame frame) {
-    core::Result<rhi::CommandList> commands = device.begin_commands();
+// Draws the triangle into its target, keeping its shape whatever the target's aspect ratio.
+class TrianglePass {
+private:
+    rhi::GraphicsPipeline pipeline_;
+    render::TextureRef target_;
+
+public:
+    explicit TrianglePass(rhi::GraphicsPipeline pipeline) noexcept
+        : pipeline_(std::move(pipeline)) {}
+
+    void set_target(render::TextureRef target) noexcept { target_ = target; }
+
+    void setup(render::PassBuilder& builder) {
+        builder.color_attachment({.texture = target_, .clear = {0.02f, 0.02f, 0.03f, 1.0f}});
+    }
+    void execute(render::PassContext& context) {
+        const core::Extent3D extent = context.desc(target_).extent;
+        context.commands().bind_pipeline(pipeline_);
+        context.commands().push_constants(static_cast<float>(extent.height) / static_cast<float>(extent.width));
+        context.commands().draw(3);
+    }
+};
+
+core::Result<void> render_frame(rhi::Device& device, rhi::Swapchain& swapchain, render::RenderGraph& graph,
+                                TrianglePass& triangle, rhi::SwapchainFrame frame) {
+    graph.reset();
+    triangle.set_target(graph.import_texture(
+        "backbuffer", frame.texture, {.before = rhi::ResourceState::Undefined, .after = rhi::ResourceState::Present}));
+    graph.add_pass("Triangle", triangle);
+    core::Result<rhi::CommandList> commands = graph.record();
     if (!commands) {
         return std::move(commands).error();
     }
-    const rhi::TextureBarrier to_attachment{.texture = frame.texture,
-                                            .before = rhi::ResourceState::Undefined,
-                                            .after = rhi::ResourceState::ColorAttachment};
-    commands->barrier({}, std::span{&to_attachment, 1});
-    const rhi::ColorAttachment color{.texture = frame.texture, .clear = {0.02f, 0.02f, 0.03f, 1.0f}};
-    commands->begin_render_pass({.colors = std::span{&color, 1}});
-    commands->bind_pipeline(pipeline);
-    const core::Extent2D extent = swapchain.extent();
-    commands->push_constants(static_cast<float>(extent.height) / static_cast<float>(extent.width)); // keep the shape
-    commands->draw(3);
-    commands->end_render_pass();
-    const rhi::TextureBarrier to_present{
-        .texture = frame.texture, .before = rhi::ResourceState::ColorAttachment, .after = rhi::ResourceState::Present};
-    commands->barrier({}, std::span{&to_present, 1});
     BYTEE_TRY(device.present(swapchain, std::move(*commands)));
     return {};
 }
@@ -98,6 +114,8 @@ int main(int argc, char** argv) {
         logger.error("cannot create the pipeline: {}", pipeline.error().message());
         return 1;
     }
+    TrianglePass triangle{std::move(*pipeline)};
+    render::RenderGraph graph{*device};
     logger.info("rendering on {} at {}x{} ({})", device->adapter().name, swapchain->extent().width,
                 swapchain->extent().height, rhi::to_string(swapchain->format()));
 
@@ -114,8 +132,8 @@ int main(int argc, char** argv) {
             window->wait_events(); // minimized: sleep until something happens instead of spinning
             continue;
         }
-        if (auto recorded = record_frame(*device, *swapchain, *pipeline, *frame); !recorded) {
-            logger.error("frame failed: {}", recorded.error().message());
+        if (auto rendered = render_frame(*device, *swapchain, graph, triangle, *frame); !rendered) {
+            logger.error("frame failed: {}", rendered.error().message());
             return 1;
         }
         ++frames;

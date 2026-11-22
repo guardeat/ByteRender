@@ -315,8 +315,21 @@ list is a programmer error.
   render targets through `builder.color_attachment/depth_attachment` (the graph begins and ends the render pass).
 - Storage is flat arrays plus one name buffer, cleared but not freed by `reset()`: rebuilding every frame does not
   allocate once warm. `graph.pass(i)` / `texture(ref)` / `buffer(ref)` give read-only views (compile, dumps, tests).
-- Compile: cull unused passes, order, compute barriers, allocate transient resources from a pool.
-- Execute: record into RHI command lists.
+- **Compile** (`graph.compile()`, CPU only; `record()` runs it when the graph changed):
+  - Culling, last pass first: a pass executes if it writes an imported resource or something a later executing pass
+    uses. Culled passes never execute and their transients are never created.
+  - Validation (`InvalidArgument`): reading a transient before any pass wrote it; a transient in a state only imported
+    resources can be in (`Present`, `HostRead`).
+  - Transient usage flags = union over their accesses (`ShaderRead` → Sampled, `ShaderWrite` → Storage, ...).
+  - Barriers: per resource the graph tracks the current state and whether the last access wrote. A barrier is placed
+    when the state changes or a write is involved; repeated reads in one state need none. Imported resources start in
+    `before` (earlier work counts as a write) and always end in `after`, even when no executing pass used them.
+- **Record / execute**: `graph.record()` → one `rhi::CommandList` (barriers, render passes for passes with attachments,
+  each pass's `execute()`); submit it, or present it for swapchain frames. `graph.execute()` = record + submit. Once
+  per `reset()`. `PassContext` gives the command list, the device and the GPU handles behind refs.
+- **Transient pool**: transients survive `reset()` and are reused by a later frame with the same shape and usage;
+  entries unused for `k_transient_keep_frames` (4) frames are released (deferred destruction). Reuse across frames is
+  safe on one queue: a transient's first barrier (from `Undefined`) waits for all earlier work.
 - Later: transient memory aliasing, async compute, multi-queue.
 
 ## 13. Shaders and pipelines

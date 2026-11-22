@@ -35,7 +35,7 @@ Rendering features are validated **headless first** (image tests), presentation 
 
 ## Phase 2 — Render graph
 - [x] **Step 14 — Graph API.** Pass builder, transient + imported resources.
-- [ ] **Step 15 — Compile & execute.** Culling, ordering, automatic barriers, transient resource pool;
+- [x] **Step 15 — Compile & execute.** Culling, ordering, automatic barriers, transient resource pool;
   samples ported to the graph.
 - [ ] **Step 16 — Graph tooling.** Pass markers, Graphviz dump, validation.
 

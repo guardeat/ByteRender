@@ -1,18 +1,19 @@
-// Renders without a window: clears a texture with a render pass, reads it back and writes it to a PPM image.
+// Renders without a window: a render graph pass clears a texture, which is read back and written to a PPM image.
 //   01_headless_clear [output.ppm]
 
 #include "ppm.hpp"
 
 #include <bytee/core/log.hpp>
+#include <bytee/render/graph/render_graph.hpp>
 #include <bytee/render/rhi/instance_factory.hpp>
 
-#include <array>
 #include <cstddef>
 #include <cstdint>
 #include <string>
 #include <vector>
 
 namespace core = bytee::core;
+namespace render = bytee::render;
 namespace rhi = bytee::render::rhi;
 
 namespace {
@@ -20,7 +21,21 @@ namespace {
 constexpr uint32_t k_width = 256;
 constexpr uint32_t k_height = 256;
 
-core::Result<std::vector<std::byte>> render(rhi::Device& device) {
+// Clears its target: the graph begins the render pass with the attachment's clear color, nothing else to record.
+class ClearPass {
+private:
+    render::TextureRef target_;
+
+public:
+    void set_target(render::TextureRef target) noexcept { target_ = target; }
+
+    void setup(render::PassBuilder& builder) {
+        builder.color_attachment({.texture = target_, .clear = {0.10f, 0.35f, 0.80f, 1.0f}});
+    }
+    void execute(render::PassContext& /*context*/) {}
+};
+
+core::Result<std::vector<std::byte>> render_image(rhi::Device& device) {
     core::Result<rhi::Texture> target = device.create_texture({
         .extent = {.width = k_width, .height = k_height},
         .format = rhi::Format::RGBA8Srgb,
@@ -31,20 +46,15 @@ core::Result<std::vector<std::byte>> render(rhi::Device& device) {
         return std::move(target).error();
     }
 
-    core::Result<rhi::CommandList> commands = device.begin_commands();
-    if (!commands) {
-        return std::move(commands).error();
-    }
-    const rhi::TextureBarrier to_attachment{
-        .texture = *target, .before = rhi::ResourceState::Undefined, .after = rhi::ResourceState::ColorAttachment};
-    commands->barrier({}, std::span{&to_attachment, 1});
-    const rhi::ColorAttachment color{.texture = *target, .clear = {0.10f, 0.35f, 0.80f, 1.0f}};
-    commands->begin_render_pass({.colors = std::span{&color, 1}});
-    commands->end_render_pass();
-    BYTEE_TRY(device.submit(std::move(*commands)));
+    render::RenderGraph graph{device};
+    ClearPass clear;
+    clear.set_target(graph.import_texture(
+        "target", *target, {.before = rhi::ResourceState::Undefined, .after = rhi::ResourceState::CopySrc}));
+    graph.add_pass("Clear", clear);
+    BYTEE_TRY(graph.execute());
 
     std::vector<std::byte> pixels(std::size_t{k_width} * k_height * 4);
-    BYTEE_TRY(device.download(*target, pixels, {.before = rhi::ResourceState::ColorAttachment}));
+    BYTEE_TRY(device.download(*target, pixels, {.before = rhi::ResourceState::CopySrc}));
     return pixels;
 }
 
@@ -68,7 +78,7 @@ int main(int argc, char** argv) {
         return 1;
     }
 
-    core::Result<std::vector<std::byte>> pixels = render(*device);
+    core::Result<std::vector<std::byte>> pixels = render_image(*device);
     if (!pixels) {
         logger.error("rendering failed: {}", pixels.error().message());
         return 1;
