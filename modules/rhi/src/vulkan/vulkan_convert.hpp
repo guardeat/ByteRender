@@ -28,8 +28,6 @@ struct StateScope {
 };
 
 [[nodiscard]] StateScope to_state_scope(ResourceState state) noexcept;
-[[nodiscard]] bool is_buffer_state(ResourceState state) noexcept;
-[[nodiscard]] bool is_texture_state(ResourceState state) noexcept;
 
 [[nodiscard]] VkPrimitiveTopology to_vk_topology(PrimitiveTopology topology) noexcept;
 [[nodiscard]] VkCullModeFlags to_vk_cull_mode(CullMode mode) noexcept;

@@ -144,16 +144,6 @@ StateScope to_state_scope(ResourceState state) noexcept {
     return {};
 }
 
-bool is_buffer_state(ResourceState state) noexcept {
-    switch (state) {
-    case ResourceState::ColorAttachment:
-    case ResourceState::DepthWrite:
-    case ResourceState::DepthRead:
-    case ResourceState::Present: return false;
-    default: return true;
-    }
-}
-
 VkPrimitiveTopology to_vk_topology(PrimitiveTopology topology) noexcept {
     switch (topology) {
     case PrimitiveTopology::TriangleList: return VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
@@ -242,17 +232,6 @@ VkSamplerAddressMode to_vk_address_mode(AddressMode mode) noexcept {
     case AddressMode::ClampToEdge: return VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
     }
     return VK_SAMPLER_ADDRESS_MODE_REPEAT;
-}
-
-bool is_texture_state(ResourceState state) noexcept {
-    switch (state) {
-    case ResourceState::VertexBuffer:
-    case ResourceState::IndexBuffer:
-    case ResourceState::IndirectBuffer:
-    case ResourceState::UniformBuffer:
-    case ResourceState::HostRead: return false;
-    default: return true;
-    }
 }
 
 } // namespace bytee::render::rhi::vulkan

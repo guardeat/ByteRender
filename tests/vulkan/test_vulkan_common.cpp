@@ -88,11 +88,11 @@ TEST_CASE("Resource states map to synchronization2 scopes and layouts") {
     CHECK(vulkan::to_state_scope(ResourceState::Present).layout == VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
     CHECK((vulkan::to_state_scope(ResourceState::CopySrc).access & VK_ACCESS_2_TRANSFER_READ_BIT) != 0);
 
-    CHECK(vulkan::is_buffer_state(ResourceState::VertexBuffer));
-    CHECK_FALSE(vulkan::is_buffer_state(ResourceState::ColorAttachment));
-    CHECK(vulkan::is_texture_state(ResourceState::DepthRead));
-    CHECK_FALSE(vulkan::is_texture_state(ResourceState::IndexBuffer));
+    CHECK(bytee::render::rhi::is_buffer_state(ResourceState::VertexBuffer));
+    CHECK_FALSE(bytee::render::rhi::is_buffer_state(ResourceState::ColorAttachment));
+    CHECK(bytee::render::rhi::is_texture_state(ResourceState::DepthRead));
+    CHECK_FALSE(bytee::render::rhi::is_texture_state(ResourceState::IndexBuffer));
     CHECK(vulkan::to_state_scope(ResourceState::HostRead).stages == VK_PIPELINE_STAGE_2_HOST_BIT);
-    CHECK(vulkan::is_buffer_state(ResourceState::HostRead));
-    CHECK_FALSE(vulkan::is_texture_state(ResourceState::HostRead));
+    CHECK(bytee::render::rhi::is_buffer_state(ResourceState::HostRead));
+    CHECK_FALSE(bytee::render::rhi::is_texture_state(ResourceState::HostRead));
 }

@@ -222,7 +222,7 @@ void CommandList::barrier(std::span<const BufferBarrier> buffers, std::span<cons
         uint32_t buffer_count = 0;
         for (; buffer_index < buffers.size() && buffer_count < k_barrier_batch; ++buffer_index) {
             const BufferBarrier& barrier = buffers[buffer_index];
-            BYTEE_ASSERT(vulkan::is_buffer_state(barrier.before) && vulkan::is_buffer_state(barrier.after),
+            BYTEE_ASSERT(is_buffer_state(barrier.before) && is_buffer_state(barrier.after),
                          "buffer barrier {} -> {}: not a buffer state", to_string(barrier.before),
                          to_string(barrier.after));
             const vulkan::StateScope before = vulkan::to_state_scope(barrier.before);
@@ -243,7 +243,7 @@ void CommandList::barrier(std::span<const BufferBarrier> buffers, std::span<cons
         uint32_t image_count = 0;
         for (; texture_index < textures.size() && image_count < k_barrier_batch; ++texture_index) {
             const TextureBarrier& barrier = textures[texture_index];
-            BYTEE_ASSERT(vulkan::is_texture_state(barrier.before) && vulkan::is_texture_state(barrier.after),
+            BYTEE_ASSERT(is_texture_state(barrier.before) && is_texture_state(barrier.after),
                          "texture barrier {} -> {}: not a texture state", to_string(barrier.before),
                          to_string(barrier.after));
             BYTEE_ASSERT(barrier.after != ResourceState::Undefined, "textures cannot transition to Undefined");

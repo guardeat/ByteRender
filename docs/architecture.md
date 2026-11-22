@@ -301,7 +301,20 @@ list is a programmer error.
   first transition chains with the acquire semaphore wait.
 
 ## 12. Render graph (v1 scope)
-- Passes declare reads/writes of transient or imported resources.
+- Namespace `bytee::render` (module `bytee::render_graph`, headers under `bytee/render/graph/`).
+- A **pass is a class** satisfying the `RenderPass` concept: `setup(PassBuilder&)` declares resource use,
+  `execute(PassContext&)` records commands. No base class, no virtual calls: the graph stores a pointer plus one
+  function pointer per pass. Passes are long-lived and own their pipelines (constructor = init, destructor = release,
+  through RAII); the graph is rebuilt every frame and only refers to them, so a pass must outlive the graph's execution.
+- `graph.add_pass("Name", pass)` runs `setup()` immediately, so a pass's outputs feed the next pass. Passes execute in
+  the order they are added; unused ones are culled at compile time.
+- Resources: `TextureRef` / `BufferRef` (4-byte indices, valid until `reset()`). Transient ones come from
+  `builder.create_texture/create_buffer("name", desc)` — usage flags are derived from their accesses; imported ones
+  from `graph.import_texture/import_buffer("name", handle, {.before, .after})`.
+- Accesses: `builder.read/write(ref, state)` with RHI resource states (one state per resource per pass, checked);
+  render targets through `builder.color_attachment/depth_attachment` (the graph begins and ends the render pass).
+- Storage is flat arrays plus one name buffer, cleared but not freed by `reset()`: rebuilding every frame does not
+  allocate once warm. `graph.pass(i)` / `texture(ref)` / `buffer(ref)` give read-only views (compile, dumps, tests).
 - Compile: cull unused passes, order, compute barriers, allocate transient resources from a pool.
 - Execute: record into RHI command lists.
 - Later: transient memory aliasing, async compute, multi-queue.

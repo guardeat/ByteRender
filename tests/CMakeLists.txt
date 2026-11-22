@@ -34,6 +34,7 @@ add_test(NAME bytee_tests COMMAND bytee_tests)
 # GPU tests through the public API (label "gpu"; skip on machines without a GPU: ctest -LE gpu).
 add_executable(bytee_gpu_tests
     main.cpp
+    graph/test_render_graph.cpp
     rhi/test_bindless.cpp
     rhi/test_commands.cpp
     rhi/test_compute.cpp
@@ -56,7 +57,7 @@ bytee_add_shaders(bytee_gpu_tests SOURCES
     shaders/textured.frag
     shaders/triangle.vert
 )
-target_link_libraries(bytee_gpu_tests PRIVATE bytee::rhi bytee_doctest)
+target_link_libraries(bytee_gpu_tests PRIVATE bytee::render_graph bytee_doctest)
 bytee_configure_target(bytee_gpu_tests)
 add_test(NAME bytee_gpu_tests COMMAND bytee_gpu_tests)
 set_tests_properties(bytee_gpu_tests PROPERTIES LABELS gpu)
@@ -125,4 +126,7 @@ if(BYTEE_ASSERTS STREQUAL "ON" OR (BYTEE_ASSERTS STREQUAL "AUTO" AND CMAKE_BUILD
     bytee_add_death_test(bytee_dispatch_without_pipeline death/dispatch_without_pipeline.cpp bytee::rhi
         "condition: context_->compute_pipeline_bound.*dispatch needs a compute pipeline")
     set_tests_properties(bytee_dispatch_without_pipeline PROPERTIES LABELS gpu)
+    bytee_add_death_test(bytee_graph_resource_used_twice death/graph_resource_used_twice.cpp bytee::render_graph
+        "pass 'Read and write': resource 0 is used more than once")
+    set_tests_properties(bytee_graph_resource_used_twice PROPERTIES LABELS gpu)
 endif()

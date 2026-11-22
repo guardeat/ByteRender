@@ -61,6 +61,28 @@ enum class ResourceState : uint8_t {
     return "Unknown";
 }
 
+// Whether buffers / textures can be in `state` (barriers and render graph accesses are checked against these).
+[[nodiscard]] constexpr bool is_buffer_state(ResourceState state) noexcept {
+    switch (state) {
+    case ResourceState::ColorAttachment:
+    case ResourceState::DepthWrite:
+    case ResourceState::DepthRead:
+    case ResourceState::Present: return false;
+    default: return true;
+    }
+}
+
+[[nodiscard]] constexpr bool is_texture_state(ResourceState state) noexcept {
+    switch (state) {
+    case ResourceState::VertexBuffer:
+    case ResourceState::IndexBuffer:
+    case ResourceState::IndirectBuffer:
+    case ResourceState::UniformBuffer:
+    case ResourceState::HostRead: return false;
+    default: return true;
+    }
+}
+
 inline constexpr uint32_t k_all_mip_levels = ~0u;
 inline constexpr uint32_t k_all_array_layers = ~0u;
 

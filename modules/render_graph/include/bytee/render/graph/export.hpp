@@ -1,7 +1,7 @@
 #pragma once
 
-// Symbol visibility for bytee::render::graph. Every module has its own macro so that, in shared builds, a module
-// exports its own symbols while importing those of the modules it depends on.
+// Symbol visibility for the render graph module (namespace bytee::render). Every module has its own macro so that, in
+// shared builds, a module exports its own symbols while importing those of the modules it depends on.
 
 #if defined(BYTEE_SHARED)
     #if defined(_WIN32)
