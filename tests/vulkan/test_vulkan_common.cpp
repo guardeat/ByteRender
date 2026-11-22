@@ -92,4 +92,7 @@ TEST_CASE("Resource states map to synchronization2 scopes and layouts") {
     CHECK_FALSE(vulkan::is_buffer_state(ResourceState::ColorAttachment));
     CHECK(vulkan::is_texture_state(ResourceState::DepthRead));
     CHECK_FALSE(vulkan::is_texture_state(ResourceState::IndexBuffer));
+    CHECK(vulkan::to_state_scope(ResourceState::HostRead).stages == VK_PIPELINE_STAGE_2_HOST_BIT);
+    CHECK(vulkan::is_buffer_state(ResourceState::HostRead));
+    CHECK_FALSE(vulkan::is_texture_state(ResourceState::HostRead));
 }

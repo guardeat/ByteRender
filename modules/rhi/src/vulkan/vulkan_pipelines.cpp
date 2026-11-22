@@ -70,9 +70,28 @@ void detail::DeviceImpl::release(GraphicsPipelineHandle pipeline) {
                       [this](GraphicsPipelineHandle handle) { destroy_now(handle); });
 }
 
+void ResourceReleaser::operator()(ComputePipelineHandle pipeline) const noexcept {
+    if (device_ != nullptr) {
+        device_->release(pipeline);
+    }
+}
+
+void detail::DeviceImpl::release(ComputePipelineHandle pipeline) {
+    retire_or_destroy(retired_compute_pipelines, pipeline,
+                      [this](ComputePipelineHandle handle) { destroy_now(handle); });
+}
+
+void detail::DeviceImpl::destroy_now(ComputePipelineHandle pipeline) {
+    const std::scoped_lock lock{resources_mutex};
+    vulkan::PipelineRecord& record = compute_pipelines.get(pipeline);
+    vk.vkDestroyPipeline(device, record.pipeline, nullptr);
+    live_objects.remove(record.tracker_id);
+    compute_pipelines.remove(pipeline);
+}
+
 void detail::DeviceImpl::destroy_now(GraphicsPipelineHandle pipeline) {
     const std::scoped_lock lock{resources_mutex};
-    vulkan::GraphicsPipelineRecord& record = graphics_pipelines.get(pipeline);
+    vulkan::PipelineRecord& record = graphics_pipelines.get(pipeline);
     vk.vkDestroyPipeline(device, record.pipeline, nullptr);
     live_objects.remove(record.tracker_id);
     graphics_pipelines.remove(pipeline);
@@ -200,7 +219,7 @@ core::Result<GraphicsPipeline> Device::create_graphics_pipeline(const GraphicsPi
         .layout = impl.pipeline_layout,
     };
 
-    vulkan::GraphicsPipelineRecord record;
+    vulkan::PipelineRecord record;
     if (const VkResult result = impl.vk.vkCreateGraphicsPipelines(impl.device, VK_NULL_HANDLE, 1, &pipeline_info,
                                                                   nullptr, &record.pipeline);
         result != VK_SUCCESS) {
@@ -225,6 +244,56 @@ core::Result<GraphicsPipeline> Device::create_graphics_pipeline(const GraphicsPi
                                 impl.graphics_pipelines.capacity());
     }
     return GraphicsPipeline{handle, ResourceReleaser{impl_}};
+}
+
+core::Result<ComputePipeline> Device::create_compute_pipeline(const ComputePipelineDesc& desc) {
+    BYTEE_ASSERT(is_valid(), "Device is empty");
+    detail::DeviceImpl& impl = *impl_;
+    if (impl.lost.load(std::memory_order_acquire)) {
+        return impl.lost_error();
+    }
+    const std::string_view name = name_or_default(desc.debug_name);
+    BYTEE_TRY(validate_shader(desc.shader, "compute", name));
+
+    ShaderModule shader{impl};
+    if (const VkResult result = shader.create(desc.shader.spirv); result != VK_SUCCESS) {
+        return impl.fail(result, "vkCreateShaderModule (compute)");
+    }
+    const std::string entry{desc.shader.entry_point};
+    const VkComputePipelineCreateInfo pipeline_info{
+        .sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO,
+        .stage = {.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+                  .stage = VK_SHADER_STAGE_COMPUTE_BIT,
+                  .module = shader.handle(),
+                  .pName = entry.c_str()},
+        .layout = impl.pipeline_layout,
+    };
+    vulkan::PipelineRecord record;
+    if (const VkResult result =
+            impl.vk.vkCreateComputePipelines(impl.device, VK_NULL_HANDLE, 1, &pipeline_info, nullptr, &record.pipeline);
+        result != VK_SUCCESS) {
+        return impl.fail(result, "vkCreateComputePipelines");
+    }
+    record.debug_name = name;
+    vulkan::set_debug_name(impl.device, VK_OBJECT_TYPE_PIPELINE, record.pipeline, name);
+
+    const VkPipeline created = record.pipeline;
+    ComputePipelineHandle handle;
+    {
+        const std::scoped_lock lock{impl.resources_mutex};
+        record.tracker_id = impl.live_objects.add("ComputePipeline", name);
+        handle = impl.compute_pipelines.insert(std::move(record)); // a full pool returns before consuming `record`
+        if (!handle.is_valid()) {
+            impl.live_objects.remove(record.tracker_id);
+        }
+    }
+    if (!handle.is_valid()) {
+        impl.vk.vkDestroyPipeline(impl.device, created, nullptr);
+        return core::make_error(core::ErrorCode::LimitExceeded,
+                                "pipeline '{}': the device's compute pipeline capacity ({}) is reached", name,
+                                impl.compute_pipelines.capacity());
+    }
+    return ComputePipeline{handle, ResourceReleaser{impl_}};
 }
 
 } // namespace bytee::render::rhi

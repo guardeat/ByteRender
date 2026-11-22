@@ -36,6 +36,7 @@ enum class ResourceState : uint8_t {
     IndexBuffer,     // buffers
     IndirectBuffer,  // buffers
     UniformBuffer,   // buffers
+    HostRead,        // buffers read by the CPU (Readback memory) once the submission has completed
     Present,         // swapchain images handed to Device::present()
 };
 
@@ -54,6 +55,7 @@ enum class ResourceState : uint8_t {
     case ResourceState::IndexBuffer: return "IndexBuffer";
     case ResourceState::IndirectBuffer: return "IndirectBuffer";
     case ResourceState::UniformBuffer: return "UniformBuffer";
+    case ResourceState::HostRead: return "HostRead";
     case ResourceState::Present: return "Present";
     }
     return "Unknown";
@@ -199,6 +201,11 @@ public:
               uint32_t first_instance = 0);
     void draw_indexed(uint32_t index_count, uint32_t instance_count = 1, uint32_t first_index = 0,
                       int32_t vertex_offset = 0, uint32_t first_instance = 0);
+
+    // Compute (outside render passes). Push constants and bindless resources work as for drawing; storage textures
+    // must be in the ShaderWrite state. Use dispatch_group_count() to size the dispatch.
+    void bind_pipeline(ComputePipelineHandle pipeline);
+    void dispatch(uint32_t group_count_x, uint32_t group_count_y = 1, uint32_t group_count_z = 1);
 
     // `dst` must be in CopyDst, sources in CopySrc.
     void fill_buffer(BufferHandle dst, uint64_t offset, uint64_t size, uint32_t value);

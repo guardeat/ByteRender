@@ -78,4 +78,16 @@ struct GraphicsPipelineDesc {
     std::string_view debug_name;
 };
 
+// Compute work is described entirely by its shader; resources are reached through bindless indices and buffer device
+// addresses passed in push constants.
+struct ComputePipelineDesc {
+    ShaderDesc shader;
+    std::string_view debug_name;
+};
+
+// Number of workgroups needed to cover `items` with workgroups of `group_size` (rounded up), for dispatch().
+[[nodiscard]] constexpr uint32_t dispatch_group_count(uint32_t items, uint32_t group_size) noexcept {
+    return group_size == 0 ? 0 : (items + group_size - 1) / group_size;
+}
+
 } // namespace bytee::render::rhi

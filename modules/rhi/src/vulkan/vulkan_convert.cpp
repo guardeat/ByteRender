@@ -134,6 +134,10 @@ StateScope to_state_scope(ResourceState state) noexcept {
         return {VK_PIPELINE_STAGE_2_DRAW_INDIRECT_BIT, VK_ACCESS_2_INDIRECT_COMMAND_READ_BIT,
                 VK_IMAGE_LAYOUT_UNDEFINED};
     case ResourceState::UniformBuffer: return {k_shaders, VK_ACCESS_2_UNIFORM_READ_BIT, VK_IMAGE_LAYOUT_UNDEFINED};
+    // GPU writes reach the CPU only through a barrier into the host domain (a completed submission alone is not
+    // enough).
+    case ResourceState::HostRead:
+        return {VK_PIPELINE_STAGE_2_HOST_BIT, VK_ACCESS_2_HOST_READ_BIT, VK_IMAGE_LAYOUT_UNDEFINED};
     // Presentation is ordered by the submission's semaphore signal (ALL_COMMANDS); no access after the transition.
     case ResourceState::Present: return {VK_PIPELINE_STAGE_2_NONE, VK_ACCESS_2_NONE, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR};
     }
@@ -245,7 +249,8 @@ bool is_texture_state(ResourceState state) noexcept {
     case ResourceState::VertexBuffer:
     case ResourceState::IndexBuffer:
     case ResourceState::IndirectBuffer:
-    case ResourceState::UniformBuffer: return false;
+    case ResourceState::UniformBuffer:
+    case ResourceState::HostRead: return false;
     default: return true;
     }
 }

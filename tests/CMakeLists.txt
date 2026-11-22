@@ -36,6 +36,7 @@ add_executable(bytee_gpu_tests
     main.cpp
     rhi/test_bindless.cpp
     rhi/test_commands.cpp
+    rhi/test_compute.cpp
     rhi/test_device.cpp
     rhi/test_graphics.cpp
     rhi/test_instance.cpp
@@ -49,7 +50,9 @@ bytee_add_shaders(bytee_gpu_tests SOURCES
     shaders/color.frag
     shaders/fullscreen.vert
     shaders/fullscreen_uv.vert
+    shaders/gradient.comp
     shaders/pulled.vert
+    shaders/squares.comp
     shaders/textured.frag
     shaders/triangle.vert
 )
@@ -108,7 +111,7 @@ bytee_add_death_test(bytee_assert_failure death/assert_failure.cpp bytee::core
 bytee_add_death_test(bytee_pool_stale_handle death/pool_stale_handle.cpp bytee::core
     "Pool::get: stale or invalid handle [(]index 0, generation 1[)]")
 
-# Parent destroyed before its child: needs a GPU, and asserts compiled into the library (not just the test).
+# Misuse of the RHI (e.g. a parent destroyed before its child): needs a GPU, and asserts compiled into the library (not just the test).
 if(BYTEE_ASSERTS STREQUAL "ON" OR (BYTEE_ASSERTS STREQUAL "AUTO" AND CMAKE_BUILD_TYPE STREQUAL "Debug"))
     bytee_add_death_test(bytee_device_outlives_instance death/device_outlives_instance.cpp bytee::rhi
         "Instance destroyed while Device 'Leaky Device' is still alive.*every Device must be destroyed before its Instance")
@@ -119,4 +122,7 @@ if(BYTEE_ASSERTS STREQUAL "ON" OR (BYTEE_ASSERTS STREQUAL "AUTO" AND CMAKE_BUILD
     bytee_add_death_test(bytee_command_list_outlives_device death/command_list_outlives_device.cpp bytee::rhi
         "Device 'Busy Device' destroyed while 1 CommandList[(]s[)] are alive.*every CommandList must be submitted")
     set_tests_properties(bytee_command_list_outlives_device PROPERTIES LABELS gpu)
+    bytee_add_death_test(bytee_dispatch_without_pipeline death/dispatch_without_pipeline.cpp bytee::rhi
+        "condition: context_->compute_pipeline_bound.*dispatch needs a compute pipeline")
+    set_tests_properties(bytee_dispatch_without_pipeline PROPERTIES LABELS gpu)
 endif()

@@ -60,7 +60,7 @@ enum class BindlessSet : uint32_t {
 };
 inline constexpr std::size_t k_bindless_set_count = 3;
 
-struct GraphicsPipelineRecord {
+struct PipelineRecord { // graphics and compute
     VkPipeline pipeline = VK_NULL_HANDLE;
     detail::LiveObjectTracker::Id tracker_id = 0;
     std::string debug_name;
@@ -104,7 +104,8 @@ struct BYTEE_HIDDEN detail::CommandContext {
     QueueType queue = QueueType::Graphics;
     uint64_t last_submission = 0; // timeline value of its queue; 0 = never submitted
     bool in_render_pass = false;  // recording state, for misuse asserts
-    bool pipeline_bound = false;
+    bool graphics_pipeline_bound = false;
+    bool compute_pipeline_bound = false;
 };
 
 struct BYTEE_HIDDEN detail::DeviceImpl {
@@ -137,13 +138,15 @@ struct BYTEE_HIDDEN detail::DeviceImpl {
     std::mutex resources_mutex;
     core::Pool<vulkan::BufferRecord, BufferTag> buffers;
     core::Pool<vulkan::TextureRecord, TextureTag> textures;
-    core::Pool<vulkan::GraphicsPipelineRecord, GraphicsPipelineTag> graphics_pipelines;
+    core::Pool<vulkan::PipelineRecord, GraphicsPipelineTag> graphics_pipelines;
+    core::Pool<vulkan::PipelineRecord, ComputePipelineTag> compute_pipelines;
     core::Pool<vulkan::SamplerRecord, SamplerTag> samplers;
 
     detail::RetireList<vulkan::RetiredObject, vulkan::k_queue_count> retired_objects;
     detail::RetireList<BufferHandle, vulkan::k_queue_count> retired_buffers;
     detail::RetireList<TextureHandle, vulkan::k_queue_count> retired_textures;
     detail::RetireList<GraphicsPipelineHandle, vulkan::k_queue_count> retired_graphics_pipelines;
+    detail::RetireList<ComputePipelineHandle, vulkan::k_queue_count> retired_compute_pipelines;
     detail::RetireList<SamplerHandle, vulkan::k_queue_count> retired_samplers;
     detail::LiveObjectTracker live_objects; // child resources, for leak reports
 
@@ -207,10 +210,12 @@ struct BYTEE_HIDDEN detail::DeviceImpl {
     void release(BufferHandle buffer);
     void release(TextureHandle texture);
     void release(GraphicsPipelineHandle pipeline);
+    void release(ComputePipelineHandle pipeline);
     void release(SamplerHandle sampler);
     void destroy_now(BufferHandle buffer);
     void destroy_now(TextureHandle texture);
     void destroy_now(GraphicsPipelineHandle pipeline);
+    void destroy_now(ComputePipelineHandle pipeline);
     void destroy_now(SamplerHandle sampler);
 
     // Writes descriptors into the bindless set at the resource's pool index. Slots are only reused after deferred

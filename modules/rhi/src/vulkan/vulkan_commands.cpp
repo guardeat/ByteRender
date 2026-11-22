@@ -149,7 +149,8 @@ core::Result<detail::CommandContext*> detail::DeviceImpl::acquire_context(QueueT
     }
 
     context->in_render_pass = false;
-    context->pipeline_bound = false;
+    context->graphics_pipeline_bound = false;
+    context->compute_pipeline_bound = false;
     const VkCommandBufferBeginInfo begin_info{.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
                                               .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT};
     if (const VkResult result = vk.vkBeginCommandBuffer(context->buffer, &begin_info); result != VK_SUCCESS) {
@@ -455,7 +456,21 @@ void CommandList::bind_pipeline(GraphicsPipelineHandle pipeline) {
     BYTEE_ASSERT(is_valid(), "CommandList is empty");
     const VkPipeline handle = device_->graphics_pipelines.get(pipeline).pipeline;
     device_->vk.vkCmdBindPipeline(context_->buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, handle);
-    context_->pipeline_bound = true;
+    context_->graphics_pipeline_bound = true;
+}
+
+void CommandList::bind_pipeline(ComputePipelineHandle pipeline) {
+    BYTEE_ASSERT(is_valid(), "CommandList is empty");
+    const VkPipeline handle = device_->compute_pipelines.get(pipeline).pipeline;
+    device_->vk.vkCmdBindPipeline(context_->buffer, VK_PIPELINE_BIND_POINT_COMPUTE, handle);
+    context_->compute_pipeline_bound = true;
+}
+
+void CommandList::dispatch(uint32_t group_count_x, uint32_t group_count_y, uint32_t group_count_z) {
+    BYTEE_ASSERT(is_valid(), "CommandList is empty");
+    BYTEE_ASSERT(!context_->in_render_pass, "dispatch is not allowed inside a render pass");
+    BYTEE_ASSERT(context_->compute_pipeline_bound, "dispatch needs a compute pipeline");
+    device_->vk.vkCmdDispatch(context_->buffer, group_count_x, group_count_y, group_count_z);
 }
 
 void CommandList::set_viewport(const Viewport& viewport) {
@@ -498,14 +513,16 @@ void CommandList::bind_index_buffer(BufferHandle buffer, uint64_t offset, IndexT
 
 void CommandList::draw(uint32_t vertex_count, uint32_t instance_count, uint32_t first_vertex, uint32_t first_instance) {
     BYTEE_ASSERT(is_valid(), "CommandList is empty");
-    BYTEE_ASSERT(context_->in_render_pass && context_->pipeline_bound, "draw needs a render pass and a pipeline");
+    BYTEE_ASSERT(context_->in_render_pass && context_->graphics_pipeline_bound,
+                 "draw needs a render pass and a pipeline");
     device_->vk.vkCmdDraw(context_->buffer, vertex_count, instance_count, first_vertex, first_instance);
 }
 
 void CommandList::draw_indexed(uint32_t index_count, uint32_t instance_count, uint32_t first_index,
                                int32_t vertex_offset, uint32_t first_instance) {
     BYTEE_ASSERT(is_valid(), "CommandList is empty");
-    BYTEE_ASSERT(context_->in_render_pass && context_->pipeline_bound, "draw needs a render pass and a pipeline");
+    BYTEE_ASSERT(context_->in_render_pass && context_->graphics_pipeline_bound,
+                 "draw needs a render pass and a pipeline");
     device_->vk.vkCmdDrawIndexed(context_->buffer, index_count, instance_count, first_index, vertex_offset,
                                  first_instance);
 }
@@ -673,10 +690,13 @@ core::Result<void> Device::download(TextureHandle src, std::span<std::byte> data
         commands->barrier({}, std::span{&to_copy, 1});
     }
     commands->copy_texture_to_buffer(src, desc.region, *staging, 0);
+    const BufferBarrier to_host{.buffer = *staging, .before = ResourceState::CopyDst, .after = ResourceState::HostRead};
     if (desc.after != ResourceState::CopySrc) {
         const TextureBarrier to_final{
             .texture = src, .before = ResourceState::CopySrc, .after = desc.after, .subresources = subresources};
-        commands->barrier({}, std::span{&to_final, 1});
+        commands->barrier(std::span{&to_host, 1}, std::span{&to_final, 1});
+    } else {
+        commands->barrier(std::span{&to_host, 1}, {});
     }
     core::Result<SyncPoint> done = submit(std::move(*commands));
     if (!done) {

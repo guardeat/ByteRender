@@ -31,7 +31,7 @@ Rendering features are validated **headless first** (image tests), presentation 
 - [x] **Step 11 — Bindless.** Global descriptor heap (slot = pool index), samplers. Textured quad image test.
 - [x] **Step 12 — Window & swapchain.** `NativeWindow`, `Swapchain`, frames in flight, resize, present.
   `03_window` sample (GLFW): **triangle on screen**.
-- [ ] **Step 13 — Compute.** `ComputePipeline`, dispatch, storage resources. Compute image test.
+- [x] **Step 13 — Compute.** `ComputePipeline`, dispatch, storage resources. Compute image test.
 
 ## Phase 2 — Render graph
 - [ ] **Step 14 — Graph API.** Pass builder, transient + imported resources.

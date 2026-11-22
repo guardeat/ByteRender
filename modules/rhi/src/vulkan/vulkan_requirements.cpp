@@ -27,6 +27,9 @@ struct FeatureBit {
 
 constexpr std::array k_core_features{
     BYTEE_VULKAN_FEATURE(VkPhysicalDeviceFeatures, samplerAnisotropy),
+    // Bindless storage images are declared without a format qualifier.
+    BYTEE_VULKAN_FEATURE(VkPhysicalDeviceFeatures, shaderStorageImageReadWithoutFormat),
+    BYTEE_VULKAN_FEATURE(VkPhysicalDeviceFeatures, shaderStorageImageWriteWithoutFormat),
 };
 
 constexpr std::array k_vulkan12_features{

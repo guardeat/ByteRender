@@ -15,12 +15,14 @@ struct BYTEE_HIDDEN DeviceImpl; // backend-defined, opaque
 struct BufferTag;
 struct TextureTag;
 struct GraphicsPipelineTag;
+struct ComputePipelineTag;
 struct SamplerTag;
 
 // Non-owning 8-byte views, used by command recording and lookups.
 using BufferHandle = core::Handle<BufferTag>;
 using TextureHandle = core::Handle<TextureTag>;
 using GraphicsPipelineHandle = core::Handle<GraphicsPipelineTag>;
+using ComputePipelineHandle = core::Handle<ComputePipelineTag>;
 using SamplerHandle = core::Handle<SamplerTag>;
 
 // Bindless indices (architecture §7): a resource's slot in the device's descriptor heap is its pool index. Pass these
@@ -46,6 +48,7 @@ public:
     void operator()(BufferHandle buffer) const noexcept;
     void operator()(TextureHandle texture) const noexcept;
     void operator()(GraphicsPipelineHandle pipeline) const noexcept;
+    void operator()(ComputePipelineHandle pipeline) const noexcept;
     void operator()(SamplerHandle sampler) const noexcept;
 };
 
@@ -53,6 +56,7 @@ public:
 using Buffer = core::Resource<BufferTag, ResourceReleaser>;
 using Texture = core::Resource<TextureTag, ResourceReleaser>;
 using GraphicsPipeline = core::Resource<GraphicsPipelineTag, ResourceReleaser>;
+using ComputePipeline = core::Resource<ComputePipelineTag, ResourceReleaser>;
 using Sampler = core::Resource<SamplerTag, ResourceReleaser>;
 
 } // namespace bytee::render::rhi

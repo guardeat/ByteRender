@@ -1,0 +1,20 @@
+#version 460
+#extension GL_GOOGLE_include_directive : require
+#include "bytee/bindless.glsl"
+
+// Writes texel (x, y) = (x * 4, y * 4, 128, 255) / 255 into a storage texture.
+layout(local_size_x = 8, local_size_y = 8) in;
+
+layout(push_constant) uniform PushConstants {
+    uint output_index;
+    uint width;
+    uint height;
+} pc;
+
+void main() {
+    const uvec2 texel = gl_GlobalInvocationID.xy;
+    if (texel.x >= pc.width || texel.y >= pc.height) {
+        return;
+    }
+    bytee_image_store_2d(pc.output_index, ivec2(texel), vec4(vec2(texel) * 4.0, 128.0, 255.0) / 255.0);
+}

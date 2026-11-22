@@ -31,6 +31,7 @@ struct DeviceCapacities {
     uint32_t max_textures = 1u << 16;
     uint32_t max_samplers = 1u << 12;
     uint32_t max_graphics_pipelines = 1u << 12;
+    uint32_t max_compute_pipelines = 1u << 10;
 };
 
 // Which part of a texture to read back and which states the texture is in before and after.
@@ -106,6 +107,7 @@ public:
     [[nodiscard]] core::Result<Sampler> create_sampler(const SamplerDesc& desc);
     // Creating pipelines compiles shaders for the GPU: do it at load time, not per frame.
     [[nodiscard]] core::Result<GraphicsPipeline> create_graphics_pipeline(const GraphicsPipelineDesc& desc);
+    [[nodiscard]] core::Result<ComputePipeline> create_compute_pipeline(const ComputePipelineDesc& desc);
 
     // Description of a live resource. The reference stays valid until the resource is destroyed.
     [[nodiscard]] const BufferInfo& info(BufferHandle buffer) const noexcept;

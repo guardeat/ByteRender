@@ -217,7 +217,9 @@ list is a programmer error.
   only after deferred destruction, so pending GPU work never sees a slot change.
 - Shaders: `#include "bytee/bindless.glsl"` → `bytee_sample_2d(texture_index, sampler_index, uv)` and friends.
   Sample textures in the `ShaderRead` or `DepthRead` state (both use the read-only layout the descriptors are written
-  with). UV (0, 0) is the top-left texel (row 0 of the data).
+  with). UV (0, 0) is the top-left texel (row 0 of the data). Storage textures: `bytee_image_load_2d` /
+  `bytee_image_store_2d` (declared without a format qualifier, so the texture's own format applies), accessed in the
+  `ShaderWrite` state. Shadow maps: `bytee_sample_2d_shadow` with a comparison sampler.
 - The sets are bound once per command list (graphics and compute) and stay bound: one global pipeline layout
   (3 sets + 128 bytes of push constants) → no descriptor management in the RHI.
 
@@ -229,8 +231,9 @@ list is a programmer error.
 - v1: one universal queue (`QueueType::Graphics`). Data structures are sized by queue count for later
   async compute / transfer queues.
 - Barriers are expressed as abstract **resource states** (`ShaderRead`, `ShaderWrite`, `ColorAttachment`, `DepthWrite`,
-  `DepthRead`, `CopySrc`, `CopyDst`, `VertexBuffer`, ...); one table maps them to synchronization2 stages, access and
-  layouts. The RHI does not track states: barriers name `before` and `after` explicitly (the render graph computes
+  `DepthRead`, `CopySrc`, `CopyDst`, `VertexBuffer`, `HostRead`, ...); one table maps them to synchronization2 stages, access and
+  layouts. GPU writes the CPU reads back (Readback buffers) need a barrier into `HostRead` before submission ends
+  (a completed submission alone does not make them visible to the host). The RHI does not track states: barriers name `before` and `after` explicitly (the render graph computes
   them). `CommandList::barrier()` records one `vkCmdPipelineBarrier2` per 32 barriers from stack storage — no allocation.
 - **Command lists**: `Device::begin_commands()` → record → `Device::submit(std::move(list))` → `SyncPoint`. Each list
   owns a recycled command context (its own command pool + primary command buffer), so lists record on any thread in
@@ -274,7 +277,8 @@ list is a programmer error.
   name and asserts in Debug; in Release the parent is deliberately leaked instead of freed (a leak is recoverable,
   a use-after-free is not).
 - Required adapter features: Vulkan 1.3, `dynamicRendering`, `synchronization2`, `timelineSemaphore`, the descriptor
-  indexing set for bindless, `bufferDeviceAddress`, `scalarBlockLayout`, `samplerAnisotropy`; a queue family with
+  indexing set for bindless, `bufferDeviceAddress`, `scalarBlockLayout`, `samplerAnisotropy`,
+  `shaderStorageImageRead/WriteWithoutFormat` (format-less bindless storage images); a queue family with
   graphics + compute. `AdapterInfo` reports unsupported adapters with a reason.
 - Portability: `VK_KHR_portability_enumeration` / `VK_KHR_portability_subset` enabled when exposed (MoltenVK).
 - Presentation (optional): `VK_KHR_surface` + platform surface extensions on the instance, `VK_KHR_swapchain`
@@ -309,8 +313,11 @@ list is a programmer error.
 - `GraphicsPipeline` = `core::Resource` (deferred destruction like every resource). Dynamic rendering formats, no
   vertex input state (**vertex pulling**: shaders compute vertices or read them by buffer device address via
   `GL_EXT_buffer_reference`), dynamic viewport/scissor, cull/front face, reverse-Z depth state, blend modes.
-- One global pipeline layout: 128 bytes of push constants visible to every stage (the bindless descriptor set joins it
-  in step 11). `CommandList::push_constants(value)` for any trivially copyable value.
+- One global pipeline layout: the 3 bindless sets + 128 bytes of push constants visible to every stage.
+  `CommandList::push_constants(value)` for any trivially copyable value of at most 128 bytes (checked at compile time).
+- `ComputePipeline` = `core::Resource`, described by its shader alone (`ComputePipelineDesc`). Dispatch outside render
+  passes: `bind_pipeline(compute)`, `push_constants`, `dispatch(x, y, z)`; `rhi::dispatch_group_count(items, group_size)`
+  sizes it. Resources are reached exactly as in graphics: bindless indices and buffer device addresses.
 - Draws: `bind_pipeline`, `push_constants`, `set_viewport`/`set_scissor` (set automatically by `begin_render_pass`),
   `bind_index_buffer`, `draw`, `draw_indexed`.
 

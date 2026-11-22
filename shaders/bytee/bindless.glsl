@@ -6,14 +6,21 @@
 #define BYTEE_BINDLESS_GLSL
 
 #extension GL_EXT_nonuniform_qualifier : require
+#extension GL_EXT_shader_image_load_formatted : require // storage images without a format qualifier
 
 // One descriptor set per resource kind, each with a single array at binding 0:
-//   set 0: sampled textures, set 1: storage textures (declared by compute shaders, roadmap step 13), set 2: samplers.
+//   set 0: sampled textures, set 1: storage textures, set 2: samplers.
 // Sampled textures have one declaration per view type: use the one matching the texture's dimension (2D, 2D array
 // for textures with several layers, 3D).
 layout(set = 0, binding = 0) uniform texture2D bytee_textures_2d[];
 layout(set = 0, binding = 0) uniform texture2DArray bytee_textures_2d_array[];
 layout(set = 0, binding = 0) uniform texture3D bytee_textures_3d[];
+// Storage textures (set 1), read-write without a format qualifier (the texture's own format applies). Access them in
+// the ShaderWrite state.
+layout(set = 1, binding = 0) uniform image2D bytee_images_2d[];
+layout(set = 1, binding = 0) uniform image2DArray bytee_images_2d_array[];
+layout(set = 1, binding = 0) uniform image3D bytee_images_3d[];
+
 layout(set = 2, binding = 0) uniform sampler bytee_samplers[];
 // The same samplers declared for depth comparison: use with samplers created with SamplerDesc::compare (shadow maps).
 layout(set = 2, binding = 0) uniform samplerShadow bytee_samplers_shadow[];
@@ -41,6 +48,18 @@ float bytee_sample_2d_shadow(uint texture_index, uint sampler_index, vec3 uv_ref
     return texture(sampler2DShadow(bytee_textures_2d[nonuniformEXT(texture_index)],
                                    bytee_samplers_shadow[nonuniformEXT(sampler_index)]),
                    uv_reference);
+}
+
+vec4 bytee_image_load_2d(uint texture_index, ivec2 texel) {
+    return imageLoad(bytee_images_2d[nonuniformEXT(texture_index)], texel);
+}
+
+void bytee_image_store_2d(uint texture_index, ivec2 texel, vec4 value) {
+    imageStore(bytee_images_2d[nonuniformEXT(texture_index)], texel, value);
+}
+
+void bytee_image_store_3d(uint texture_index, ivec3 texel, vec4 value) {
+    imageStore(bytee_images_3d[nonuniformEXT(texture_index)], texel, value);
 }
 
 vec4 bytee_sample_3d(uint texture_index, uint sampler_index, vec3 uvw) {

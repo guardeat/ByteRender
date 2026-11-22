@@ -170,6 +170,7 @@ detail::DeviceImpl::DeviceImpl(const DeviceCapacities& requested)
     : buffers(requested.max_buffers)
     , textures(requested.max_textures)
     , graphics_pipelines(requested.max_graphics_pipelines)
+    , compute_pipelines(requested.max_compute_pipelines)
     , samplers(requested.max_samplers) {}
 
 detail::DeviceImpl::~DeviceImpl() {
@@ -209,6 +210,7 @@ void detail::DeviceImpl::finish_pending_work() noexcept {
     retired_buffers.drain([this](BufferHandle buffer) { destroy_now(buffer); });
     retired_textures.drain([this](TextureHandle texture) { destroy_now(texture); });
     retired_graphics_pipelines.drain([this](GraphicsPipelineHandle pipeline) { destroy_now(pipeline); });
+    retired_compute_pipelines.drain([this](ComputePipelineHandle pipeline) { destroy_now(pipeline); });
     retired_samplers.drain([this](SamplerHandle sampler) { destroy_now(sampler); });
     retired_objects.drain([this](const vulkan::RetiredObject& object) { destroy_now(object); });
 }
@@ -269,6 +271,7 @@ core::Result<void> detail::DeviceImpl::collect() {
     retired_buffers.collect(completed, [this](BufferHandle buffer) { destroy_now(buffer); });
     retired_textures.collect(completed, [this](TextureHandle texture) { destroy_now(texture); });
     retired_graphics_pipelines.collect(completed, [this](GraphicsPipelineHandle pipeline) { destroy_now(pipeline); });
+    retired_compute_pipelines.collect(completed, [this](ComputePipelineHandle pipeline) { destroy_now(pipeline); });
     retired_samplers.collect(completed, [this](SamplerHandle sampler) { destroy_now(sampler); });
     retired_objects.collect(completed, [this](const vulkan::RetiredObject& object) { destroy_now(object); });
     return {};
@@ -392,7 +395,7 @@ core::Result<Device> Instance::create_device(const DeviceDesc& desc) {
     detail::InstanceImpl& instance = *impl_;
 
     if (desc.capacities.max_buffers == 0 || desc.capacities.max_textures == 0 || desc.capacities.max_samplers == 0 ||
-        desc.capacities.max_graphics_pipelines == 0) {
+        desc.capacities.max_graphics_pipelines == 0 || desc.capacities.max_compute_pipelines == 0) {
         return core::make_error(core::ErrorCode::InvalidArgument, "device '{}': resource capacities must not be 0",
                                 desc.debug_name);
     }
