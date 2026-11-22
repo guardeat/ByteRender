@@ -65,3 +65,7 @@ cmake --build --preset debug --target format_check  # fail if anything is not fo
 add_subdirectory(Bytee)            # or FetchContent
 target_link_libraries(my_app PRIVATE bytee::render_graph)
 ```
+
+## License
+
+MIT — see [LICENSE](LICENSE).
