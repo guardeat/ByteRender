@@ -1,4 +1,4 @@
-// Compiles the Vulkan Memory Allocator implementation (third-party code: built without Bytee's warning flags).
+// Compiles the Vulkan Memory Allocator implementation (third-party code: built without ByteRender's warning flags).
 #include <volk.h>
 
 #define VMA_IMPLEMENTATION

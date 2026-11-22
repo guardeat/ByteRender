@@ -4,8 +4,8 @@
 
 namespace bytee::render::rhi {
 
-// A window (or none) to present to, described without any window-system types: Bytee never owns or creates windows.
-// Fill it from your windowing library (samples/common does it for GLFW).
+// A window (or none) to present to, described without any window-system types: ByteRender never owns or creates
+// windows. Fill it from your windowing library (samples/common does it for GLFW).
 struct NativeWindow {
     enum class Platform : uint8_t {
         Headless, // no window: presentation is a no-op (tests, CI, servers)

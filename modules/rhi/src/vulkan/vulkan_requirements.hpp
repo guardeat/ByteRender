@@ -21,7 +21,7 @@ struct DeviceFeatureChain {
     DeviceFeatureChain& operator=(const DeviceFeatureChain&) = delete;
 };
 
-// Turns on exactly the features Bytee requires (architecture §10).
+// Turns on exactly the features ByteRender requires (architecture §10).
 void enable_required_features(DeviceFeatureChain& chain) noexcept;
 
 // A queue family supporting graphics + compute (transfer is implied), if any.

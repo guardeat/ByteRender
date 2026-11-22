@@ -144,7 +144,7 @@ struct ColorAttachment {
 };
 
 // Depth (and stencil) target: mip 0, layer 0 of a texture with DepthStencilAttachment usage, in DepthWrite state.
-// Bytee uses reverse-Z (architecture §14): depth is cleared to 0 (far) and the depth test is GREATER.
+// ByteRender uses reverse-Z (architecture §14): depth is cleared to 0 (far) and the depth test is GREATER.
 struct DepthAttachment {
     TextureHandle texture;
     LoadOp load = LoadOp::Clear;
@@ -160,8 +160,8 @@ enum class IndexType : uint8_t {
     Uint32,
 };
 
-// In pixels, origin at the top-left of the render target. Bytee keeps clip space Y-up (architecture §14); the backend
-// flips the GPU viewport internally, so this is just the target rectangle.
+// In pixels, origin at the top-left of the render target. ByteRender keeps clip space Y-up (architecture §14); the
+// backend flips the GPU viewport internally, so this is just the target rectangle.
 struct Viewport {
     float x = 0.0f;
     float y = 0.0f;

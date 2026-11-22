@@ -1,7 +1,7 @@
 // Linux window-system surfaces (X11 via Xlib or XCB, Wayland).
 //
 // The few window-system types the Vulkan platform headers need are declared here instead of including the X11 /
-// XCB / Wayland headers: those headers are not needed to build Bytee, and X11 defines macros (None, Always, Bool,
+// XCB / Wayland headers: those headers are not needed to build ByteRender, and X11 defines macros (None, Always, Bool,
 // Status, ...) that collide with ordinary C++ names. The declarations match the system typedefs exactly.
 
 #include "vulkan/vulkan_surface_linux.hpp"

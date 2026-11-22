@@ -1,6 +1,6 @@
-# Bytee — Project Rules
+# ByteRender — Project Rules
 
-Bytee is a generic, reusable, cross-platform rendering engine in C++20, consumed as a library by
+ByteRender is a generic, reusable, cross-platform rendering engine in C++20, consumed as a library by
 multiple projects. **Performance is a primary goal.**
 
 - Design: `docs/architecture.md`

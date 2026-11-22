@@ -18,7 +18,7 @@ struct BYTEE_HIDDEN InstanceImpl; // backend-defined, opaque
 } // namespace detail
 
 struct InstanceDesc {
-    std::string_view app_name = "Bytee Application";
+    std::string_view app_name = "ByteRender Application";
     core::Version app_version;
     // Enables the graphics API's validation layer if it is installed (messages go to the logger). Debug tool:
     // it slows everything down considerably.
@@ -49,7 +49,7 @@ public:
     [[nodiscard]] std::span<const AdapterInfo> adapters() const noexcept;
 
     // Fails with ErrorCode::InvalidArgument for an out-of-range adapter index and ErrorCode::NotSupported if the
-    // requested adapter (or, without an index, every adapter) does not meet Bytee's requirements.
+    // requested adapter (or, without an index, every adapter) does not meet ByteRender's requirements.
     [[nodiscard]] core::Result<Device> create_device(const DeviceDesc& desc);
 
 private:

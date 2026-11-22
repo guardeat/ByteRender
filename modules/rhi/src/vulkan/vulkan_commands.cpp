@@ -499,7 +499,8 @@ void CommandList::end_debug_label() {
 
 void CommandList::set_viewport(const Viewport& viewport) {
     BYTEE_ASSERT(is_valid(), "CommandList is empty");
-    // Negative height flips Vulkan's Y-down framebuffer convention into Bytee's Y-up clip space (architecture §14).
+    // Negative height flips Vulkan's Y-down framebuffer convention into ByteRender's Y-up clip space (architecture
+    // §14).
     const VkViewport flipped{
         .x = viewport.x,
         .y = viewport.y + viewport.height,

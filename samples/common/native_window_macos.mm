@@ -1,4 +1,4 @@
-// macOS: Bytee presents through a CAMetalLayer attached to the window's content view (VK_EXT_metal_surface).
+// macOS: ByteRender presents through a CAMetalLayer attached to the window's content view (VK_EXT_metal_surface).
 
 #include "sample_window.hpp"
 

@@ -1,4 +1,4 @@
-# Bytee — Roadmap
+# ByteRender — Roadmap
 
 One step per prompt. Each step: plan → implement → from-scratch build, tests, run (zero noise) → one commit.
 Rendering features are validated **headless first** (image tests), presentation comes after.
@@ -47,7 +47,7 @@ Rendering features are validated **headless first** (image tests), presentation 
   `asan` preset without `/RTC1` and incremental linking), platform-independent path checks in tests.
   Open: verify on Windows and Linux; CI (GitHub Actions workflow drafted: Linux GCC + Clang/ASan with lavapipe,
   Windows MSVC debug + ASan without GPU, macOS with MoltenVK; pushing it needs the `workflow` token scope).
-- [ ] **Step 19 — Packaging.** `install()` + CMake package config: `find_package(Bytee)` / FetchContent.
+- [ ] **Step 19 — Packaging.** `install()` + CMake package config: `find_package(ByteRender)` / FetchContent.
 
 ## Backlog
 - Null backend for GPU-less unit tests of RHI logic

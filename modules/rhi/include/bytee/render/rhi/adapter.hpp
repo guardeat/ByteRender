@@ -38,7 +38,7 @@ struct AdapterInfo {
     uint32_t device_id = 0;
     uint64_t device_local_memory_bytes = 0;
     core::Version api_version; // graphics API version supported by the adapter (Vulkan version for Vulkan)
-    bool is_supported = false; // meets every Bytee requirement; if not, unsupported_reason says why
+    bool is_supported = false; // meets every ByteRender requirement; if not, unsupported_reason says why
     std::string unsupported_reason;
 };
 

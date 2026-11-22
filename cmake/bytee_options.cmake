@@ -17,12 +17,12 @@ bytee_choice_option(BYTEE_LOG_LEVEL "AUTO" "Compile-time minimum log level (AUTO
 bytee_choice_option(BYTEE_SANITIZE "" "Sanitizer for top-level builds: address (ASan+UBSan) or thread (TSan)"
     "" address thread)
 
-option(BYTEE_BUILD_SHARED "Build Bytee as shared libraries" OFF)
-option(BYTEE_WARNINGS_AS_ERRORS "Treat warnings as errors in Bytee targets" ON)
+option(BYTEE_BUILD_SHARED "Build ByteRender as shared libraries" OFF)
+option(BYTEE_WARNINGS_AS_ERRORS "Treat warnings as errors in ByteRender targets" ON)
 option(BYTEE_LTO "Link-time optimization for Release builds" ${PROJECT_IS_TOP_LEVEL})
-option(BYTEE_BUILD_SAMPLES "Build Bytee samples" ${PROJECT_IS_TOP_LEVEL})
-option(BYTEE_BUILD_TESTS "Build Bytee tests" ${PROJECT_IS_TOP_LEVEL})
-option(BYTEE_BUILD_BENCHMARKS "Build Bytee micro-benchmarks" ${PROJECT_IS_TOP_LEVEL})
+option(BYTEE_BUILD_SAMPLES "Build ByteRender samples" ${PROJECT_IS_TOP_LEVEL})
+option(BYTEE_BUILD_TESTS "Build ByteRender tests" ${PROJECT_IS_TOP_LEVEL})
+option(BYTEE_BUILD_BENCHMARKS "Build ByteRender micro-benchmarks" ${PROJECT_IS_TOP_LEVEL})
 
 if(BYTEE_BUILD_SHARED)
     set(BYTEE_LIBRARY_TYPE SHARED)

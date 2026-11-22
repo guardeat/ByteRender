@@ -90,7 +90,7 @@ function(bytee_fetch_glfw)
     endif()
 endfunction()
 
-# Dear ImGui: debug UI for the samples only, with its GLFW input backend (Bytee renders the draw data itself, see
+# Dear ImGui: debug UI for the samples only, with its GLFW input backend (ByteRender renders the draw data itself, see
 # samples/common/imgui_pass). Pinned to the last release before the 1.92 texture rework; third-party code compiles
 # without warnings output, and its headers are SYSTEM includes.
 function(bytee_fetch_imgui)

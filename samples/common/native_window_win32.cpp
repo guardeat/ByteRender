@@ -1,4 +1,4 @@
-// Windows: Bytee presents to the window's HWND (VK_KHR_win32_surface).
+// Windows: ByteRender presents to the window's HWND (VK_KHR_win32_surface).
 
 #include "sample_window.hpp"
 

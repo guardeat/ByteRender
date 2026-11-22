@@ -251,7 +251,7 @@ core::Result<Instance> InstanceFactory::create_instance(const InstanceDesc& desc
         .pApplicationName = app_name.c_str(),
         .applicationVersion =
             VK_MAKE_API_VERSION(0, desc.app_version.major, desc.app_version.minor, desc.app_version.patch),
-        .pEngineName = "Bytee",
+        .pEngineName = "ByteRender",
         .engineVersion = VK_MAKE_API_VERSION(0, engine_version.major, engine_version.minor, engine_version.patch),
         .apiVersion = vulkan::k_required_api_version,
     };

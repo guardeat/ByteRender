@@ -1,4 +1,4 @@
-# Bytee — Architecture
+# ByteRender — Architecture
 
 Status: **agreed design, pre-implementation.** Change this document before changing a decision below.
 
@@ -32,7 +32,7 @@ Rule: nothing above the backend line sees a Vulkan type.
 ## 3. Repository layout
 
 ```
-Bytee/
+ByteRender/
 ├── CMakeLists.txt  CMakePresets.json  CLAUDE.md  README.md
 ├── .clang-format  .clang-tidy  .editorconfig  .gitignore
 ├── cmake/
@@ -296,7 +296,7 @@ list is a programmer error.
 - Frame loop: `swapchain.acquire()` (throttles to `frames_in_flight`, default 2; recreates on resize / out-of-date;
   returns an invalid frame for a zero-size window) → record (image: Undefined → … → `Present`) →
   `device.present(swapchain, std::move(list))` → `SyncPoint`. Swapchain images are external `TextureHandle`s (views
-  owned by Bytee, images by the swapchain). Acquire semaphores per frame slot, present semaphores per image.
+  owned by ByteRender, images by the swapchain). Acquire semaphores per frame slot, present semaphores per image.
   Recreation waits for the device to idle (rare). `Undefined` as a barrier source waits for all prior commands so the
   first transition chains with the acquire semaphore wait.
 
@@ -332,8 +332,8 @@ list is a programmer error.
   / `end_debug_label`, visible in Xcode / RenderDoc; no-op without validation, no allocation). `graph.to_graphviz()`
   returns the graph in DOT format: passes in order, resources (imported ones bold), edges labeled with states, culled
   passes greyed out.
-- **Debug UI** (samples): `samples/common/imgui_pass` renders Dear ImGui as an ordinary graph pass on Bytee's RHI —
-  font atlas as a bindless texture (`ImTextureID` = bindless index), vertices pulled by buffer device address, one
+- **Debug UI** (samples): `samples/common/imgui_pass` renders Dear ImGui as an ordinary graph pass on ByteRender's
+  RHI — font atlas as a bindless texture (`ImTextureID` = bindless index), vertices pulled by buffer device address, one
   scissor per draw command, sRGB-correct colors, one host-visible vertex/index buffer pair per frame in flight. Input
   comes from ImGui's GLFW backend. `04_imgui` shows frame statistics and the previous frame's graph (passes, culling,
   Graphviz dump to the clipboard).
@@ -423,7 +423,7 @@ list is a programmer error.
 | `BYTEE_ERROR_LOCATIONS` | `AUTO` | Record where errors are created: `AUTO` = Debug only, `ON`, `OFF` |
 | `BYTEE_LOG_LEVEL` | `AUTO` | Compile-time minimum log level: `AUTO` = `Debug` in Debug, `Info` otherwise |
 | `BYTEE_SANITIZE` | empty | `address` (ASan+UBSan) or `thread` (TSan), top-level builds |
-| `BYTEE_WARNINGS_AS_ERRORS` | `ON` | Warnings are errors in Bytee targets |
+| `BYTEE_WARNINGS_AS_ERRORS` | `ON` | Warnings are errors in ByteRender targets |
 | `BYTEE_LTO` | `ON` when top-level | Link-time optimization in Release (consumers opt in: GCC LTO static libraries contain only bitcode) |
 | `BYTEE_BUILD_SAMPLES` / `_TESTS` / `_BENCHMARKS` | `ON` when top-level | Samples / tests / benchmarks |
 

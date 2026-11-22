@@ -1,5 +1,5 @@
-# LeakSanitizer suppressions for third-party libraries that are not built with Bytee (Linux CI: Vulkan loader,
-# validation layers, Mesa's lavapipe driver and its LLVM). Leaks in Bytee itself are never suppressed.
+# LeakSanitizer suppressions for third-party libraries that are not built with ByteRender (Linux CI: Vulkan loader,
+# validation layers, Mesa's lavapipe driver and its LLVM). Leaks in ByteRender itself are never suppressed.
 leak:libvulkan.so
 leak:libVkLayer_khronos_validation.so
 leak:libvulkan_lvp.so

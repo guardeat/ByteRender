@@ -1,4 +1,4 @@
-// Bytee bindless resources (architecture §7). Include with:
+// ByteRender bindless resources (architecture §7). Include with:
 //   #extension GL_GOOGLE_include_directive : require
 //   #include "bytee/bindless.glsl"
 // Indices come from rhi::bindless_index(texture / sampler), usually through push constants.

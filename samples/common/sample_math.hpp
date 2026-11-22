@@ -1,6 +1,6 @@
 #pragma once
 
-// Minimal 3D math for the samples (Bytee itself has no math library yet; see the roadmap backlog). Right-handed,
+// Minimal 3D math for the samples (ByteRender itself has no math library yet; see the roadmap backlog). Right-handed,
 // Y-up, column vectors; matrices are column-major like GLSL, so they go into push constants unchanged.
 
 #include <array>
@@ -68,7 +68,7 @@ struct Mat4 {
              -dot(right, eye), -dot(camera_up, eye), dot(forward, eye), 1.0f}};
 }
 
-// Perspective projection with reverse-Z and an infinite far plane (Bytee's convention: depth 1 at `near`, 0 at
+// Perspective projection with reverse-Z and an infinite far plane (ByteRender's convention: depth 1 at `near`, 0 at
 // infinity, clear to 0, GREATER test). Y-up clip space: the RHI takes care of Vulkan's flipped Y.
 [[nodiscard]] inline Mat4 perspective_reverse_z(float vertical_fov_radians, float aspect, float near) noexcept {
     const float focal = 1.0f / std::tan(vertical_fov_radians * 0.5f);

@@ -1,5 +1,5 @@
-// Debug UI with Dear ImGui, rendered by Bytee: the triangle plus a window with frame statistics, a background color
-// picker and the render graph of the previous frame (passes, culling, Graphviz dump to the clipboard).
+// Debug UI with Dear ImGui, rendered by ByteRender: the triangle plus a window with frame statistics, a background
+// color picker and the render graph of the previous frame (passes, culling, Graphviz dump to the clipboard).
 //   04_imgui [--frames N]   (exit after N frames, e.g. for automated runs)
 
 #include "frame_limit.hpp"
@@ -55,7 +55,7 @@ void build_ui(UiState& state, const rhi::Device& device, const rhi::Swapchain& s
               const render::RenderGraph& graph) {
     const ImGuiIO& io = ImGui::GetIO();
     ImGui::SetNextWindowPos({16, 16}, ImGuiCond_FirstUseEver);
-    ImGui::Begin("Bytee");
+    ImGui::Begin("ByteRender");
     ImGui::Text("%s", device.adapter().name.c_str());
     ImGui::Text("%ux%u %s", swapchain.extent().width, swapchain.extent().height,
                 std::string{rhi::to_string(swapchain.format())}.c_str());
@@ -105,7 +105,7 @@ int main(int argc, char** argv) {
     const std::optional<uint64_t> max_frames = bytee::samples::frame_limit(argc, argv);
 
     core::Result<bytee::samples::SampleWindow> window =
-        bytee::samples::create_sample_window("Bytee — 04_imgui", {.width = 1280, .height = 720});
+        bytee::samples::create_sample_window("ByteRender — 04_imgui", {.width = 1280, .height = 720});
     if (!window) {
         logger.error("{}", window.error().message());
         return 1;

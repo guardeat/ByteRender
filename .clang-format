@@ -26,7 +26,7 @@ IncludeBlocks: Regroup
 IncludeCategories:
   - Regex: '^"'                                   # private headers of this module
     Priority: 1
-  - Regex: '^<bytee/'                              # Bytee public headers
+  - Regex: '^<bytee/'                              # ByteRender public headers
     Priority: 2
   - Regex: '^<(vulkan|volk|vk_mem_alloc|GLFW|doctest)'  # third-party
     Priority: 3

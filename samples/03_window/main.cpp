@@ -42,7 +42,7 @@ int main(int argc, char** argv) {
     const std::optional<uint64_t> max_frames = bytee::samples::frame_limit(argc, argv);
 
     core::Result<bytee::samples::SampleWindow> window =
-        bytee::samples::create_sample_window("Bytee — 03_window", {.width = 1280, .height = 720});
+        bytee::samples::create_sample_window("ByteRender — 03_window", {.width = 1280, .height = 720});
     if (!window) {
         logger.error("{}", window.error().message());
         return 1;

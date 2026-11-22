@@ -54,7 +54,7 @@ core::Error no_supported_adapter_error(std::span<const AdapterInfo> adapters) {
     for (const AdapterInfo& adapter : adapters) {
         reasons += std::format("\n  {}: {}", adapter.name, adapter.unsupported_reason);
     }
-    return core::make_error(core::ErrorCode::NotSupported, "no adapter meets Bytee's requirements:{}", reasons);
+    return core::make_error(core::ErrorCode::NotSupported, "no adapter meets ByteRender's requirements:{}", reasons);
 }
 
 } // namespace

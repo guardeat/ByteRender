@@ -1,8 +1,8 @@
 #pragma once
 
-// Renders Dear ImGui with Bytee: a render graph pass that draws ImGui's draw data over its target. The font atlas is a
-// bindless texture (ImTextureID = bindless index), vertices are pulled through a buffer device address and every draw
-// command gets its own scissor rectangle.
+// Renders Dear ImGui with ByteRender: a render graph pass that draws ImGui's draw data over its target. The font atlas
+// is a bindless texture (ImTextureID = bindless index), vertices are pulled through a buffer device address and every
+// draw command gets its own scissor rectangle.
 //
 // Per-frame vertex and index data live in host-visible buffers, one pair per frame in flight: the swapchain's frame
 // throttling guarantees the GPU has finished with a pair before it is rewritten. Needs a current ImGui context.

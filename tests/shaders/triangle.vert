@@ -1,5 +1,5 @@
 #version 460
-// A counter-clockwise triangle in Bytee's Y-up clip space, apex at the top.
+// A counter-clockwise triangle in ByteRender's Y-up clip space, apex at the top.
 layout(push_constant) uniform PushConstants {
     vec4 color;
     vec2 offset;

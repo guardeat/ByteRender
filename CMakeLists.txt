@@ -5,7 +5,7 @@ if(NOT DEFINED CMAKE_OSX_DEPLOYMENT_TARGET)
     set(CMAKE_OSX_DEPLOYMENT_TARGET "13.3" CACHE STRING "Minimum macOS version")
 endif()
 
-project(Bytee
+project(ByteRender
     VERSION 0.1.0
     DESCRIPTION "Generic, high-performance, cross-platform rendering engine"
     LANGUAGES CXX

@@ -1,5 +1,5 @@
-// Linux: Bytee presents to the window's X11 window (VK_KHR_xlib_surface) or Wayland surface (VK_KHR_wayland_surface),
-// whichever platform GLFW runs on.
+// Linux: ByteRender presents to the window's X11 window (VK_KHR_xlib_surface) or Wayland surface
+// (VK_KHR_wayland_surface), whichever platform GLFW runs on.
 
 #include "sample_window.hpp" // before the X11 headers below: their macros (None, Bool, ...) must not reach it
 

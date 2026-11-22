@@ -15,7 +15,7 @@ struct Version {
     friend constexpr bool operator==(const Version&, const Version&) noexcept = default;
 };
 
-// Version of the Bytee library that was linked (may differ from the headers in shared builds).
+// Version of the ByteRender library that was linked (may differ from the headers in shared builds).
 [[nodiscard]] BYTEE_CORE_API Version version() noexcept;
 [[nodiscard]] BYTEE_CORE_API std::string_view version_string() noexcept;
 

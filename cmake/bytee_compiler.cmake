@@ -1,4 +1,4 @@
-# Compiler setup shared by every Bytee target: language level, warnings, LTO, sanitizers, formatting.
+# Compiler setup shared by every ByteRender target: language level, warnings, LTO, sanitizers, formatting.
 
 include(CheckIPOSupported)
 
@@ -10,7 +10,7 @@ if(BYTEE_LTO)
     endif()
 endif()
 
-# C++20, warnings (as errors unless disabled) and LTO for any Bytee-owned target (libraries, samples, tests).
+# C++20, warnings (as errors unless disabled) and LTO for any ByteRender-owned target (libraries, samples, tests).
 function(bytee_configure_target target)
     target_compile_features(${target} PUBLIC cxx_std_20)
     set_target_properties(${target} PROPERTIES CXX_EXTENSIONS OFF)

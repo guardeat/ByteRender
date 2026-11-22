@@ -26,7 +26,7 @@ enum class CullMode : uint8_t {
     Back,
 };
 
-// Winding of front faces as seen in Bytee's clip space (Y up, architecture §14).
+// Winding of front faces as seen in ByteRender's clip space (Y up, architecture §14).
 enum class FrontFace : uint8_t {
     CounterClockwise,
     Clockwise,
@@ -56,7 +56,7 @@ struct ShaderDesc {
     std::string_view entry_point = "main";
 };
 
-// Bytee uses reverse-Z: nearer means larger depth, so the default comparison is Greater (with depth cleared to 0).
+// ByteRender uses reverse-Z: nearer means larger depth, so the default comparison is Greater (with depth cleared to 0).
 struct DepthState {
     bool test = false;
     bool write = false;

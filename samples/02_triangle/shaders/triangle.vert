@@ -1,5 +1,5 @@
 #version 460
-// The classic RGB triangle, counter-clockwise in Bytee's Y-up clip space. No vertex buffers: positions and colors
+// The classic RGB triangle, counter-clockwise in ByteRender's Y-up clip space. No vertex buffers: positions and colors
 // are computed from the vertex index (vertex pulling).
 layout(location = 0) out vec3 out_color;
 

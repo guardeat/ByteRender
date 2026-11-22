@@ -1,4 +1,4 @@
-# Bytee
+# ByteRender
 
 Generic, high-performance, cross-platform (Windows / Linux / macOS) rendering engine in C++20:
 an API-agnostic RHI with a compile-time selected backend (Vulkan) and a render graph on top.
@@ -24,7 +24,7 @@ vulkaninfo --summary                              # should list your GPU
 ```
 
 Homebrew's validation-layer manifest names its library without a path, which the loader cannot resolve; the script
-rewrites it to the absolute path. Without validation Bytee still runs (it logs a warning and continues).
+rewrites it to the absolute path. Without validation ByteRender still runs (it logs a warning and continues).
 
 ### Windows
 Install the [LunarG Vulkan SDK](https://vulkan.lunarg.com/sdk/home) and build from a Visual Studio developer prompt
@@ -70,10 +70,10 @@ cmake --build --preset debug --target format        # rewrite sources
 cmake --build --preset debug --target format_check  # fail if anything is not formatted
 ```
 
-## Using Bytee from another project
+## Using ByteRender from another project
 
 ```cmake
-add_subdirectory(Bytee)            # or FetchContent
+add_subdirectory(ByteRender)       # or FetchContent
 target_link_libraries(my_app PRIVATE bytee::render_graph)
 ```
 

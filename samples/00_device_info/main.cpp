@@ -1,4 +1,5 @@
-// Lists the GPUs Bytee can see, whether each one meets Bytee's requirements, and creates a device on the best one.
+// Lists the GPUs ByteRender can see, whether each one meets ByteRender's requirements, and creates a device on the best
+// one.
 
 #include <bytee/core/log.hpp>
 #include <bytee/core/version.hpp>
@@ -12,7 +13,7 @@ int main() {
     core::ConsoleLogSink sink;
     core::Logger logger{sink, core::LogLevel::Info};
 
-    logger.info("Bytee {} | RHI backend: {}", core::version_string(), rhi::backend_name());
+    logger.info("ByteRender {} | RHI backend: {}", core::version_string(), rhi::backend_name());
 
     const rhi::InstanceFactory factory{logger};
     core::Result<rhi::Instance> instance = factory.create_instance({

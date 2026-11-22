@@ -16,7 +16,7 @@ target_compile_definitions(bytee_core PRIVATE
     BYTEE_VERSION_STRING="${PROJECT_VERSION}"
 )
 
-# Engine-wide configuration. PUBLIC: every target using Bytee headers must agree on these.
+# Engine-wide configuration. PUBLIC: every target using ByteRender headers must agree on these.
 set(debug_only $<CONFIG:Debug>)
 
 if(BYTEE_ASSERTS STREQUAL "AUTO")

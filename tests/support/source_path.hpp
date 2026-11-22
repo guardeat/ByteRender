@@ -1,7 +1,7 @@
 #pragma once
 
-// Source paths as Bytee reports them (relative to the source tree), with '/' separators on every platform, so tests
-// compare them the same way everywhere (MSVC reports Windows separators).
+// Source paths as ByteRender reports them (relative to the source tree), with '/' separators on every platform, so
+// tests compare them the same way everywhere (MSVC reports Windows separators).
 
 #include <algorithm>
 #include <string>

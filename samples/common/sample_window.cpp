@@ -7,7 +7,7 @@
 
 namespace bytee::samples {
 
-// Platform part (native_window_<platform>): the window as Bytee sees it.
+// Platform part (native_window_<platform>): the window as ByteRender sees it.
 render::rhi::NativeWindow make_native_window(GLFWwindow* window);
 
 SampleWindow::~SampleWindow() {
@@ -92,7 +92,7 @@ core::Result<SampleWindow> create_sample_window(std::string_view title, core::Ex
     if (glfwInit() != GLFW_TRUE) {
         return core::make_error(core::ErrorCode::InitializationFailed, "GLFW could not be initialized");
     }
-    glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API); // Bytee renders through Vulkan, not an OpenGL context
+    glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API); // ByteRender renders through Vulkan, not an OpenGL context
     const std::string title_text{title};
     GLFWwindow* window = glfwCreateWindow(static_cast<int>(size.width), static_cast<int>(size.height),
                                           title_text.c_str(), nullptr, nullptr);

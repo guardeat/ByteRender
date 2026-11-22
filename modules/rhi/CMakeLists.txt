@@ -23,7 +23,7 @@ if(BYTEE_RHI_BACKEND STREQUAL "Vulkan")
         list(APPEND backend_sources src/vulkan/vulkan_surface_linux.cpp)
     endif()
     set(backend_libraries bytee_vulkan_dependencies)
-    # volk and VMA implementations are third-party code: compile them without Bytee's warning flags.
+    # volk and VMA implementations are third-party code: compile them without ByteRender's warning flags.
     if(MSVC)
         set(third_party_options "/W0")
     else()
